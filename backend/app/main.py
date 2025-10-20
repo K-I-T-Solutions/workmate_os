@@ -2,6 +2,8 @@ import os
 from fastapi import FastAPI
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 
 # Module Imports
 from app.modules.system.router import router as system_router
@@ -30,6 +32,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 # === Module-Router ===
 app.include_router(system_router, prefix="/system")
 
