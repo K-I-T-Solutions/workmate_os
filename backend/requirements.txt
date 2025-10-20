@@ -1,0 +1,17 @@
+fastapi>=0.115,<0.116
+uvicorn>=0.30,<0.31
+
+psycopg[binary]>=3.2,<3.3
+SQLAlchemy>=2.0.30,<2.1
+alembic>=1.13.2,<1.14
+
+pydantic>=2.9,<2.10
+pydantic[email]>=2.9,<2.10
+
+python-dotenv>=1.0.1,<2.0
+python-multipart>=0.0.9,<0.0.10
+requests>=2.32,<3
+
+httpx 
+
+PyJWT[crypto]>=2.8.0

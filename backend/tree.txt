@@ -1,0 +1,21 @@
+.
+├── alembic
+│   └── versions
+├── app
+│   ├── core
+│   ├── models
+│   ├── routers
+│   ├── schemas
+│   ├── services
+│   └── utils
+├── requirements.txt
+├── tests
+├── tree.txt
+└── venv
+    ├── bin
+    ├── include
+    ├── lib
+    ├── lib64 -> lib
+    └── pyvenv.cfg
+
+16 directories, 3 files

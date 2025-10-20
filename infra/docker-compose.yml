@@ -1,0 +1,35 @@
+
+services:
+  backend:
+    build:
+      context: ../backend
+    container_name: workmate_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      PYTHONUNBUFFERED: 1
+      PYTHONPATH: /app
+    volumes:
+      - ../backend:/app
+    networks:
+      - core_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  ui:
+    build:
+      context: ../ui
+    container_name: workmate_ui
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_BASE=${VITE_API_BASE}
+    volumes:
+      - ../ui:/app
+    networks:
+      - core_network
+    command: npm run dev
+
+networks:
+  core_network:
+    external: true
