@@ -1,4 +1,7 @@
-
+################################
+# Docker Compose Configuration #
+# Workmate Application         #
+################################  
 services:
   backend:
     build:
