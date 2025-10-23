@@ -6,21 +6,40 @@ services:
   backend:
     build:
       context: ../backend
+      dockerfile: Dockerfile
     container_name: workmate_backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      # Überschreibt die Defaults aus config.py
+      DATABASE_URL: postgresql+psycopg2://workmate:workmate@central_postgres:5432/workmate_os
       PYTHONUNBUFFERED: 1
       PYTHONPATH: /app
+      ENVIRONMENT: development
+      WATCHFILES_FORCE_POLLING: true  # ← Für besseren Hot-Reload
     volumes:
+      - ../docs/uploads:/root/workmate_os_uploads  # Persistente Uploads
       - ../backend:/app
+      # Exclude Python cache für besseren Reload
+      - /app/__pycache__
+      - /app/**/__pycache__
+      # Mount infra/.env damit Pydantic sie lesen kann
+      - ./.env:/app/../infra/.env:ro
+      # Volume für Alembic migrations (persistent)
+      - alembic_versions:/app/alembic/versions
     networks:
       - core_network
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Development mode mit hot-reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   ui:
     build:
       context: ../ui
+      dockerfile: Dockerfile
     container_name: workmate_ui
     restart: unless-stopped
     depends_on:
@@ -29,10 +48,16 @@ services:
       - VITE_API_BASE=${VITE_API_BASE}
     volumes:
       - ../ui:/app
+      - /app/node_modules  # Prevent overwriting node_modules
     networks:
       - core_network
     command: npm run dev
 
 networks:
   core_network:
+    name: core_network
     external: true
+
+volumes:
+  alembic_versions:
+    driver: local

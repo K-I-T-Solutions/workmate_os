@@ -1,33 +1,34 @@
-# ======================================================
-# 🧠 Workmate OS Backend - FastAPI + Uvicorn
-# ======================================================
 
-# ---- Base image ----
-FROM python:3.12-slim AS base
+# WorkmateOS Backend - Development Dockerfile
+FROM python:3.13-slim
 
-# ---- Environment ----
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
-
-# ---- Arbeitsverzeichnis ----
+# Set working directory
 WORKDIR /app
 
-# ---- Systemabhängigkeiten ----
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# ---- Abhängigkeiten kopieren ----
+# Copy requirements first (for better caching)
 COPY requirements.txt .
 
-# ---- Pakete installieren ----
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# ---- App-Code kopieren ----
-COPY ./app ./app
+# Copy application code
+COPY . .
 
-# ---- Default CMD (für Dev via Compose überschrieben) ----
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Create upload directory
+RUN mkdir -p /app/uploads
+
+# Expose port
+EXPOSE 8000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Default command (can be overridden in docker-compose)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
