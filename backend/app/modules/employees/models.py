@@ -4,9 +4,10 @@ Departments, Roles & Employees (Core Entities)
 """
 from sqlalchemy import Column, String, Date, Boolean, Text, ForeignKey, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
 from app.core.database import Base, generate_uuid
+from app.modules.backoffice.chat.models import ChatMessage
 
 
 # ============================================================================
@@ -120,7 +121,12 @@ class Employee(Base):
     department = relationship("Department", back_populates="employees", foreign_keys=[department_id])
     role = relationship("Role", back_populates="employees")
     supervisor = relationship("Employee", remote_side=[id], foreign_keys=[reports_to])
-    
+    chat_messages: Mapped[list["ChatMessage"]] = relationship(
+    "ChatMessage",
+    back_populates="author",
+    cascade="all, delete-orphan"
+)
+
     # Reverse relationships (defined in other modules)
     documents = relationship("Document", back_populates="owner")
     reminders = relationship("Reminder", back_populates="owner")

@@ -17,14 +17,23 @@ services:
       ENVIRONMENT: development
       WATCHFILES_FORCE_POLLING: true  # ← Für besseren Hot-Reload
     volumes:
-      - ../docs/uploads:/root/workmate_os_uploads  # Persistente Uploads
+      # Persistente Uploads → mapped in Container
+      - ../docs/uploads:/root/workmate_os_uploads
+
+      # Assets (Logo, Templates etc.)
+      - ../assets:/app/assets
+
+      # Backend Code (Live-Reload fähig)
       - ../backend:/app
-      # Exclude Python cache für besseren Reload
+
+      # Exclude Python Cache (saubere Hot Reloads)
       - /app/__pycache__
       - /app/**/__pycache__
-      # Mount infra/.env damit Pydantic sie lesen kann
-      - ./.env:/app/../infra/.env:ro
-      # Volume für Alembic migrations (persistent)
+
+      # Environment File → Lesbar für Pydantic
+      - ../infra/.env:/app/.env:ro
+
+      # Persistent Alembic Versions
       - alembic_versions:/app/alembic/versions
     networks:
       - core_network

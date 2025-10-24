@@ -1,0 +1,169 @@
+Project WorkmateOS_Phase2 {
+  database_type: "PostgreSQL"
+  Note: 'Phase 2 - Backoffice & CRM Layer (K.I.T. Solutions)'
+}
+
+/* === CORE TABLES === */
+Table employees {
+  id uuid [pk]
+  firstname varchar
+  lastname varchar
+  email varchar
+  role_id uuid [ref: > roles.id]
+  department_id uuid [ref: > departments.id]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table departments {
+  id uuid [pk]
+  name varchar
+  manager_id uuid [ref: > employees.id]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table roles {
+  id uuid [pk]
+  name varchar
+  permissions jsonb
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table documents {
+  id uuid [pk]
+  title varchar
+  file_path text
+  type varchar
+  category varchar
+  owner_id uuid [ref: > employees.id]
+  linked_module varchar
+  linked_id uuid
+  checksum varchar
+  is_confidential boolean
+  created_at timestamp
+  updated_at timestamp
+}
+
+
+Table reminders {
+  id uuid [pk]
+  title varchar
+  due_date date
+  priority varchar
+  linked_to varchar
+  owner_id uuid [ref: > employees.id]
+  is_done boolean
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table dashboards {
+  id uuid [pk]
+  user_id uuid [ref: > employees.id]
+  layout_json jsonb
+  theme varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+/* === BACKOFFICE / CRM === */
+Table customers {
+  id uuid [pk]
+  name varchar
+  type varchar
+  email varchar
+  phone varchar
+  tax_id varchar
+  address text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table contacts {
+  id uuid [pk]
+  customer_id uuid [ref: > customers.id]
+  firstname varchar
+  lastname varchar
+  email varchar
+  phone varchar
+  position varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table projects {
+  id uuid [pk]
+  customer_id uuid [ref: > customers.id]
+  department_id uuid [ref: > departments.id]
+  title varchar
+  status varchar
+  start_date date
+  end_date date
+  description text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table time_entries {
+  id uuid [pk]
+  employee_id uuid [ref: > employees.id]
+  project_id uuid [ref: > projects.id]
+  start_time timestamp
+  end_time timestamp
+  duration interval
+  note text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table invoices {
+  id uuid [pk]
+  customer_id uuid [ref: > customers.id]
+  project_id uuid [ref: > projects.id]
+  total numeric
+  status varchar
+  due_date date
+  issued_date date
+  pdf_path text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table payments {
+  id uuid [pk]
+  invoice_id uuid [ref: > invoices.id]
+  amount numeric
+  payment_date date
+  method varchar
+  note text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table expenses {
+  id uuid [pk]
+  project_id uuid [ref: > projects.id]
+  invoice_id uuid [ref: > invoices.id]
+  category varchar
+  amount numeric
+  note text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table chat_messages {
+  id uuid [pk]
+  project_id uuid [ref: > projects.id]
+  author_id uuid [ref: > employees.id]
+  message text
+  created_at timestamp
+}
+
+/* === RELATION NOTES ===
+   Alle Relationen zwischen employees, dashboards und reminders
+   sind bereits in den Tabellendefinitionen selbst enthalten.
+   Documents werden polymorph über linked_module + linked_id verknüpft,
+   daher keine zusätzlichen FK-Refs nötig.
+*/

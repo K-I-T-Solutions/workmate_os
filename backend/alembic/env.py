@@ -1,39 +1,69 @@
 """
 Alembic Environment Configuration for WorkmateOS
+------------------------------------------------
+Automatisierte Migrationsumgebung mit:
+- Dynamischer Modellerkennung (alle modules/*/models.py)
+- Unterstützt Core + Backoffice Layer
+- Auto-Logging & saubere ENV-Variable-Integration
 """
+
 import os
+import sys
+import importlib
+import pkgutil
 from logging.config import fileConfig
+
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-# Import Base
+# === 1. SYSTEM-PFAD FIX ===
+# Stellt sicher, dass /app im Import-Pfad ist (Docker-kompatibel)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# === 2. BASE IMPORTIEREN ===
 from app.core.database import Base
 
-# WICHTIG: Alle Models explizit importieren damit Alembic sie findet
-from app.modules.employees.models import Department, Role, Employee
-from app.modules.documents.models import Document
-from app.modules.reminders.models import Reminder
-from app.modules.dashboards.models import Dashboard
-from app.modules.system.models import InfraService
-
-# this is the Alembic Config object
+# === 3. LOGGING-CONFIG ===
 config = context.config
-
-# Interpret the config file for Python logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set metadata for 'autogenerate' support
+# === 4. AUTO-DISCOVERY: Modelle laden ===
+def import_all_models(package_name: str):
+    """
+    Durchläuft rekursiv alle Unterpakete eines Moduls
+    und importiert jedes `models.py`.
+    """
+    try:
+        package = importlib.import_module(package_name)
+    except ModuleNotFoundError:
+        print(f"[WARN] Package {package_name} not found — skipping.")
+        return
+
+    for _, modname, ispkg in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
+        if modname.endswith(".models"):
+            try:
+                importlib.import_module(modname)
+                print(f"[OK] Imported model module: {modname}")
+            except Exception as e:
+                print(f"[ERROR] Failed to import {modname}: {e}")
+        elif ispkg:
+            import_all_models(modname)
+
+# Importiere alle Models unter app.modules.*
+import_all_models("app.modules")
+
+# === 5. ZIEL-METADATEN ===
 target_metadata = Base.metadata
 
-# CRITICAL: Get DATABASE_URL from environment (Docker sets this)
+# === 6. DATENBANK-URL LADEN ===
 database_url = os.environ.get(
     "DATABASE_URL",
     "postgresql+psycopg2://workmate:workmate@central_postgres:5432/workmate_os"
 )
 config.set_main_option("sqlalchemy.url", database_url)
 
-
+# === 7. MIGRATIONSMODI ===
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
@@ -61,15 +91,22 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata,  # ← Das hat gefehlt!
+            target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
         )
+
+        print("\n[WorkmateOS] Alembic environment initialized.")
+        print("→ Database URL:", database_url)
+        print("→ Loaded tables:", len(target_metadata.tables))
+        print("--------------------------------------------------")
+
 
         with context.begin_transaction():
             context.run_migrations()
 
 
+# === 8. AUSFÜHRUNG ===
 if context.is_offline_mode():
     run_migrations_offline()
 else:

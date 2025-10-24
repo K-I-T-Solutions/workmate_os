@@ -29,6 +29,14 @@ from app.modules.dashboards.models import Dashboard
 # System / Infrastructure
 from app.modules.system.models import InfraService
 
+from app.modules.backoffice.crm.models import Customer, Contact
+from app.modules.backoffice.projects.models import Project
+from app.modules.backoffice.invoices.models import Invoice, InvoiceLineItem, Payment
+from app.modules.backoffice.finance.models import Expense
+from app.modules.backoffice.chat.models import ChatMessage
+from app.modules.backoffice.time_tracking.models import TimeEntry
+
+
 
 # Explicit exports für besseres Type-Checking
 __all__ = [
@@ -39,4 +47,14 @@ __all__ = [
     "Reminder",
     "Dashboard",
     "InfraService",
+    "Customer",
+    "Contact",
+    "Project",
+    "Invoice",
+    "InvoiceLineItem",
+    "Payment",
+    "Expense",
+    "ChatMessage",
+    "TimeEntry",
+    
 ]

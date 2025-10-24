@@ -15,6 +15,11 @@ from app.modules.employees.routes import router as employee_router
 from app.modules.documents.routes import router as documents_router
 from app.modules.reminders.routes import router as reminders_router
 from app.modules.dashboards.routes import router as dashboards_router
+from app.modules.backoffice.crm.routes import router as crm_router
+from app.modules.backoffice.projects.routes import router as projects_router
+from app.modules.backoffice.time_tracking.routes import router as time_tracking_router
+from app.modules.backoffice.invoices.routes import router as invoices_router
+
 
 # ====== Basis Verzeichnis =====
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -57,8 +62,10 @@ app.include_router(employee_router, prefix="/api", tags=["Core"])
 app.include_router(documents_router, prefix="/api", tags=["Documents"])
 app.include_router(reminders_router, prefix="/api", tags=["Reminders"])  # ← FIXED!
 app.include_router(dashboards_router, prefix="/api", tags=["Dashboards"])  # ← FIXED!
-
-
+app.include_router(crm_router, prefix="/api", tags=["Backoffice CRM"])  # ← FIXED!
+app.include_router(projects_router, prefix="/api", tags=["Backoffice Projects"])  # ← FIXED!
+app.include_router(time_tracking_router, prefix="/api", tags=["Backoffice Time Tracking"])  # ← FIXED!
+app.include_router(invoices_router, prefix="/api", tags=["Backoffice Invoices"])  # ← FIXED!
 # === Core Endpoints ===
 @app.get("/", tags=["Root"])
 async def root():

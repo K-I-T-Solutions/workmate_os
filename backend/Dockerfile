@@ -11,6 +11,18 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
+# Add build tools & libraries required for reportlab + pillow
+RUN apt-get update && apt-get install -y \
+    gcc \
+    build-essential \
+    libjpeg-dev \
+    zlib1g-dev \
+    libfreetype6-dev \
+    liblcms2-dev \
+    libopenjp2-7-dev \
+    libtiff5-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy requirements first (for better caching)
 COPY requirements.txt .
 
@@ -21,7 +33,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create upload directory
-RUN mkdir -p /app/uploads
+RUN mkdir -p /app/uploads /app/assets
+
 
 # Expose port
 EXPOSE 8000
