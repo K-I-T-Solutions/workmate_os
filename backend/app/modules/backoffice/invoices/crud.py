@@ -11,21 +11,23 @@ CHANGES:
 - ✅ Better error handling
 - ✅ Query optimization with selectinload
 - ✅ Filter support (status, customer_id, date_range)
+- ✅ Automatische Nummernkreise pro Dokumenttyp & Jahr
 """
-from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import and_, or_, func
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import func
 from decimal import Decimal
 from datetime import date, datetime
 from typing import Optional, List
 import uuid
 import os
 
+from fastapi import HTTPException
+
 from app.modules.backoffice.invoices import models, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.documents.models import Document
 from app.modules.backoffice.crm.models import Customer
 from app.modules.backoffice.projects.models import Project
-from fastapi import HTTPException
 
 
 # ============================================================================
@@ -50,7 +52,11 @@ def _validate_project_exists(db: Session, project_id: uuid.UUID) -> Optional[Pro
     return project
 
 
-def _validate_invoice_number_unique(db: Session, invoice_number: str, exclude_id: Optional[uuid.UUID] = None):
+def _validate_invoice_number_unique(
+    db: Session,
+    invoice_number: str,
+    exclude_id: Optional[uuid.UUID] = None,
+) -> None:
     """Prüft ob invoice_number bereits existiert."""
     query = db.query(models.Invoice).filter(models.Invoice.invoice_number == invoice_number)
     if exclude_id:
@@ -60,8 +66,121 @@ def _validate_invoice_number_unique(db: Session, invoice_number: str, exclude_id
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"Invoice number '{invoice_number}' already exists"
+            detail=f"Invoice number '{invoice_number}' already exists",
         )
+
+
+# ---------------- Nummernkreis-Helfer ---------------- #
+
+def _get_prefix_for_doc_type(doc_type: str) -> str:
+    """
+    Liefert Präfix für Nummernformat je Dokumenttyp.
+
+    Format (deine Wahl 1:A):
+      RE-2025-0001 (invoice)
+      AN-2025-0001 (quote)
+      GS-2025-0001 (credit_note)
+      ST-2025-0001 (cancellation)
+    """
+    mapping = {
+        "invoice": "RE",
+        "quote": "AN",
+        "credit_note": "GS",
+        "cancellation": "ST",
+    }
+    return mapping.get(doc_type, "RE")  # Fallback: RE
+
+
+def _get_doc_type_for_invoice() -> str:
+    """
+    Dokumenttyp für diese CRUD-Datei.
+    Später kannst du in einem eigenen Quote-CRUD z.B. "quote" verwenden.
+    """
+    return "invoice"
+
+
+def _generate_next_number(
+    db: Session,
+    doc_type: str,
+    year: int,
+) -> int:
+    """
+    Holt die nächste laufende Nummer aus number_sequences.
+
+    - Legt bei Bedarf einen neuen Eintrag an (startet bei 1)
+    - Verwendet SELECT ... FOR UPDATE für concurrency safety
+    """
+    # Row mit FOR UPDATE sperren (Postgres)
+    seq_row = (
+        db.query(models.NumberSequence)
+        .filter(
+            models.NumberSequence.doc_type == doc_type,
+            models.NumberSequence.year == year,
+        )
+        .with_for_update()
+        .first()
+    )
+
+    if not seq_row:
+        seq_row = models.NumberSequence(
+            doc_type=doc_type,
+            year=year,
+            current_number=1,
+        )
+        db.add(seq_row)
+        db.flush()
+        return 1
+
+    seq_row.current_number += 1
+    db.flush()
+    return seq_row.current_number
+
+
+def _generate_invoice_number(
+    db: Session,
+    issued_date: Optional[date],
+    doc_type: Optional[str] = None,
+) -> str:
+    """
+    Generiert eine neue Rechnungs-/Dokumentnummer nach deinem Schema:
+
+      <PREFIX>-<YEAR>-<SEQRUN>
+
+    Beispiele (doc_type = "invoice"):
+      RE-2025-0001
+      RE-2025-0002
+
+    Reset pro Jahr, eigener Counter pro doc_type.
+    """
+    if doc_type is None:
+        doc_type = _get_doc_type_for_invoice()
+
+    year = (issued_date or date.today()).year
+    prefix = _get_prefix_for_doc_type(doc_type)
+
+    # Laufende Nummer (atomic)
+    next_num = _generate_next_number(db, doc_type=doc_type, year=year)
+
+    # 4-stellige laufende Nummer, z.B. 0001
+    seq_str = f"{next_num:04d}"
+    return f"{prefix}-{year}-{seq_str}"
+
+
+def _extract_seq_from_invoice_number(invoice_number: str) -> str:
+    """
+    Extrahiert die laufende Nummer aus der Rechnungsnummer.
+
+    Erwartetes Format: PREFIX-YEAR-SEQ (z.B. RE-2025-0001)
+    -> gibt '0001' zurück.
+
+    Fallback: letzte Token-Komponente.
+    """
+    if not invoice_number:
+        return "0001"
+    parts = invoice_number.split("-")
+    if len(parts) >= 3:
+        return parts[-1]
+    return parts[-1]
 
 
 # ============================================================================
@@ -80,24 +199,11 @@ def get_invoices(
 ) -> List[models.Invoice]:
     """
     Holt Invoices mit Pagination und Filtern.
-
-    Args:
-        db: Database Session
-        skip: Offset für Pagination
-        limit: Max Anzahl Ergebnisse
-        status: Filter nach Status
-        customer_id: Filter nach Kunde
-        project_id: Filter nach Projekt
-        date_from: Filter nach Datum (ab)
-        date_to: Filter nach Datum (bis)
-
-    Returns:
-        Liste von Invoices
     """
     query = db.query(models.Invoice).options(
         selectinload(models.Invoice.customer),
         selectinload(models.Invoice.line_items),
-        selectinload(models.Invoice.payments)
+        selectinload(models.Invoice.payments),
     )
 
     # Filter anwenden
@@ -113,7 +219,10 @@ def get_invoices(
         query = query.filter(models.Invoice.issued_date <= date_to)
 
     # Sortierung und Pagination
-    query = query.order_by(models.Invoice.issued_date.desc(), models.Invoice.created_at.desc())
+    query = query.order_by(
+        models.Invoice.issued_date.desc(),
+        models.Invoice.created_at.desc(),
+    )
     query = query.offset(skip).limit(limit)
 
     return query.all()
@@ -138,13 +247,6 @@ def count_invoices(
 def get_invoice(db: Session, invoice_id: uuid.UUID) -> Optional[models.Invoice]:
     """
     Holt eine einzelne Invoice inkl. Relations.
-
-    Args:
-        db: Database Session
-        invoice_id: Invoice UUID
-
-    Returns:
-        Invoice oder None
     """
     return (
         db.query(models.Invoice)
@@ -152,7 +254,7 @@ def get_invoice(db: Session, invoice_id: uuid.UUID) -> Optional[models.Invoice]:
             selectinload(models.Invoice.customer),
             selectinload(models.Invoice.project),
             selectinload(models.Invoice.line_items),
-            selectinload(models.Invoice.payments)
+            selectinload(models.Invoice.payments),
         )
         .filter(models.Invoice.id == invoice_id)
         .first()
@@ -165,7 +267,7 @@ def get_invoice_by_number(db: Session, invoice_number: str) -> Optional[models.I
         db.query(models.Invoice)
         .options(
             selectinload(models.Invoice.customer),
-            selectinload(models.Invoice.line_items)
+            selectinload(models.Invoice.line_items),
         )
         .filter(models.Invoice.invoice_number == invoice_number)
         .first()
@@ -179,62 +281,73 @@ def get_invoice_by_number(db: Session, invoice_number: str) -> Optional[models.I
 def create_invoice(
     db: Session,
     data: schemas.InvoiceCreate,
-    generate_pdf: bool = True
+    generate_pdf: bool = True,
 ) -> models.Invoice:
     """
     Erstellt neue Invoice mit Line Items.
 
-    Args:
-        db: Database Session
-        data: Invoice Create Schema
-        generate_pdf: PDF direkt generieren? (False für Background Task)
-
-    Returns:
-        Erstellte Invoice
-
-    Raises:
-        HTTPException: Bei Validierungsfehlern
+    Logik für invoice_number:
+    - Wenn data.invoice_number gesetzt & nicht 'AUTO' → wird verwendet (nach Unique-Check)
+    - Wenn leer oder 'AUTO' → automatische Nummernvergabe nach Nummernkreis
     """
     try:
-        # 1. Validierung
+        # 1. Validierung: Kunde / Projekt
         _validate_customer_exists(db, data.customer_id)
         if data.project_id:
             _validate_project_exists(db, data.project_id)
-        _validate_invoice_number_unique(db, data.invoice_number)
 
-        # 2. Invoice erstellen
+        # 2. Invoice-Nummer bestimmen
+        raw_number = (data.invoice_number or "").strip() if data.invoice_number is not None else ""
+        auto_mode = raw_number == "" or raw_number.upper() == "AUTO"
+
+        if auto_mode:
+            # automatische Nummernvergabe
+            invoice_number = _generate_invoice_number(
+                db=db,
+                issued_date=data.issued_date,
+                doc_type=_get_doc_type_for_invoice(),
+            )
+        else:
+            # manuelle Nummer -> Einzigartigkeit prüfen
+            _validate_invoice_number_unique(db, raw_number)
+            invoice_number = raw_number
+
+        # 3. Invoice-Objekt erstellen
+        payload = data.model_dump(exclude={"line_items", "invoice_number"})
         invoice = models.Invoice(
-            **data.model_dump(exclude={"line_items"}),
+            **payload,
+            invoice_number=invoice_number,
             subtotal=Decimal("0.00"),
             tax_amount=Decimal("0.00"),
             total=Decimal("0.00"),
         )
         db.add(invoice)
-        db.flush()  # ID generieren
+        db.flush()  # ID generieren + Sequence ggf. persistieren
 
-        # 3. Line Items erstellen
+        # 4. Line Items erstellen
         if data.line_items:
             for pos, item_data in enumerate(data.line_items, start=1):
                 item = models.InvoiceLineItem(
                     invoice_id=invoice.id,
                     position=pos,
-                    **item_data.model_dump()
+                    # Position aus Schema ignorieren, wir zählen sauber durch
+                    **item_data.model_dump(exclude={"position"}),
                 )
                 db.add(item)
 
             db.flush()  # Line Items speichern
 
-        # 4. Totals neu berechnen (verwendet neue Model-Method!)
+        # 5. Totals neu berechnen
         invoice.recalculate_totals()
 
-        # 5. Commit
+        # 6. Commit + refresh
         db.commit()
         db.refresh(invoice)
 
-        # 6. Invoice mit Relations neu laden
+        # 7. Invoice mit Relations neu laden
         invoice = get_invoice(db, invoice.id)
 
-        # 7. PDF generieren (optional)
+        # 8. PDF generieren (optional)
         if generate_pdf:
             try:
                 pdf_path = _generate_and_save_pdf(db, invoice)
@@ -258,19 +371,24 @@ def _generate_and_save_pdf(db: Session, invoice: models.Invoice) -> str:
     """
     Generiert PDF und registriert Dokument.
 
-    Args:
-        db: Database Session
-        invoice: Invoice Object (mit Relations!)
+    Dateiname (deine Wahl 6):
+      KIT-RE-001.pdf
 
-    Returns:
-        PDF file path
+    Umsetzung:
+    - aus invoice.invoice_number z.B. 'RE-2025-0001'
+    - extrahieren wir '0001'
+    - daraus 'KIT-RE-0001.pdf'
     """
     # PDF Directory
     pdf_dir = "/root/workmate_os_uploads/invoices"
     os.makedirs(pdf_dir, exist_ok=True)
 
-    # PDF Path
-    pdf_filename = f"{invoice.invoice_number}.pdf"
+    # Laufende Nummer aus Rechnungsnummer extrahieren
+    seq_str = _extract_seq_from_invoice_number(invoice.invoice_number)
+
+    # Standard für Rechnungen → KIT-RE-<SEQ>.pdf
+    # (Wenn du später Angebote hier drüber laufen lässt, kannst du z.B. KIT-AN- etc. machen)
+    pdf_filename = f"KIT-RE-{seq_str}.pdf"
     pdf_path = os.path.join(pdf_dir, pdf_filename)
 
     # PDF generieren
@@ -301,25 +419,14 @@ def _generate_and_save_pdf(db: Session, invoice: models.Invoice) -> str:
 def update_invoice(
     db: Session,
     invoice_id: uuid.UUID,
-    data: schemas.InvoiceUpdate
+    data: schemas.InvoiceUpdate,
 ) -> Optional[models.Invoice]:
-    """
-    Aktualisiert Invoice.
-
-    Args:
-        db: Database Session
-        invoice_id: Invoice UUID
-        data: Update Schema
-
-    Returns:
-        Aktualisierte Invoice oder None
-    """
+    """Aktualisiert Invoice."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
 
     try:
-        # Update fields
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(invoice, key, value)
@@ -336,24 +443,13 @@ def update_invoice(
 def update_invoice_status(
     db: Session,
     invoice_id: uuid.UUID,
-    new_status: str
+    new_status: str,
 ) -> Optional[models.Invoice]:
-    """
-    Aktualisiert nur den Status einer Invoice.
-
-    Args:
-        db: Database Session
-        invoice_id: Invoice UUID
-        new_status: Neuer Status
-
-    Returns:
-        Aktualisierte Invoice
-    """
+    """Aktualisiert nur den Status einer Invoice."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
 
-    # Validierung: Status muss gültig sein
     valid_statuses = ["draft", "sent", "paid", "partial", "overdue", "cancelled"]
     if new_status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}")
@@ -366,18 +462,9 @@ def update_invoice_status(
 
 def recalculate_invoice_totals(
     db: Session,
-    invoice_id: uuid.UUID
+    invoice_id: uuid.UUID,
 ) -> Optional[models.Invoice]:
-    """
-    Berechnet Invoice-Totals neu (z.B. nach manueller Line-Item-Änderung).
-
-    Args:
-        db: Database Session
-        invoice_id: Invoice UUID
-
-    Returns:
-        Aktualisierte Invoice
-    """
+    """Berechnet Invoice-Totals neu (z.B. nach manueller Line-Item-Änderung)."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
@@ -393,22 +480,12 @@ def recalculate_invoice_totals(
 # ============================================================================
 
 def delete_invoice(db: Session, invoice_id: uuid.UUID) -> bool:
-    """
-    Löscht Invoice inkl. Line Items (CASCADE).
-
-    Args:
-        db: Database Session
-        invoice_id: Invoice UUID
-
-    Returns:
-        True wenn gelöscht, False wenn nicht gefunden
-    """
+    """Löscht Invoice inkl. Line Items (CASCADE)."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return False
 
     try:
-        # PDF löschen (optional)
         if invoice.pdf_path and os.path.exists(invoice.pdf_path):
             try:
                 os.remove(invoice.pdf_path)
@@ -430,18 +507,9 @@ def delete_invoice(db: Session, invoice_id: uuid.UUID) -> bool:
 
 def get_invoice_statistics(
     db: Session,
-    customer_id: Optional[uuid.UUID] = None
+    customer_id: Optional[uuid.UUID] = None,
 ) -> dict:
-    """
-    Berechnet Statistiken über Invoices.
-
-    Args:
-        db: Database Session
-        customer_id: Optional Customer Filter
-
-    Returns:
-        Dict mit Statistiken
-    """
+    """Berechnet Statistiken über Invoices."""
     query = db.query(models.Invoice)
     if customer_id:
         query = query.filter(models.Invoice.customer_id == customer_id)
@@ -451,7 +519,11 @@ def get_invoice_statistics(
     stats = {
         "total_count": len(invoices),
         "total_revenue": sum(inv.total for inv in invoices if inv.status == "paid"),
-        "outstanding_amount": sum(inv.outstanding_amount for inv in invoices if inv.status not in ["paid", "cancelled"]),
+        "outstanding_amount": sum(
+            inv.outstanding_amount
+            for inv in invoices
+            if inv.status not in ["paid", "cancelled"]
+        ),
         "overdue_count": sum(1 for inv in invoices if inv.is_overdue),
         "draft_count": sum(1 for inv in invoices if inv.status == "draft"),
         "sent_count": sum(1 for inv in invoices if inv.status == "sent"),

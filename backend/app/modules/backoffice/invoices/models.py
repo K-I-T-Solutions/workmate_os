@@ -31,7 +31,9 @@ from sqlalchemy import (
     func,
     Index,
     CheckConstraint,
-    event
+    event,
+    Integer,
+    UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -146,7 +148,12 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         server_default=InvoiceStatus.DRAFT.value,
         comment="Status: draft, sent, paid, partial, overdue, cancelled"
     )
-
+    document_type: Mapped[str] = mapped_column(
+        String(50),
+        default="invoice",
+        server_default="invoice",
+        nullable=False,
+    )
     # Dates
     issued_date: Mapped[date | None] = mapped_column(
         Date,
@@ -210,6 +217,8 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         back_populates="invoice",
         cascade="all, delete-orphan"
     )
+
+
 
     # ========================================================================
     # METHODS
@@ -564,3 +573,43 @@ def update_invoice_status_after_payment(mapper, connection, target):
     # Target ist das Payment-Objekt
     if target.invoice:
         target.invoice.update_status_from_payments()
+
+# =====================================================================
+# Number Generator
+# =====================================================================
+
+class NumberSequence(Base, UUIDMixin, TimestampMixin):
+    """
+    Verwaltet laufende Nummernkreise pro Dokumenttyp & Jahr.
+
+    Beispiel:
+      doc_type = "invoice", year = 2025, current_number = 12
+      -> nächste Rechnungsnummer: RE-2025-0013
+    """
+    __tablename__ = "number_sequences"
+    __table_args__ = (
+        UniqueConstraint("doc_type", "year", name="uq_number_sequence_type_year"),
+    )
+
+    doc_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Dokumenttyp: invoice, quote, credit_note, cancellation, etc."
+    )
+    year: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+        comment="Jahreszahl für den Nummernkreis"
+    )
+    current_number: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+        comment="Letzte vergebene laufende Nummer"
+    )
+
+    def __repr__(self) -> str:
+        return f"<NumberSequence(type='{self.doc_type}', year={self.year}, current={self.current_number})>"

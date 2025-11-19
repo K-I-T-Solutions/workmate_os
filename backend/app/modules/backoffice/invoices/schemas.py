@@ -14,6 +14,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator, computed_field
+from enum import Enum
 import uuid
 
 
@@ -21,7 +22,7 @@ import uuid
 # ENUMS
 # ============================================================================
 
-class InvoiceStatus:
+class InvoiceStatus (str, Enum):
     """Invoice Status Constants."""
     DRAFT = "draft"
     SENT = "sent"
@@ -31,7 +32,7 @@ class InvoiceStatus:
     CANCELLED = "cancelled"
 
 
-class PaymentMethod:
+class PaymentMethod (str, Enum):
     """Payment Method Constants."""
     CASH = "cash"
     BANK_TRANSFER = "bank_transfer"
@@ -41,6 +42,12 @@ class PaymentMethod:
     SEPA = "sepa"
     OTHER = "other"
 
+class DocumentType (str, Enum):
+    """Document Type Constants."""
+    INVOICE = "invoice"
+    QUOTE = "quote"
+    CREDIT_NOTE = "credit_note"
+    ORDER_CONFIRMATION = "order_confirmation"
 
 # ============================================================================
 # LINE ITEMS
@@ -160,6 +167,10 @@ class InvoiceBase(BaseModel):
     status: Optional[str] = Field(InvoiceStatus.DRAFT, description="Status")
     notes: Optional[str] = Field(None, max_length=5000, description="Interne Notizen")
     terms: Optional[str] = Field(None, max_length=5000, description="Zahlungsbedingungen")
+    document_type: DocumentType= Field(
+        default= DocumentType.INVOICE,
+        description="Dokumenttyp (Rechnung, Angebot, etc.)"
+    )
 
     @field_validator("due_date")
     @classmethod
