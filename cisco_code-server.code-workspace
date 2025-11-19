@@ -1,0 +1,71 @@
+{
+  "folders": [
+    {
+      "name": "Workmate OS",
+      "path": "/config/workspace"
+    }
+  ],
+  "settings": {
+    // ─── Remote-SSH Integration ──────────────────────────────
+    "remote.SSH.remotePlatform": {
+      "cisco": "linux"
+    },
+    "remote.SSH.useLocalServer": true,
+
+    // ─── Editor Behavior ─────────────────────────────────────
+    "files.autoSave": "afterDelay",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    "editor.minimap.enabled": false,
+    "editor.fontLigatures": true,
+    "editor.tabSize": 2,
+    "editor.renderWhitespace": "boundary",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+    // ─── Terminal Defaults ───────────────────────────────────
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.profiles.linux": {
+      "bash": {
+        "path": "/bin/bash",
+        "args": ["-l"],
+        "icon": "terminal-bash"
+      },
+      "zsh": {
+        "path": "/bin/zsh",
+        "args": ["-l"],
+        "icon": "terminal"
+      }
+    },
+
+    // ─── Git & Source Control ────────────────────────────────
+    "git.confirmSync": false,
+    "git.autofetch": true,
+    "git.enableSmartCommit": true,
+
+    // ─── Workbench & Theme ───────────────────────────────────
+    "workbench.colorTheme": "Calmppuccin Frappé Green",
+    "catppuccin.accentColor": "green",
+    "keyboard.layout": "00000407",
+    "workbench.iconTheme": "catppuccin-frappe",
+    "workbench.settings.applyToAllProfiles": [
+
+    ],
+    "window.title": "💻 Cisco – Workmate OS",
+
+    // ─── Extensions Recommendations ──────────────────────────
+    "extensions.recommendations": [
+      "catppuccin.catppuccin-vsc",
+      "esbenp.prettier-vscode",
+      "ms-python.python",
+      "ms-vscode-remote.remote-ssh",
+      "ms-azuretools.vscode-docker",
+      "eamodio.gitlens",
+      "ms-toolsai.jupyter"
+    ],
+    "alt-catppuccin.accentColor": "green",
+    "editor.fontFamily": "'CaskaydiaCove Nerd Font', 'Courier New', monospace",
+    "editor.fontSize": 14
+  }
+}

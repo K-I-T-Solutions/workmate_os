@@ -1,7 +1,7 @@
 ################################
 # Docker Compose Configuration #
 # Workmate Application         #
-################################  
+################################
 services:
   backend:
     build:
@@ -15,7 +15,7 @@ services:
       PYTHONUNBUFFERED: 1
       PYTHONPATH: /app
       ENVIRONMENT: development
-      WATCHFILES_FORCE_POLLING: true  # ← Für besseren Hot-Reload
+      WATCHFILES_FORCE_POLLING: true # ← Für besseren Hot-Reload
     volumes:
       # Persistente Uploads → mapped in Container
       - ../docs/uploads:/root/workmate_os_uploads
@@ -34,7 +34,7 @@ services:
       - ../infra/.env:/app/.env:ro
 
       # Persistent Alembic Versions
-      - alembic_versions:/app/alembic/versions
+      - ../backend/alembic/versions:/app/alembic/versions
     networks:
       - core_network
     # Development mode mit hot-reload
@@ -57,10 +57,10 @@ services:
       - VITE_API_BASE=${VITE_API_BASE}
     volumes:
       - ../ui:/app
-      - /app/node_modules  # Prevent overwriting node_modules
+      - ../ui/node_modules:/app/node_modules   # Lokale Abhängigkeiten nutzen!
     networks:
       - core_network
-    command: npm run dev
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 
 networks:
   core_network:

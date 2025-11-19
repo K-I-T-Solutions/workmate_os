@@ -1,7 +1,7 @@
 """
 WorkmateOS Backend - Main Application
 """
-import os 
+import os
 from fastapi import FastAPI
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,14 +33,21 @@ app = FastAPI(
 )
 
 origins = [
+    # Lokale Entwicklung
     "http://localhost",
     "http://localhost:3000",
-    "https://workmate.intern.phudevelopement.xyz",  # Fixed typo: was https;//
-    "http://workmate_ui:5173", 
-    "http://workmate.intern.phudevelopement.xyz",
+    "http://127.0.0.1",
+    "http://workmate_ui:5173",
+
+    # Interne Domains (Homelab / Unraid / Cisco)
+    "https://workmate.intern.phudevelopement.xyz",
+    "https://api.workmate.intern.phudevelopement.xyz",
     "https://login.intern.phudevelopement.xyz",
-    "http://keycloak:8080"
+
+    # Docker Services (nur intern via Docker-Netzwerk)
+    "http://keycloak:8080",
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,8 +55,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
-
 # === Static Files ===
 UPLOAD_DIR = Path(settings.UPLOAD_DIR or (BASE_DIR + "/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,16 +1,23 @@
 # app/modules/backoffice/invoices/models.py
 """
-Invoices Module Models - WorkmateOS Phase 2.
+Invoices Module Models - WorkmateOS Phase 2 (IMPROVED)
 
 Verwaltet:
 - Invoices (Rechnungen & Angebote)
 - InvoiceLineItems (Rechnungspositionen)
 - Payments (Zahlungseingänge)
+
+CHANGES:
+- ✅ recalculate_totals() method hinzugefügt
+- ✅ Bessere CheckConstraints
+- ✅ Auto-Status-Update bei Zahlungen
+- ✅ Validierung für Dates
+- ✅ Zusätzliche Properties
 """
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -23,7 +30,8 @@ from sqlalchemy import (
     Numeric,
     func,
     Index,
-    CheckConstraint
+    CheckConstraint,
+    event
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +43,10 @@ if TYPE_CHECKING:
     from app.modules.backoffice.projects.models import Project
     from app.modules.backoffice.finance.models import Expense
 
+
+# ============================================================================
+# ENUMS
+# ============================================================================
 
 class InvoiceStatus(str, Enum):
     """Status einer Rechnung."""
@@ -57,16 +69,22 @@ class PaymentMethod(str, Enum):
     OTHER = "other"
 
 
+# ============================================================================
+# MODELS
+# ============================================================================
+
 class Invoice(Base, UUIDMixin, TimestampMixin):
     """
     Kundenrechnungen und Angebote.
-    
+
     Verwaltet Rechnungen mit automatischer Berechnung von
     Gesamtbeträgen, Zahlungsstatus und Fälligkeiten.
-    
+
     Attributes:
         invoice_number: Eindeutige Rechnungsnummer (z.B. "RE-2025-001")
         total: Gesamtbetrag inkl. MwSt
+        subtotal: Zwischensumme ohne MwSt
+        tax_amount: MwSt-Betrag
         status: Aktueller Status der Rechnung
         issued_date: Rechnungsdatum
         due_date: Fälligkeitsdatum
@@ -81,8 +99,19 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         Index("ix_invoices_project_id", "project_id"),
         Index("ix_invoices_status", "status"),
         Index("ix_invoices_issued_date", "issued_date"),
+        Index("ix_invoices_due_date", "due_date"),
         Index("ix_invoices_invoice_number", "invoice_number"),
         CheckConstraint("total >= 0", name="check_invoice_total_positive"),
+        CheckConstraint("subtotal >= 0", name="check_invoice_subtotal_positive"),
+        CheckConstraint("tax_amount >= 0", name="check_invoice_tax_positive"),
+        CheckConstraint(
+            "status IN ('draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled')",
+            name="check_invoice_status_valid"
+        ),
+        CheckConstraint(
+            "due_date IS NULL OR issued_date IS NULL OR due_date >= issued_date",
+            name="check_invoice_due_after_issued"
+        ),
     )
 
     # Business Fields
@@ -90,10 +119,13 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         String(50),
         unique=True,
         index=True,
+        nullable=False,
         comment="Eindeutige Rechnungsnummer (z.B. RE-2025-001)"
     )
     total: Mapped[Decimal] = mapped_column(
         Numeric(10, 2),
+        default=Decimal("0.00"),
+        server_default="0.00",
         comment="Gesamtbetrag inkl. MwSt"
     )
     subtotal: Mapped[Decimal] = mapped_column(
@@ -142,6 +174,7 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     # Foreign Keys
     customer_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("customers.id", ondelete="CASCADE"),
+        nullable=False,
         comment="Zugehöriger Kunde"
     )
     project_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -162,13 +195,15 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         "InvoiceLineItem",
         back_populates="invoice",
         cascade="all, delete-orphan",
-        order_by="InvoiceLineItem.position"
+        order_by="InvoiceLineItem.position",
+        lazy="selectin"
     )
     payments: Mapped[list[Payment]] = relationship(
         "Payment",
         back_populates="invoice",
         cascade="all, delete-orphan",
-        order_by="Payment.payment_date.desc()"
+        order_by="Payment.payment_date.desc()",
+        lazy="selectin"
     )
     expenses: Mapped[list["Expense"]] = relationship(
         "Expense",
@@ -176,25 +211,68 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         cascade="all, delete-orphan"
     )
 
+    # ========================================================================
+    # METHODS
+    # ========================================================================
+
+    def recalculate_totals(self) -> None:
+        """
+        Berechnet subtotal, tax_amount und total aus line_items neu.
+
+        WICHTIG: Nach Änderungen an line_items aufrufen!
+        """
+        self.subtotal = sum(
+            item.subtotal_after_discount for item in self.line_items
+        )
+        self.tax_amount = sum(
+            item.tax_amount for item in self.line_items
+        )
+        self.total = self.subtotal + self.tax_amount
+
+    def update_status_from_payments(self) -> None:
+        """
+        Aktualisiert Status basierend auf Zahlungseingängen.
+
+        Logik:
+        - outstanding = 0 → PAID
+        - 0 < outstanding < total → PARTIAL
+        - outstanding = total → SENT (falls bereits gesendet)
+        - overdue falls due_date überschritten
+        """
+        if self.status == InvoiceStatus.CANCELLED.value:
+            return  # Cancelled bleibt cancelled
+
+        outstanding = self.outstanding_amount
+
+        if outstanding <= Decimal("0.00"):
+            self.status = InvoiceStatus.PAID.value
+        elif outstanding < self.total:
+            self.status = InvoiceStatus.PARTIAL.value
+        elif self.is_overdue:
+            self.status = InvoiceStatus.OVERDUE.value
+        # Sonst status beibehalten (draft/sent)
+
+    # ========================================================================
+    # PROPERTIES
+    # ========================================================================
 
     @property
     def is_overdue(self) -> bool:
         """
         Prüft ob Rechnung überfällig ist.
-        
+
         Returns:
             True wenn Fälligkeitsdatum überschritten und nicht vollständig bezahlt
         """
         if self.due_date is None or self.status == InvoiceStatus.PAID.value:
             return False
-        from datetime import date
         return date.today() > self.due_date
 
     @property
     def paid_amount(self) -> Decimal:
         """
         Summe aller Zahlungseingänge.
-        
+
         Returns:
             Gesamtbetrag aller Zahlungen
         """
@@ -204,7 +282,7 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     def outstanding_amount(self) -> Decimal:
         """
         Offener Betrag.
-        
+
         Returns:
             Differenz zwischen Rechnungsbetrag und bezahltem Betrag
         """
@@ -214,11 +292,36 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     def is_paid(self) -> bool:
         """
         Prüft ob Rechnung vollständig bezahlt ist.
-        
+
         Returns:
             True wenn kein offener Betrag mehr vorhanden
         """
         return self.outstanding_amount <= Decimal("0.00")
+
+    @property
+    def days_until_due(self) -> int | None:
+        """
+        Tage bis zur Fälligkeit (negativ = überfällig).
+
+        Returns:
+            Anzahl Tage oder None wenn kein due_date
+        """
+        if self.due_date is None:
+            return None
+        delta = self.due_date - date.today()
+        return delta.days
+
+    @property
+    def payment_rate(self) -> float:
+        """
+        Zahlungsquote in Prozent.
+
+        Returns:
+            0.0 bis 100.0
+        """
+        if self.total <= Decimal("0.00"):
+            return 0.0
+        return float((self.paid_amount / self.total) * Decimal("100"))
 
     def __repr__(self) -> str:
         return (
@@ -230,10 +333,10 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
 class InvoiceLineItem(Base, UUIDMixin):
     """
     Rechnungspositionen.
-    
+
     Einzelne Positionen einer Rechnung mit automatischer
     Berechnung von Zwischensummen, MwSt und Gesamtbeträgen.
-    
+
     Attributes:
         position: Sortierungsreihenfolge in der Rechnung
         description: Leistungsbeschreibung
@@ -249,7 +352,7 @@ class InvoiceLineItem(Base, UUIDMixin):
         Index("ix_invoice_line_items_position", "invoice_id", "position"),
         CheckConstraint("quantity > 0", name="check_quantity_positive"),
         CheckConstraint("unit_price >= 0", name="check_unit_price_positive"),
-        CheckConstraint("tax_rate >= 0", name="check_tax_rate_positive"),
+        CheckConstraint("tax_rate >= 0 AND tax_rate <= 100", name="check_tax_rate_valid"),
         CheckConstraint(
             "discount_percent >= 0 AND discount_percent <= 100",
             name="check_discount_valid"
@@ -263,6 +366,7 @@ class InvoiceLineItem(Base, UUIDMixin):
     )
     description: Mapped[str] = mapped_column(
         Text,
+        nullable=False,
         comment="Leistungsbeschreibung"
     )
     quantity: Mapped[Decimal] = mapped_column(
@@ -278,6 +382,7 @@ class InvoiceLineItem(Base, UUIDMixin):
     )
     unit_price: Mapped[Decimal] = mapped_column(
         Numeric(10, 2),
+        nullable=False,
         comment="Einzelpreis netto"
     )
     tax_rate: Mapped[Decimal] = mapped_column(
@@ -296,6 +401,7 @@ class InvoiceLineItem(Base, UUIDMixin):
     # Foreign Keys
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("invoices.id", ondelete="CASCADE"),
+        nullable=False,
         comment="Zugehörige Rechnung"
     )
 
@@ -305,11 +411,15 @@ class InvoiceLineItem(Base, UUIDMixin):
         back_populates="line_items"
     )
 
+    # ========================================================================
+    # PROPERTIES
+    # ========================================================================
+
     @property
     def subtotal(self) -> Decimal:
         """
         Zwischensumme ohne MwSt und ohne Rabatt.
-        
+
         Returns:
             quantity * unit_price
         """
@@ -319,7 +429,7 @@ class InvoiceLineItem(Base, UUIDMixin):
     def discount_amount(self) -> Decimal:
         """
         Rabattbetrag.
-        
+
         Returns:
             Rabatt berechnet auf Zwischensumme
         """
@@ -329,7 +439,7 @@ class InvoiceLineItem(Base, UUIDMixin):
     def subtotal_after_discount(self) -> Decimal:
         """
         Zwischensumme nach Rabatt, ohne MwSt.
-        
+
         Returns:
             Zwischensumme minus Rabatt
         """
@@ -339,7 +449,7 @@ class InvoiceLineItem(Base, UUIDMixin):
     def tax_amount(self) -> Decimal:
         """
         MwSt-Betrag.
-        
+
         Returns:
             MwSt berechnet auf Zwischensumme nach Rabatt
         """
@@ -349,15 +459,16 @@ class InvoiceLineItem(Base, UUIDMixin):
     def total(self) -> Decimal:
         """
         Gesamtbetrag inkl. MwSt.
-        
+
         Returns:
             Zwischensumme nach Rabatt plus MwSt
         """
         return self.subtotal_after_discount + self.tax_amount
 
     def __repr__(self) -> str:
+        desc = self.description[:30] + "..." if len(self.description) > 30 else self.description
         return (
-            f"<InvoiceLineItem(description='{self.description[:30]}...', "
+            f"<InvoiceLineItem(description='{desc}', "
             f"quantity={self.quantity}, total={self.total})>"
         )
 
@@ -365,10 +476,10 @@ class InvoiceLineItem(Base, UUIDMixin):
 class Payment(Base, UUIDMixin, TimestampMixin):
     """
     Zahlungseingänge für Rechnungen.
-    
+
     Erfasst alle Zahlungen mit Datum, Betrag, Methode und
     optionaler Referenz (z.B. Überweisungsreferenz).
-    
+
     Attributes:
         amount: Zahlungsbetrag
         payment_date: Datum des Zahlungseingangs
@@ -382,11 +493,16 @@ class Payment(Base, UUIDMixin, TimestampMixin):
         Index("ix_payments_payment_date", "payment_date"),
         Index("ix_payments_method", "method"),
         CheckConstraint("amount > 0", name="check_payment_amount_positive"),
+        CheckConstraint(
+            "method IN ('cash', 'bank_transfer', 'credit_card', 'debit_card', 'paypal', 'sepa', 'other')",
+            name="check_payment_method_valid"
+        ),
     )
 
     # Business Fields
     amount: Mapped[Decimal] = mapped_column(
         Numeric(10, 2),
+        nullable=False,
         comment="Zahlungsbetrag"
     )
     payment_date: Mapped[date] = mapped_column(
@@ -396,6 +512,7 @@ class Payment(Base, UUIDMixin, TimestampMixin):
     )
     method: Mapped[str | None] = mapped_column(
         String(50),
+        default=PaymentMethod.BANK_TRANSFER.value,
         comment="Zahlungsmethode (cash, bank_transfer, etc.)"
     )
     reference: Mapped[str | None] = mapped_column(
@@ -410,6 +527,7 @@ class Payment(Base, UUIDMixin, TimestampMixin):
     # Foreign Keys
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("invoices.id", ondelete="CASCADE"),
+        nullable=False,
         comment="Zugehörige Rechnung"
     )
 
@@ -428,3 +546,21 @@ class Payment(Base, UUIDMixin, TimestampMixin):
             f"<Payment(invoice='{invoice_number}', "
             f"amount={self.amount}, date={self.payment_date})>"
         )
+
+
+# ============================================================================
+# EVENTS (Auto-Updates)
+# ============================================================================
+
+@event.listens_for(Payment, "after_insert")
+@event.listens_for(Payment, "after_update")
+@event.listens_for(Payment, "after_delete")
+def update_invoice_status_after_payment(mapper, connection, target):
+    """
+    Aktualisiert Invoice-Status automatisch nach Payment-Änderungen.
+
+    WICHTIG: Läuft im after_insert/update/delete Event!
+    """
+    # Target ist das Payment-Objekt
+    if target.invoice:
+        target.invoice.update_status_from_payments()
