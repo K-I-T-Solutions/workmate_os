@@ -19,6 +19,7 @@ from app.modules.backoffice.crm.routes import router as crm_router
 from app.modules.backoffice.projects.routes import router as projects_router
 from app.modules.backoffice.time_tracking.routes import router as time_tracking_router
 from app.modules.backoffice.invoices.routes import router as invoices_router
+from app.modules.backoffice.chat import routes as chat_routes  # ← Beispiel für Modul-Import
 
 
 # ====== Basis Verzeichnis =====
@@ -73,6 +74,7 @@ app.include_router(crm_router, prefix="/api", tags=["Backoffice CRM"])  # ← FI
 app.include_router(projects_router, prefix="/api", tags=["Backoffice Projects"])  # ← FIXED!
 app.include_router(time_tracking_router, prefix="/api", tags=["Backoffice Time Tracking"])  # ← FIXED!
 app.include_router(invoices_router, prefix="/api", tags=["Backoffice Invoices"])  # ← FIXED!
+app.include_router(chat_routes.router, prefix="/api", tags=["Backoffice Chat"])  # ← FIXED!
 # === Core Endpoints ===
 @app.get("/", tags=["Root"])
 async def root():
