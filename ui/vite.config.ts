@@ -3,6 +3,7 @@ import vue from "@vitejs/plugin-vue";
 import type { ViteDevServer } from "vite";
 import type { IncomingMessage, ServerResponse } from "http";
 import tailwindcss from "@tailwindcss/vite";
+import path from "path";
 
 export default defineConfig({
   plugins: [
@@ -29,6 +30,12 @@ export default defineConfig({
       },
     },
   ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      "@root-assets": path.resolve(__dirname, "../assets"),
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,

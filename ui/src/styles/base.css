@@ -1,0 +1,139 @@
+/* =============================================================
+   🖥️ WorkmateOS – Base Styles
+   Fundament für alle UI-Komponenten & OS-Interaktionen
+   ============================================================= */
+
+@import url("./tokens.css");
+
+/* -------------------------------------------------------------
+   🔄 Reset & Normalisierung
+   ------------------------------------------------------------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-primary);
+  font-size: var(--font-body);
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* -------------------------------------------------------------
+   ✨ Text Selection
+   ------------------------------------------------------------- */
+::selection {
+  background: var(--color-accent-primary);
+  color: #000;
+}
+
+/* -------------------------------------------------------------
+   🌡 Scrollbars (WorkmateOS Style)
+   ------------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* -------------------------------------------------------------
+   🟦 Default Links
+   ------------------------------------------------------------- */
+a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* -------------------------------------------------------------
+   🧩 Panels & Containers
+   ------------------------------------------------------------- */
+.kit-panel {
+  background: var(--color-panel-glass);
+  border: 1px solid var(--color-border-light);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  backdrop-filter: var(--blur-glass);
+}
+
+.kit-card {
+  background: #141821;
+  border: 1px solid var(--color-border-light);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+
+/* -------------------------------------------------------------
+   🔘 Focus States
+   ------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------
+   🧱 Layout-Zonen (OS Shell Vorbereitung)
+   ------------------------------------------------------------- */
+.os-topbar {
+  height: var(--os-topbar-height);
+  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.05);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.os-dock {
+  height: var(--os-dock-height);
+  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.05);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.os-sidebar {
+  width: var(--os-sidebar-width);
+  background: rgba(255,255,255,0.03);
+  border-right: 1px solid var(--color-border-light);
+  backdrop-filter: blur(12px);
+}
+
+/* -------------------------------------------------------------
+   ✔ Buttons Reset (für eigene Button-Komponenten)
+   ------------------------------------------------------------- */
+button {
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  color: inherit;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
