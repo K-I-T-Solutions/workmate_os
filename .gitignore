@@ -1,29 +1,48 @@
+# Python
 venv/
 __pycache__/
-node_modules/
-.env*
+**/__pycache__/
 *.pyc
-*.db
-.DS_Store
-
-**/__pycache__
-**/*.pyc
-.idea/
-.vscode/
-coverage
-*.log
-instance
-*.sqlite3
-*.egg-info
-dist/
-build/
 *.pyo
 *.pyd
+
+# Alembic backup
+alembic.backup/
+
+# Env / Secrets
+.env*
+.env.*
+.envrc
+
+# Databases
+*.sqlite3
+*.db
+
+# Logs
+*.log
+htmlcov/
+coverage/
+
+# Node
+node_modules/
+dist/
+build/
+*.local
+
+# Uploads / Media (Backend)
+uploads/
+backend/uploads/
+app/uploads/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Temp / Misc
 *.swp
 *.swo
 *.bak
 *.orig
 *.rej
 *.cover
-htmlcov/
-almembic.backuop/

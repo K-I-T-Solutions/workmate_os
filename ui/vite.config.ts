@@ -33,7 +33,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
-      "@root-assets": path.resolve(__dirname, "../assets"),
+      // @root-assets entfernt - nicht mehr nötig
     },
   },
   server: {

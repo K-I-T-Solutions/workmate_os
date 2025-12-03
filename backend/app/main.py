@@ -2,12 +2,16 @@
 WorkmateOS Backend - Main Application
 """
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import logging
 
+# Logging aktivieren
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Module Imports
 from app.modules.system.router import router as system_router
@@ -19,8 +23,8 @@ from app.modules.backoffice.crm.routes import router as crm_router
 from app.modules.backoffice.projects.routes import router as projects_router
 from app.modules.backoffice.time_tracking.routes import router as time_tracking_router
 from app.modules.backoffice.invoices.routes import router as invoices_router
-from app.modules.backoffice.chat import routes as chat_routes  # ← Beispiel für Modul-Import
-from app.modules.backoffice.finance import routes as finance_routes  # ← Beispiel für Modul-Import
+from app.modules.backoffice.chat import routes as chat_routes
+from app.modules.backoffice.finance import routes as finance_routes
 
 
 # ====== Basis Verzeichnis =====
@@ -38,19 +42,36 @@ origins = [
     # Lokale Entwicklung
     "http://localhost",
     "http://localhost:3000",
+    "http://localhost:5173",
     "http://127.0.0.1",
+    "http://127.0.0.1:5173",
     "http://workmate_ui:5173",
 
-    # Interne Domains (Homelab / Unraid / Cisco)
+    # Interne Domains - ALLE Kombinationen
+    "http://workmate.intern.phudevelopement.xyz",
+    "http://workmate.intern.phudevelopement.xyz:5173",
     "https://workmate.intern.phudevelopement.xyz",
+    "https://workmate.intern.phudevelopement.xyz:5173",
+
+    "http://api.workmate.intern.phudevelopement.xyz",
+    "http://api.workmate.intern.phudevelopement.xyz:8000",
     "https://api.workmate.intern.phudevelopement.xyz",
+    "https://api.workmate.intern.phudevelopement.xyz:8000",
+
     "https://login.intern.phudevelopement.xyz",
 
-    # Docker Services (nur intern via Docker-Netzwerk)
+    # Docker Services
     "http://keycloak:8080",
 ]
+# Debug Middleware um Origin zu sehen
+@app.middleware("http")
+async def log_origin(request: Request, call_next):
+    origin = request.headers.get("origin")
+    logger.info(f"📨 Request from Origin: {origin}")
+    response = await call_next(request)
+    return response
 
-
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -59,6 +80,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
 # === Static Files ===
 UPLOAD_DIR = Path(settings.UPLOAD_DIR or (BASE_DIR + "/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -69,14 +91,15 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.include_router(system_router, prefix="/system", tags=["System"])
 app.include_router(employee_router, prefix="/api", tags=["Core"])
 app.include_router(documents_router, prefix="/api", tags=["Documents"])
-app.include_router(reminders_router, prefix="/api", tags=["Reminders"])  # ← FIXED!
-app.include_router(dashboards_router, prefix="/api", tags=["Dashboards"])  # ← FIXED!
-app.include_router(crm_router, prefix="/api", tags=["Backoffice CRM"])  # ← FIXED!
-app.include_router(projects_router, prefix="/api", tags=["Backoffice Projects"])  # ← FIXED!
-app.include_router(time_tracking_router, prefix="/api", tags=["Backoffice Time Tracking"])  # ← FIXED!
-app.include_router(invoices_router, prefix="/api", tags=["Backoffice Invoices"])  # ← FIXED!
-app.include_router(chat_routes.router, prefix="/api", tags=["Backoffice Chat"])  # ← FIXED!
-app.include_router(finance_routes.router, prefix="/api", tags=["Backoffice Finance"])  # ← FIXED!
+app.include_router(reminders_router, prefix="/api", tags=["Reminders"])
+app.include_router(dashboards_router, prefix="/api", tags=["Dashboards"])
+app.include_router(crm_router, prefix="/api", tags=["Backoffice CRM"])
+app.include_router(projects_router, prefix="/api", tags=["Backoffice Projects"])
+app.include_router(time_tracking_router, prefix="/api", tags=["Backoffice Time Tracking"])
+app.include_router(invoices_router, prefix="/api", tags=["Backoffice Invoices"])
+app.include_router(chat_routes.router, prefix="/api", tags=["Backoffice Chat"])
+app.include_router(finance_routes.router, prefix="/api", tags=["Backoffice Finance"])
+
 # === Core Endpoints ===
 @app.get("/", tags=["Root"])
 async def root():

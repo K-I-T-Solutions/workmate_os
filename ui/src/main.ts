@@ -1,13 +1,22 @@
 import { createApp } from "vue";
+import { createPinia } from "pinia";
 import "./style.css";
 import App from "./App.vue";
 import { router } from "./router/index.ts";
 import { WorkmateAssets } from "./services/assets.ts";
 import "./styles/tokens.css";
-import "./style.css";
 
-document
-  .querySelector("link[rel='icon']")
-  ?.setAttribute("href", WorkmateAssets.workmateFavicon);
+// Set Favicon
+const faviconLink = document.querySelector("link[rel='icon']") || document.createElement('link');
+faviconLink.setAttribute('rel', 'icon');
+faviconLink.setAttribute('href', WorkmateAssets.workmateFavicon);
+if (!document.querySelector("link[rel='icon']")) {
+  document.head.appendChild(faviconLink);
+}
 
-createApp(App).use(router).mount("#app");
+const pinia = createPinia();
+
+createApp(App)
+  .use(pinia)
+  .use(router)
+  .mount("#app");

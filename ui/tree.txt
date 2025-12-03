@@ -1,0 +1,81 @@
+src
+├── App.vue
+├── assets
+│   └── vue.svg
+├── components
+│   ├── backoffice
+│   │   ├── chat
+│   │   ├── crm
+│   │   │   ├── CustomerFormModal.vue
+│   │   │   └── CustomerTable.vue
+│   │   ├── finance
+│   │   ├── invoices
+│   │   ├── projects
+│   │   └── time-tracking
+│   ├── core
+│   │   ├── dashboards
+│   │   │   └── WidgetRenderer.vue
+│   │   ├── departments
+│   │   ├── documents
+│   │   ├── employees
+│   │   ├── reminders
+│   │   ├── roles
+│   │   └── widgets
+│   ├── HelloWorld.vue
+│   ├── layout
+│   │   └── Sidebar.vue
+│   ├── os
+│   │   ├── Dock.vue
+│   │   ├── Topbar.vue
+│   │   └── Window.vue
+│   └── system
+│       ├── kit-buttons.vue
+│       └── kit-panel.vue
+├── composables
+│   ├── useCustomers.ts
+│   ├── useDashboard.ts
+│   ├── useEmployees.ts
+│   ├── useInvocies.ts
+│   └── useProjects.ts
+├── main.ts
+├── pages
+│   ├── backoffice
+│   │   └── crm
+│   │       ├── CustomerDetailPage.vue
+│   │       ├── CustomersDetailPage.sync-conflict-20251202-182610-5EOLWJ5.vue
+│   │       └── CustomersPage.vue
+│   ├── core
+│   ├── Linktree.vue
+│   ├── MainPage.vue
+│   └── UnderConstruction.vue
+├── router
+│   └── index.ts
+├── services
+│   ├── api
+│   │   └── client.ts
+│   └── assets.ts
+├── stores
+│   └── sidebar.ts
+├── style.css
+├── styles
+│   ├── base.css
+│   └── tokens.css
+├── types
+│   ├── api.ts
+│   └── widgetTypes.ts
+├── ui
+└── widgets
+    ├── widgetRegistry.ts
+    ├── widgets
+    │   ├── ActivityFeedWidget.vue
+    │   ├── CalendarWidget.vue
+    │   ├── ChartWidget.vue
+    │   ├── NotificationsWidget.vue
+    │   ├── RemindersWidget.vue
+    │   ├── ShortcutsWidget.vue
+    │   ├── StatsWidget.vue
+    │   ├── SystemMonitorWidget.vue
+    │   └── WeatherWidget.vue
+    └── widgetTypes.ts
+
+35 directories, 44 files

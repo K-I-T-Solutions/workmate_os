@@ -1,18 +1,15 @@
 // ui/src/services/assets.ts
 
+const ASSET_BASE = '/assets';
+
 export const WorkmateAssets = {
-  workmateDark: new URL(
-    "@root-assets/workmate_dark_transparent.png",
-    import.meta.url
-  ).href,
-  workmateWhite: new URL(
-    "@root-assets/workmate_white_transparent.png",
-    import.meta.url
-  ).href,
-  workmateFavicon: new URL("@root-assets/workmate_favicon.ico", import.meta.url)
-    .href,
-  kitGrey: new URL(
-    "@root-assets/KIT_IT_GREY_NO_BACKGROUND.png",
-    import.meta.url
-  ).href,
-};
+  workmateDark: `${ASSET_BASE}/workmate_dark_transparent.png`,
+  workmateWhite: `${ASSET_BASE}/workmate_white_transparent.png`,
+  workmateFavicon: `${ASSET_BASE}/workmate_favicon.ico`,
+  kitGrey: `${ASSET_BASE}/KIT_IT_GREY_NO_BACKGROUND.png`,
+} as const;
+
+// Debug in Development
+if (import.meta.env.DEV) {
+  console.log('🎨 WorkmateOS Assets:', WorkmateAssets);
+}

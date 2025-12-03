@@ -7,7 +7,8 @@
     <!-- Loading Spinner -->
     <svg
       v-if="loading"
-      class="animate-spin h-5 w-5 mr-2 text-white"
+      class="animate-spin h-4 w-4 text-current flex-shrink-0"
+      :class="label ? 'mr-2' : ''"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -19,19 +20,24 @@
         r="10"
         stroke="currentColor"
         stroke-width="4"
-      ></circle>
+      />
       <path
         class="opacity-75"
         fill="currentColor"
         d="M4 12a8 8 0 018-8v4l3-3-3-3v4a12 12 0 00-12 12h4z"
-      ></path>
+      />
     </svg>
 
-    <!-- Icon (optional) -->
-    <component v-if="icon && !loading" :is="icon" class="w-5 h-5 mr-2" />
+    <!-- Icon -->
+    <component
+      v-if="icon && !loading"
+      :is="icon"
+      class="w-4 h-4 flex-shrink-0"
+      :class="label ? 'mr-2' : ''"
+    />
 
     <!-- Label -->
-    <span>{{ label }}</span>
+    <span class="whitespace-nowrap">{{ label }}</span>
   </button>
 </template>
 
@@ -60,35 +66,29 @@ const handleClick = (e: MouseEvent) => {
   if (!props.loading && !props.disabled) emit("click", e);
 };
 
-const buttonClasses = computed(() => {
-  return [
-    // Base
-    "inline-flex items-center justify-center rounded-md font-medium transition-all duration-150",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+const buttonClasses = computed(() => [
+  // Base
+  "inline-flex items-center justify-center font-semibold rounded-[var(--radius-md)] transition-all duration-150",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent-primary)]",
+  "backdrop-blur-md",
 
-    // Size
-    props.size === "sm" && "px-3 py-1 text-sm",
-    props.size === "md" && "px-4 py-2 text-base",
-    props.size === "lg" && "px-6 py-3 text-lg",
+  // Sizes
+  props.size === "sm" && "px-[12px] py-[6px] text-sm",
+  props.size === "md" && "px-[16px] py-[8px] text-base",
+  props.size === "lg" && "px-[20px] py-[10px] text-lg",
 
-    // Variants
-    props.variant === "primary" &&
-      "bg-accent-primary text-black hover:opacity-90 shadow-soft",
+  // Variants
+  props.variant === "primary" &&
+    "bg-[var(--color-accent-primary)] text-black shadow-soft hover:bg-[var(--color-accent-primary)]/90",
 
-    props.variant === "secondary" &&
-      "bg-[rgba(255,255,255,0.1)] text-white border border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.15)]",
+  props.variant === "secondary" &&
+    "bg-[var(--color-panel-glass)] border border-[var(--color-border-light)] text-[var(--color-text-primary)] shadow-soft hover:bg-white/10",
 
-    props.variant === "ghost" &&
-      "text-secondary hover:text-white hover:bg-[rgba(255,255,255,0.05)]",
+  props.variant === "ghost" &&
+    "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-white/5",
 
-    // Disabled
-    (props.disabled || props.loading) && "opacity-50 cursor-not-allowed",
-  ];
-});
+  // Disabled
+  (props.disabled || props.loading) &&
+    "opacity-50 cursor-not-allowed pointer-events-none",
+]);
 </script>
-
-<style scoped>
-button {
-  backdrop-filter: blur(10px);
-}
-</style>

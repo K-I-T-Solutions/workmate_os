@@ -25,8 +25,7 @@
   🔠 TYPOGRAPHY
   ===========================================================
   */
-
-  --font-primary: "Inter", sans-serif;
+  --font-primary: "Fira Sans", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
   --font-display: 24px;
