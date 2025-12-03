@@ -106,7 +106,7 @@
 
 <script setup lang="ts">
 import { computed, ref, defineAsyncComponent, onErrorCaptured } from "vue";
-import { widgetRegistry } from "@/widgets/widgetRegistry";
+import { widgetRegistry } from "@/modules/dashboard/services/widgetRegistry";
 import type { Component } from "vue";
 
 interface Props {

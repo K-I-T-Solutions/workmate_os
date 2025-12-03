@@ -92,7 +92,7 @@
 
 <script setup lang="ts">
 import { computed, ref, defineAsyncComponent, onErrorCaptured } from "vue";
-import { widgetRegistry } from "@/widgets/widgetRegistry";
+import { widgetRegistry } from "@/modules/dashboard/services/widgetRegistry";
 import type { Component } from "vue";
 
 interface Props {
@@ -112,7 +112,7 @@ const widgetComponents = ref<Record<string, Component>>({});
  * Filter: nur Widgets die existieren UND nicht disabled sind
  */
 const activeWidgets = computed(() => {
-  if (!props.widgets || typeof props.widgets !== 'object') {
+  if (!props.widgets || typeof props.widgets !== "object") {
     return {};
   }
 
@@ -160,7 +160,7 @@ const skeletonStyle = {
  * Item-Styling basierend auf Layout
  */
 const itemStyle = (key: string) => {
-  if (!props.layout || typeof props.layout !== 'object') {
+  if (!props.layout || typeof props.layout !== "object") {
     return {
       gridColumn: "span 3",
       gridRow: "span 2",

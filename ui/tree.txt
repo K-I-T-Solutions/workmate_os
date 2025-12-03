@@ -42,7 +42,6 @@ src
 │   ├── backoffice
 │   │   └── crm
 │   │       ├── CustomerDetailPage.vue
-│   │       ├── CustomersDetailPage.sync-conflict-20251202-182610-5EOLWJ5.vue
 │   │       └── CustomersPage.vue
 │   ├── core
 │   ├── Linktree.vue
@@ -78,4 +77,4 @@ src
     │   └── WeatherWidget.vue
     └── widgetTypes.ts
 
-35 directories, 44 files
+35 directories, 43 files

@@ -71,7 +71,12 @@
   ===========================================================
   */
 
-  --os-dock-height: 64px;
+  --os-dock-height: 80px;
   --os-topbar-height: 48px;
   --os-sidebar-width: 260px;
+}
+@media (max-width: 1024px) {
+  :root {
+    --os-dock-height: 64px; /* Mobile etwas kleiner */
+  }
 }

@@ -9,9 +9,8 @@
    🔄 RESET & NORMALISATION (Tailwind Base Layer)
    ------------------------------------------------------------- */
 @layer base {
+  /* FIX: Entfernt margin/padding global reset */
   * {
-    margin: 0;
-    padding: 0;
     box-sizing: border-box;
   }
 

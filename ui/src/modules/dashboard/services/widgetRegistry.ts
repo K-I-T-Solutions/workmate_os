@@ -5,7 +5,7 @@
  * Widgets werden dynamisch per Lazy-Loading geladen.
  */
 
-import type { WidgetDefinition } from "./widgetTypes";
+import type { WidgetDefinition } from "../components/widgets/widgetTypes";
 
 export const widgetRegistry: Record<string, WidgetDefinition> = {
   stats: {

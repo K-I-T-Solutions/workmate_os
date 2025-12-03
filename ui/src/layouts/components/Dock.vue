@@ -9,14 +9,14 @@
         <button
           v-for="item in dockItems"
           :key="item.label"
-          @click="navigate(item.to)"
+          @click="openApp(item.id)"
           class="dock-item"
-          :class="{ 'dock-item-active': isActive(item.to) }"
+          :class="{ 'dock-item-active': isActive(item.id) }"
         >
           <!-- Icon Container -->
           <div class="dock-icon-wrapper">
             <!-- Active Indicator Dot -->
-            <div v-if="isActive(item.to)" class="active-dot"></div>
+            <div v-if="isActive(item.id)" class="active-dot"></div>
 
             <!-- Icon -->
             <component :is="item.icon" class="dock-icon" />
@@ -34,7 +34,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import {
   Briefcase,
   Users,
@@ -43,32 +43,47 @@ import {
   Wallet,
   MessageSquare,
 } from "lucide-vue-next";
-import { useSidebarStore } from "@/stores/sidebar";
 
-const router = useRouter();
+import { useSidebarStore } from "@/stores/sidebar";
+import { useAppManager } from "../app-manager/useAppManager";
+import { apps } from "../app-manager/appRegistry";
+
+const { openWindow } = useAppManager();
 const route = useRoute();
 const sidebar = useSidebarStore();
 
-// Dock offset depending on sidebar width
+// Öffnet eine App als Fenster
+function openApp(appId: string) {
+  const app = apps.find(a => a.id === appId);
+  if (!app) return;
+  openWindow(app.id, app.title, app.startRoute);
+}
+
+// Dock items (App-Zuweisungen)
+const dockItems = [
+  { id: "crm", label: "CRM", icon: Users },
+  { id: "projects", label: "Projects", icon: Briefcase },
+  { id: "time", label: "Time", icon: Timer },
+  { id: "invoices", label: "Invoices", icon: Receipt },
+  { id: "finance", label: "Finance", icon: Wallet },
+  { id: "notes", label: "Notes", icon: MessageSquare },
+];
+
+// Active State
+const isActive = (appId: string) => {
+  const app = apps.find(a => a.id === appId);
+  return app ? route.path.startsWith(app.startRoute) : false;
+};
+
+// Für Sidebar Push
 const sidebarOffset = computed(() => {
-  if (typeof window !== "undefined" && window.innerWidth < 768) return "0px";
+  if (window.innerWidth < 768) return "0px";
   return sidebar.isOpen || sidebar.isHovered
     ? "var(--os-sidebar-width)"
     : "64px";
 });
-
-const navigate = (to: string) => router.push(to);
-const isActive = (path: string) => route.path.startsWith(path);
-
-const dockItems = [
-  { label: "CRM", icon: Users, to: "/backoffice/crm" },
-  { label: "Projects", icon: Briefcase, to: "/backoffice/projects" },
-  { label: "Time", icon: Timer, to: "/backoffice/time-tracking" },
-  { label: "Invoices", icon: Receipt, to: "/backoffice/invoices" },
-  { label: "Finance", icon: Wallet, to: "/backoffice/finance" },
-  { label: "Notes", icon: MessageSquare, to: "/backoffice/chat" },
-];
 </script>
+
 
 <style scoped>
 /* ============================================================

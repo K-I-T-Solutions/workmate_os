@@ -13,7 +13,7 @@
       sidebarStore.isOpen || sidebarStore.isHovered
         ? 'sidebar-expanded'
         : 'sidebar-collapsed',
-      sidebarStore.isOpen ? 'sidebar-mobile-open' : 'sidebar-mobile-closed'
+      sidebarStore.isOpen ? 'sidebar-mobile-open' : 'sidebar-mobile-closed',
     ]"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
@@ -43,13 +43,12 @@
         @click="navigate(item.to)"
         class="nav-item"
         :class="{ 'nav-item-active': isActive(item.to) }"
-        :title="!(sidebarStore.isOpen || sidebarStore.isHovered) ? item.label : ''"
+        :title="
+          !(sidebarStore.isOpen || sidebarStore.isHovered) ? item.label : ''
+        "
       >
         <!-- Active Indicator -->
-        <div
-          v-if="isActive(item.to)"
-          class="active-indicator"
-        ></div>
+        <div v-if="isActive(item.to)" class="active-indicator"></div>
 
         <!-- Icon -->
         <component :is="item.icon" class="nav-icon" />
@@ -69,7 +68,9 @@
       <button
         @click="sidebarStore.toggle"
         class="toggle-btn"
-        :title="sidebarStore.isOpen ? 'Sidebar einklappen' : 'Sidebar ausklappen'"
+        :title="
+          sidebarStore.isOpen ? 'Sidebar einklappen' : 'Sidebar ausklappen'
+        "
       >
         <ChevronLeft class="toggle-icon" />
       </button>
@@ -118,7 +119,7 @@ const onMouseLeave = () => {
 };
 
 const navItems = [
-  { label: "CRM", icon: Users, to: "/backoffice/crm" },
+  { label: "CRM", icon: Users, to: "/app/crm/customers/" },
   { label: "Projects", icon: Briefcase, to: "/backoffice/projects" },
   { label: "Time Tracking", icon: Timer, to: "/backoffice/time-tracking" },
   { label: "Invoices", icon: Receipt, to: "/backoffice/invoices" },
@@ -345,7 +346,10 @@ const navItems = [
 
 /* Active Nav Item */
 .nav-item-active {
-  background: rgba(var(--color-accent-primary-rgb, 99, 102, 241), 0.1) !important;
+  background: rgba(
+    var(--color-accent-primary-rgb, 99, 102, 241),
+    0.1
+  ) !important;
   border-color: var(--color-accent-primary) !important;
   color: var(--color-accent-primary) !important;
 }
