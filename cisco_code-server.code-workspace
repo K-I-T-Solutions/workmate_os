@@ -45,7 +45,7 @@
     "git.enableSmartCommit": true,
 
     // ─── Workbench & Theme ───────────────────────────────────
-    "workbench.colorTheme": "Calmppuccin Frappé Green",
+    "workbench.colorTheme": "Catppuccin Frappé",
     "catppuccin.accentColor": "green",
     "keyboard.layout": "00000407",
     "workbench.iconTheme": "catppuccin-frappe",
