@@ -20,12 +20,6 @@ const routes = [
         component: () =>
           import("@/modules/crm/CrmApp.vue"),
       },
-      {
-        path: "finance",
-        name: "finance",
-        component: () =>
-          import("@/modules/finance/FinanceApp.vue"),
-      },
     ],
   },
 

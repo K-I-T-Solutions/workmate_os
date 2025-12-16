@@ -84,9 +84,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { crmService } from "../services/crm.service";
-import type { Customer } from "../types/customer";
-import type { Contact } from "../types/contact";
+import { crmService } from "../../services/crm.service";
+import type { Customer } from "../../types/customer";
+import type { Contact } from "../../types/contact";
 
 const route = useRoute();
 const router = useRouter();

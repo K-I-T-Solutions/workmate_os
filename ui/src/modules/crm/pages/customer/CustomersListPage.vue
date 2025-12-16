@@ -49,11 +49,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { crmService } from "../services/crm.service";
+import { crmService } from "../../services/crm.service";
 
-import type { Customer } from "../types/customer";
-import CustomerCard from "../components/CustomerCard.vue";
-import CustomerForm from "../components/CustomerForm.vue";
+import type { Customer } from "../../types/customer";
+import { CustomerForm, CustomerCard } from "../../components";
 
 const router = useRouter();
 

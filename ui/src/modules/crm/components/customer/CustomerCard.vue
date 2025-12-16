@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Customer } from "../types/customer";
+import type { Customer } from "../../types/customer";
 
 defineProps<{
   customer: Customer;

@@ -1,7 +1,10 @@
 <template>
-  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-    <div class="w-full max-w-xl bg-bg-secondary p-6 rounded-xl border border-white/10 shadow-soft space-y-6">
-
+  <div
+    class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+  >
+    <div
+      class="w-full max-w-xl bg-bg-secondary p-6 rounded-xl border border-white/10 shadow-soft space-y-6"
+    >
       <!-- Header -->
       <div class="flex justify-between items-center">
         <h2 class="text-xl font-semibold text-white">
@@ -18,7 +21,6 @@
 
       <!-- Form -->
       <form @submit.prevent="save" class="space-y-4">
-
         <!-- Name -->
         <div>
           <label class="block text-sm text-white/70 mb-1">Name</label>
@@ -111,7 +113,6 @@
             {{ isEdit ? "Speichern" : "Erstellen" }}
           </button>
         </div>
-
       </form>
     </div>
   </div>
@@ -119,8 +120,8 @@
 
 <script setup lang="ts">
 import { reactive, computed } from "vue";
-import type { Customer } from "../types/customer";
-import { crmService } from "../services/crm.service";
+import type { Customer } from "../../types/customer";
+import { crmService } from "../../services/crm.service";
 
 const props = defineProps<{
   customer: Customer | null;

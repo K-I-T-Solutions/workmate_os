@@ -17,5 +17,5 @@
 
 <script setup lang="ts">
 import { KitTopbar,KitDock } from "./components";
-import WindowHost from "@/layouts/app-manager/WindowHost.vue";
+import { WindowHost } from "./app-manager";
 </script>

@@ -39,7 +39,6 @@
         @delete="removeContact(c.id)"
         @setPrimary="setPrimary(c.id)"
       />
-
     </div>
 
     <!-- Contact Modal -->
@@ -56,10 +55,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { Contact } from "../types/contact";
-import ContactCard from "../components/ContactCard.vue";
-import ContactForm from "../components/ContactForm.vue";
-import { crmService } from "../services/crm.service";
+import type { Contact } from "../../types/contact";
+import {ContactForm, ContactCard} from "../../components";
+import { crmService } from "../../services/crm.service";
 
 const route = useRoute();
 const router = useRouter();
@@ -99,7 +97,6 @@ async function load() {
 
     contacts.value = await crmService.getContacts();
     primaryContact.value = await crmService.getPrimaryContact(customerId);
-
   } finally {
     isLoading.value = false;
   }

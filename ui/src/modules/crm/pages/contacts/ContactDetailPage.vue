@@ -1,12 +1,10 @@
 <template>
   <div class="w-full h-full space-y-10 pb-20">
-
     <!-- LOADING -->
     <div v-if="!contact" class="text-white/50">Kontakt wird geladen …</div>
 
     <!-- MAIN -->
     <div v-else class="space-y-8">
-
       <!-- HEADER -->
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-white leading-tight">
@@ -31,8 +29,9 @@
       </div>
 
       <!-- INFO PANEL -->
-      <div class="p-6 rounded-xl bg-bg-secondary border border-white/10 text-white shadow-soft space-y-4">
-
+      <div
+        class="p-6 rounded-xl bg-bg-secondary border border-white/10 text-white shadow-soft space-y-4"
+      >
         <h2 class="text-xl font-semibold">Informationen</h2>
 
         <div class="space-y-2">
@@ -87,17 +86,15 @@
         @saved="reload"
       />
     </div>
-
   </div>
 </template>
-
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { Contact } from "../types/contact";
-import ContactForm from "../components/ContactForm.vue";
-import { crmService } from "../services/crm.service";
+import type { Contact } from "../../types/contact";
+import ContactForm from "../components/contacts/ContactForm.vue";
+import { crmService } from "../../services/crm.service";
 
 const route = useRoute();
 const router = useRouter();
@@ -112,9 +109,7 @@ const isLoading = ref(true);
 const showModal = ref(false);
 
 // Primary-State
-const isPrimary = computed(() =>
-  primary.value?.id === contact.value?.id
-);
+const isPrimary = computed(() => primary.value?.id === contact.value?.id);
 
 async function load() {
   isLoading.value = true;

@@ -125,8 +125,8 @@
 
 <script setup lang="ts">
 import { reactive, computed } from "vue";
-import { crmService } from "../services/crm.service";
-import type { Contact } from "../types/contact";
+import { crmService } from "../../services/crm.service";
+import type { Contact } from "../../types/contact";
 
 const props = defineProps<{
   contact: Contact | null;
