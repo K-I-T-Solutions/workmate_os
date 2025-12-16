@@ -45,7 +45,7 @@
     "git.enableSmartCommit": true,
 
     // ─── Workbench & Theme ───────────────────────────────────
-    "workbench.colorTheme": "Alt Catppuccin Frappé",
+    "workbench.colorTheme": "Catppuccin Frappé",
     "workbench.iconTheme": "catppuccin-frappe",
     "window.title": "💻 Cisco – Workmate OS",
 

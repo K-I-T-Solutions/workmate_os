@@ -8,53 +8,28 @@ const routes = [
     path: "/app",
     component: AppLayout,
     children: [
-      // Dashboard
       {
         path: "dashboard",
         name: "dashboard",
-        component: () => import("@/modules/dashboard/pages/DashboardPage.vue"),
+        component: () =>
+          import("@/modules/dashboard/DashboardApp.vue"),
       },
-
-      // CRM
       {
         path: "crm",
-        children: [
-          {
-            path: "",
-            name: "crm-root",
-            component: () =>
-              import("@/modules/crm/pages/CustomersListPage.vue"),
-          },
-          {
-            path: "customers",
-            name: "crm-customers",
-            component: () =>
-              import("@/modules/crm/pages/CustomersListPage.vue"),
-          },
-          {
-            path: "customers/:customerId",
-            name: "crm-customer-detail",
-            component: () =>
-              import("@/modules/crm/pages/CustomerDetailPage.vue"),
-          },
-          {
-            path: "customers/:customerId/contacts",
-            name: "crm-contacts",
-            component: () =>
-              import("@/modules/crm/pages/ContactsListPage.vue"),
-          },
-          {
-            path: "customers/:customerId/contacts/:contactId",
-            name: "crm-contact-detail",
-            component: () =>
-              import("@/modules/crm/pages/ContactDetailPage.vue"),
-          },
-        ],
+        name: "crm",
+        component: () =>
+          import("@/modules/crm/CrmApp.vue"),
+      },
+      {
+        path: "finance",
+        name: "finance",
+        component: () =>
+          import("@/modules/finance/FinanceApp.vue"),
       },
     ],
   },
 
-  // Public Pages
+  // Public
   {
     path: "/under-construction",
     component: () => import("@/pages/UnderConstruction.vue"),

@@ -1,18 +1,19 @@
 // src/layouts/app-manager/useAppManager.ts
-import { router } from "@/router";
 import { reactive, ref } from "vue";
 
 export interface WindowApp {
-  id: string;
-  appId: string;
+  id: string;          // Fenster-ID (Instanz!)
+  appId: string;       // App-Typ (crm, finance, …)
   title: string;
-  routePath: string;
+  component: any;      // 🔥 WICHTIG
+  props?: Record<string, any>; // optionaler State
   x: number;
   y: number;
   width: number;
   height: number;
   z: number;
 }
+
 
 const windows = reactive<WindowApp[]>([]);
 const activeWindow = ref<string | null>(null);
@@ -26,24 +27,25 @@ const appManager = {
   windows,
   activeWindow,
 
-  openWindow(appId: string, title: string, routePath: string) {
-    const id = crypto.randomUUID();
-    windows.push({
-      id,
-      appId,
-      title,
-      routePath,
-      x: 120,
-      y: 80,
-      width: 960,
-      height: 620,
-      z: ++zCounter,
-    });
-    activeWindow.value = id;
-    router.push(routePath);
-    return id;
-  },
+  openWindow(appId: string, title: string, component: any, props?: Record<string, any>) {
+  const id = crypto.randomUUID();
 
+  windows.push({
+    id,
+    appId,
+    title,
+    component,
+    props,
+    x: 120,
+    y: 80,
+    width: 960,
+    height: 620,
+    z: ++zCounter,
+  });
+
+  activeWindow.value = id;
+  return id;
+},
   closeWindow(id: string) {
     const i = windows.findIndex((w) => w.id === id);
     if (i !== -1) windows.splice(i, 1);

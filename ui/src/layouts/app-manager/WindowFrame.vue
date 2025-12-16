@@ -22,7 +22,7 @@
 
     <!-- CONTENT -->
     <div class="window-content">
-      <router-view />
+      <component :is="win.component" v-bind="win.props" />
     </div>
 
     <!-- RESIZE HANDLE (nur Desktop) -->
