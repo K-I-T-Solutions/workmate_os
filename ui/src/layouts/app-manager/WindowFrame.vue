@@ -22,7 +22,7 @@
 
     <!-- CONTENT -->
     <div class="window-content">
-      <component :is="win.component" v-bind="win.props" />
+      <slot />
     </div>
 
     <!-- RESIZE HANDLE (nur Desktop) -->

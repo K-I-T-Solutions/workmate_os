@@ -5,7 +5,13 @@
       v-for="w in windows"
       :key="w.id"
       :win="w"
-    />
+    >
+      <!-- 🔥 HIER wird die App gerendert -->
+      <component
+        :is="w.component"
+        v-bind="w.props"
+      />
+    </WindowFrame>
   </div>
 </template>
 
@@ -23,8 +29,6 @@ const { windows } = useAppManager();
   overflow: hidden;
 }
 
-/* Auf größeren Screens darf der Host „normal“ sein,
-   damit dein Layout (Sidebar, Dock etc.) sauber funktioniert */
 @media (min-width: 1025px) {
   .window-host {
     position: relative;

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppLayout from "@/layouts/AppLayout.vue";
+import CrmApp from "@/modules/crm/CrmApp.vue";
 
 const routes = [
   { path: "/", redirect: "/under-construction" },
@@ -12,14 +13,13 @@ const routes = [
         path: "dashboard",
         name: "dashboard",
         component: () =>
-          import("@/modules/dashboard/DashboardApp.vue"),
+          import("@/modules/dashboard/pages/DashboardPage.vue"),
       },
       {
         path: "crm",
         name: "crm",
-        component: () =>
-          import("@/modules/crm/CrmApp.vue"),
-      },
+        component: CrmApp,
+      }
     ],
   },
 

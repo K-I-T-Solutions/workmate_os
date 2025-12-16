@@ -1,19 +1,18 @@
-// src/layouts/app-manager/useAppManager.ts
 import { reactive, ref } from "vue";
+import { apps } from "./appRegistry"; // ⬅️ wichtig
 
 export interface WindowApp {
-  id: string;          // Fenster-ID (Instanz!)
-  appId: string;       // App-Typ (crm, finance, …)
+  id: string;
+  appId: string;
   title: string;
-  component: any;      // 🔥 WICHTIG
-  props?: Record<string, any>; // optionaler State
+  component: any;
+  props?: Record<string, any>;
   x: number;
   y: number;
   width: number;
   height: number;
   z: number;
 }
-
 
 const windows = reactive<WindowApp[]>([]);
 const activeWindow = ref<string | null>(null);
@@ -23,43 +22,84 @@ let zCounter = 10;
 const MIN_WIDTH = 480;
 const MIN_HEIGHT = 320;
 
-const appManager = {
+/* -----------------------------
+   Viewport Helpers
+------------------------------ */
+function getViewport() {
+  return {
+    vw: window.innerWidth,
+    vh: window.innerHeight,
+  };
+}
+
+function constrainWindow(win: WindowApp) {
+  const { vw, vh } = getViewport();
+
+  win.width = Math.max(MIN_WIDTH, Math.min(win.width, vw));
+  win.height = Math.max(MIN_HEIGHT, Math.min(win.height, vh));
+
+  win.x = Math.max(0, Math.min(win.x, vw - win.width));
+  win.y = Math.max(0, Math.min(win.y, vh - win.height));
+}
+
+/* -----------------------------
+   App Manager
+------------------------------ */
+export const appManager = {
   windows,
   activeWindow,
 
-  openWindow(appId: string, title: string, component: any, props?: Record<string, any>) {
-  const id = crypto.randomUUID();
+  openWindow(appId: string) {
+    const app = apps.find(a => a.id === appId);
+    if (!app) return;
 
-  windows.push({
-    id,
-    appId,
-    title,
-    component,
-    props,
-    x: 120,
-    y: 80,
-    width: 960,
-    height: 620,
-    z: ++zCounter,
-  });
+    const existing = windows.find(w => w.appId === appId);
+    if (existing) {
+      appManager.focusWindow(existing.id);
+      return existing.id;
+    }
 
-  activeWindow.value = id;
-  return id;
-},
+    const { vw, vh } = getViewport();
+
+    const width = app.window?.width ?? 960;
+    const height = app.window?.height ?? 620;
+
+    const id = crypto.randomUUID();
+
+    const win: WindowApp = {
+      id,
+      appId: app.id,
+      title: app.title,
+      component: app.component,
+      props: {},
+      width,
+      height,
+      x: (vw - width) / 2,
+      y: (vh - height) / 2,
+      z: ++zCounter,
+    };
+
+    constrainWindow(win);
+    windows.push(win);
+    activeWindow.value = id;
+
+    return id;
+  },
+
   closeWindow(id: string) {
-    const i = windows.findIndex((w) => w.id === id);
+    const i = windows.findIndex(w => w.id === id);
     if (i !== -1) windows.splice(i, 1);
   },
 
   focusWindow(id: string) {
-    const win = windows.find((w) => w.id === id);
+    const win = windows.find(w => w.id === id);
     if (!win) return;
     win.z = ++zCounter;
     activeWindow.value = id;
   },
 
   startDragFor(id: string, e: MouseEvent) {
-    const win = windows.find((w) => w.id === id);
+    const win = windows.find(w => w.id === id);
     if (!win) return;
 
     const startX = e.clientX;
@@ -75,15 +115,15 @@ const appManager = {
     function stop() {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", stop);
+      constrainWindow(win);
     }
 
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", stop);
   },
 
-  /** Resize vom Bottom-Right-Handle aus */
   startResizeFor(id: string, e: MouseEvent) {
-    const win = windows.find((w) => w.id === id);
+    const win = windows.find(w => w.id === id);
     if (!win) return;
 
     const startX = e.clientX;
@@ -92,16 +132,20 @@ const appManager = {
     const initialH = win.height;
 
     function move(ev: MouseEvent) {
-      const nextW = initialW + (ev.clientX - startX);
-      const nextH = initialH + (ev.clientY - startY);
-
-      win.width = Math.max(MIN_WIDTH, nextW);
-      win.height = Math.max(MIN_HEIGHT, nextH);
+      win.width = Math.max(
+        MIN_WIDTH,
+        initialW + (ev.clientX - startX)
+      );
+      win.height = Math.max(
+        MIN_HEIGHT,
+        initialH + (ev.clientY - startY)
+      );
     }
 
     function stop() {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", stop);
+      constrainWindow(win);
     }
 
     window.addEventListener("mousemove", move);

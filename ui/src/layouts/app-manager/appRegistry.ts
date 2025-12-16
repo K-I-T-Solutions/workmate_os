@@ -1,13 +1,12 @@
 import { icons } from "lucide-vue-next";
+import CrmApp from "@/modules/crm/CrmApp.vue";
 
 export const apps = [
   {
     id: "crm",
     title: "CRM",
-    icons: {
-      default: icons.Users,
-    },
-    startRoute: "/app/crm/customers/",
+    icons: icons.Users,
+    component:CrmApp,
     window:{
       width: 1100,
       height: 700

@@ -1,7 +1,9 @@
 <template>
   <div class="w-full h-full space-y-10 pb-20">
     <!-- LOADING -->
-    <div v-if="!contact" class="text-white/50">Kontakt wird geladen …</div>
+    <div v-if="!contact" class="text-white/50">
+      Kontakt wird geladen …
+    </div>
 
     <!-- MAIN -->
     <div v-else class="space-y-8">
@@ -69,10 +71,10 @@
         </div>
       </div>
 
-      <!-- BACK BUTTON -->
+      <!-- BACK -->
       <button
-        class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition mt-3"
-        @click="goBack"
+        class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
+        @click="$emit('back')"
       >
         ← Zurück zum Kunden
       </button>
@@ -81,7 +83,7 @@
       <ContactForm
         v-if="showModal"
         :contact="contact"
-        :customer-id="contact.customer_id"
+        :customer-id="customerId"
         @close="showModal = false"
         @saved="reload"
       />
@@ -91,37 +93,32 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import type { Contact } from "../../types/contact";
-import ContactForm from "../components/contacts/ContactForm.vue";
+import ContactForm from "../../components/contacts/ContactForm.vue";
 import { crmService } from "../../services/crm.service";
 
 const route = useRoute();
-const router = useRouter();
 
-// 🔥 BEIDE PARAMS DIREKT HOLEN
 const customerId = route.params.customerId as string;
 const contactId = route.params.contactId as string;
 
+const emit = defineEmits<{
+  (e: "back"): void;
+  (e: "deleted"): void;
+}>();
+
 const contact = ref<Contact | null>(null);
 const primary = ref<Contact | null>(null);
-const isLoading = ref(true);
 const showModal = ref(false);
 
-// Primary-State
-const isPrimary = computed(() => primary.value?.id === contact.value?.id);
+const isPrimary = computed(
+  () => primary.value?.id === contact.value?.id
+);
 
 async function load() {
-  isLoading.value = true;
-
-  // Kontakt laden
-  const c = await crmService.getContact(contactId);
-  contact.value = c;
-
-  // Immer customerId aus Route verwenden → nie mehr undefined!
+  contact.value = await crmService.getContact(contactId);
   primary.value = await crmService.getPrimaryContact(customerId);
-
-  isLoading.value = false;
 }
 
 function openEdit() {
@@ -133,17 +130,12 @@ async function removeContact() {
   if (!confirm("Kontakt wirklich löschen?")) return;
 
   await crmService.deleteContact(contactId);
-
-  router.push(`/app/crm/customers/${customerId}/contacts`);
+  emit("deleted");
 }
 
 async function setPrimary() {
   await crmService.setPrimaryContact(customerId, contactId);
   await load();
-}
-
-function goBack() {
-  router.push(`/app/crm/customers/${customerId}`);
 }
 
 function reload() {
@@ -152,3 +144,4 @@ function reload() {
 
 onMounted(load);
 </script>
+

@@ -1,132 +1,121 @@
 <template>
-  <div class="space-y-8 pb-10">
+  <div class="space-y-6">
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="text-white/70">Kunde wird geladen...</div>
-
-    <!-- Not Found -->
-    <div v-else-if="!customer" class="text-red-400">
-      Kunde nicht gefunden.
-    </div>
-
-    <!-- Content -->
-    <div v-else class="space-y-10">
-      <!-- Page Header -->
-      <div class="flex items-start justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-white leading-tight">
-            {{ customer.name }}
+    <!-- HEADER / HERO -->
+    <section class="kit-panel">
+      <div class="flex justify-between items-start gap-6">
+        <div class="space-y-1">
+          <h1 class="text-2xl font-bold">
+            {{ customer?.name ?? "Kunde" }}
           </h1>
 
-          <p class="text-white/50 text-sm mt-1">
-            Kunden-Nr:
-            <span class="text-white">
-              {{ customer.customer_number || "Keine Nummer" }}
-            </span>
+          <p class="text-white/60 text-sm flex flex-wrap gap-x-2">
+            <span v-if="customer?.email">{{ customer.email }}</span>
+            <span v-if="customer?.phone">· {{ customer.phone }}</span>
+            <span v-if="customer?.city">· {{ customer.city }}</span>
+          </p>
+
+          <p v-if="customer?.notes" class="text-white/50 text-sm mt-2">
+            {{ customer.notes }}
           </p>
         </div>
 
-        <div class="flex gap-3">
-          <button
-            class="px-4 py-2 rounded bg-bg-secondary border border-white/10 text-white hover:bg-bg-secondary/80 transition"
-            @click="editCustomer"
-          >
+        <div class="flex gap-2 shrink-0">
+          <button class="btn-secondary" @click="$emit('back')">
+            ← Zurück
+          </button>
+          <button class="btn-secondary" @click="$emit('openContacts', customerId)"></button>
+          <button class="btn-primary" @click="openEdit">
             Bearbeiten
           </button>
-
-          <button
-            class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 transition"
-            @click="deleteCustomer"
-          >
-            Löschen
-          </button>
         </div>
       </div>
+    </section>
 
-      <!-- Info Panel -->
-      <div class="p-5 rounded-xl bg-bg-secondary border border-white/10 text-white space-y-2 shadow-soft">
-        <h2 class="text-lg font-semibold mb-2">Informationen</h2>
 
-        <p><strong>Email:</strong> {{ customer.email || "-" }}</p>
-        <p><strong>Telefon:</strong> {{ customer.phone || "-" }}</p>
-        <p><strong>Adresse:</strong> {{ customer.address || "-" }}</p>
-        <p><strong>Ort:</strong> {{ customer.zip || "-" }} {{ customer.city || "" }}</p>
-        <p><strong>Land:</strong> {{ customer.country || "-" }}</p>
-      </div>
+    <!-- CONTENT GRID -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Primary Contact Panel -->
-      <div class="p-5 rounded-xl bg-bg-secondary border border-white/10 text-white space-y-4 shadow-soft">
-        <h2 class="text-lg font-semibold">Primary Contact</h2>
+      <!-- LEFT: CONTACTS -->
+      <div class="lg:col-span-2 space-y-4">
+        <h2 class="text-lg font-semibold">Kontakte</h2>
 
-        <div v-if="!primaryContact" class="text-white/60">
-          Kein primärer Kontakt gesetzt.
+        <div v-if="isLoading" class="text-white/60">
+          Kontakte werden geladen…
         </div>
 
-        <div v-else class="space-y-1">
-          <p class="font-medium">
-            {{ primaryContact.firstname }} {{ primaryContact.lastname }}
-          </p>
-          <p class="text-white/70 text-sm">{{ primaryContact.email }}</p>
-          <p class="text-white/70 text-sm">{{ primaryContact.phone }}</p>
-        </div>
-
-        <button
-          class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
-          @click="goToContacts"
+        <div
+          v-else-if="contacts.length === 0"
+          class="text-white/50"
         >
-          Kontakte verwalten
-        </button>
+          Keine Kontakte vorhanden.
+        </div>
+
+        <div v-else class="grid md:grid-cols-2 gap-4">
+          <ContactCard
+            v-for="c in customerContacts"
+            :key="c.id"
+            :contact="c"
+            :customer-id="customerId"
+            :is-primary="primaryContact?.id === c.id"
+            @edit="openEdit"
+          />
+        </div>
       </div>
-    </div>
+
+      <!-- RIGHT: ACTIVITIES -->
+      <aside class="space-y-4">
+        <h2 class="text-lg font-semibold">Aktivitäten</h2>
+
+        <div class="kit-card text-white/60">
+          Rechnungen, Projekte & Events kommen hier rein.
+        </div>
+      </aside>
+
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { crmService } from "../../services/crm.service";
+import { ref, onMounted, computed } from "vue";
+import { useRoute } from "vue-router";
 import type { Customer } from "../../types/customer";
 import type { Contact } from "../../types/contact";
+import { crmService } from "../../services/crm.service";
+import { ContactCard } from "../../components";
 
 const route = useRoute();
-const router = useRouter();
-
-// 🔥 Customer ID
 const customerId = route.params.customerId as string;
 
-// State
+const emit = defineEmits<{
+  (e: "back"): void;
+  (e: "openContacts", customerId: string): void;
+  (e: "editCustomer", customerId: string): void;
+}>();
+
 const customer = ref<Customer | null>(null);
+const contacts = ref<Contact[]>([]);
 const primaryContact = ref<Contact | null>(null);
 const isLoading = ref(true);
+
+const customerContacts = computed(() =>
+  contacts.value.filter(c => c.customer_id === customerId)
+);
 
 async function load() {
   try {
     isLoading.value = true;
-
-    // Kunde laden
     customer.value = await crmService.getCustomer(customerId);
-
-    // Primary Kontakt laden
-    primaryContact.value = await crmService.getPrimaryContact(customerId);
-
+    contacts.value = await crmService.getContacts();
+    primaryContact.value =
+      await crmService.getPrimaryContact(customerId);
   } finally {
     isLoading.value = false;
   }
 }
 
-function editCustomer() {
-  alert("TODO: CustomerForm – später mit Joshua bauen 😎");
-}
-
-async function deleteCustomer() {
-  if (!confirm("Diesen Kunden wirklich löschen?")) return;
-
-  await crmService.deleteCustomer(customerId);
-  router.push("/app/crm/customers");
-}
-
-function goToContacts() {
-  router.push(`/app/crm/customers/${customerId}/contacts`);
+function openEdit() {
+  emit("editCustomer", customerId);
 }
 
 onMounted(load);

@@ -1,7 +1,6 @@
 <template>
   <div
     class="wm-dock"
-    :style="{ paddingLeft: sidebarOffset }"
   >
     <!-- Inner Container - Zentriert -->
     <div class="dock-inner">
@@ -33,8 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRoute } from "vue-router";
+
 import {
   Briefcase,
   Users,
@@ -44,20 +42,19 @@ import {
   MessageSquare,
 } from "lucide-vue-next";
 
-import { useSidebarStore } from "@/stores/sidebar";
 import { useAppManager } from "../app-manager/useAppManager";
 import { apps } from "../app-manager/appRegistry";
 
-const { openWindow } = useAppManager();
-const route = useRoute();
-const sidebar = useSidebarStore();
+const { openWindow,activeWindow, windows } = useAppManager();
+
 
 // Öffnet eine App als Fenster
 function openApp(appId: string) {
   const app = apps.find(a => a.id === appId);
   if (!app) return;
-  openWindow(app.id, app.title, app.startRoute);
+  openWindow(app.id);
 }
+
 
 // Dock items (App-Zuweisungen)
 const dockItems = [
@@ -71,17 +68,13 @@ const dockItems = [
 
 // Active State
 const isActive = (appId: string) => {
-  const app = apps.find(a => a.id === appId);
-  return app ? route.path.startsWith(app.startRoute) : false;
+  const winId = activeWindow.value;
+  if (!winId) return false;
+  return windows.some(
+    (w) => w.id === winId && w.appId === appId
+  );
 };
 
-// Für Sidebar Push
-const sidebarOffset = computed(() => {
-  if (window.innerWidth < 768) return "0px";
-  return sidebar.isOpen || sidebar.isHovered
-    ? "var(--os-sidebar-width)"
-    : "64px";
-});
 </script>
 
 

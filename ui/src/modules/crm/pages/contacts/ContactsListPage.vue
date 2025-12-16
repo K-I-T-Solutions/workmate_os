@@ -13,7 +13,7 @@
 
       <button
         class="px-4 py-2 rounded bg-bg-secondary border border-white/10 text-white hover:bg-bg-secondary/80 transition"
-        @click="goBack"
+        @click="emit('back')"
       >
         ← Zurück zum Kunden
       </button>
@@ -35,10 +35,12 @@
         :contact="c"
         :customer-id="customerId"
         :is-primary="primaryContact?.id === c.id"
-        @edit="openEditModal(c)"
+        @edit="emit('openContact', c.id)"
         @delete="removeContact(c.id)"
         @setPrimary="setPrimary(c.id)"
       />
+
+
     </div>
 
     <!-- Contact Modal -->
@@ -54,36 +56,31 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import type { Contact } from "../../types/contact";
-import {ContactForm, ContactCard} from "../../components";
+import { ContactForm, ContactCard } from "../../components";
 import { crmService } from "../../services/crm.service";
 
 const route = useRoute();
-const router = useRouter();
-
-// KORREKT!
 const customerId = route.params.customerId as string;
 
-// STATE
+const emit = defineEmits<{
+  (e: "back"): void;
+  (e: "openContact", contactId: string): void;
+}>();
+
 const contacts = ref<Contact[]>([]);
 const primaryContact = ref<Contact | null>(null);
 const selectedContact = ref<Contact | null>(null);
 const showModal = ref(false);
 const isLoading = ref(true);
 
-// Nur Kontakte dieses Kunden
 const filteredContacts = computed(() =>
-  contacts.value.filter((c) => c.customer_id === customerId)
+  contacts.value.filter(c => c.customer_id === customerId)
 );
 
 function openCreateModal() {
   selectedContact.value = null;
-  showModal.value = true;
-}
-
-function openEditModal(contact: Contact) {
-  selectedContact.value = contact;
   showModal.value = true;
 }
 
@@ -94,7 +91,6 @@ function closeModal() {
 async function load() {
   try {
     isLoading.value = true;
-
     contacts.value = await crmService.getContacts();
     primaryContact.value = await crmService.getPrimaryContact(customerId);
   } finally {
@@ -115,10 +111,6 @@ async function removeContact(id: string) {
 async function setPrimary(id: string) {
   await crmService.setPrimaryContact(customerId, id);
   await load();
-}
-
-function goBack() {
-  router.push(`/app/crm/customers/${customerId}`);
 }
 
 onMounted(load);

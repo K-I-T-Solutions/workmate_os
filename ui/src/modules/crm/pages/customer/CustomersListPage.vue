@@ -1,42 +1,95 @@
 <template>
-  <div class="space-y-8 pb-10">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
-      <h1 class="text-3xl font-bold text-white">Kunden</h1>
+  <div class="h-full flex flex-col gap-4 p-4">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold text-white">
+        Kunden
+      </h1>
 
       <button
-        class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
+        class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-sm hover:bg-white/5"
         @click="openCreateModal"
       >
         + Neuer Kunde
       </button>
     </div>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <!-- SEARCH / FILTER -->
+    <div class="flex gap-3">
+      <input
+        v-model="search"
+        type="text"
+        placeholder="Kunde suchen…"
+        class="flex-1 px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-white placeholder-white/40 focus:outline-none focus:border-accent"
+      />
+
+      <select
+        class="px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-white"
+      >
+        <option>Alle</option>
+        <option>Aktiv</option>
+        <option>Inaktiv</option>
+      </select>
+    </div>
+
+    <!-- GRID -->
+    <div class="flex-1 overflow-auto">
       <div
-        v-for="i in 6"
-        :key="i"
-        class="h-24 rounded-xl bg-bg-secondary/40 animate-pulse"
-      />
+        v-if="isLoading"
+        class="grid grid-cols-4 gap-2"
+      >
+        <div
+          v-for="i in 8"
+          :key="i"
+          class="h-24 rounded bg-white/5 animate-pulse"
+        />
+      </div>
+
+      <div
+        v-else
+        class="grid grid-cols-4 gap-2"
+      >
+        <div
+          v-for="c in pagedCustomers"
+          :key="c.id"
+          class="p-3 rounded border border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer transition"
+          @click="openCustomer(c.id)"
+        >
+          <div class="font-medium text-white truncate">
+            {{ c.name }}
+          </div>
+          <div class="text-xs text-white/50 truncate">
+            {{ c.email ?? '—' }}
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Empty -->
-    <div v-else-if="customers.length === 0" class="text-white/60">
-      Keine Kunden vorhanden.
+    <!-- PAGINATION -->
+    <div class="flex items-center justify-between text-sm text-white/60">
+      <button
+        class="px-2 py-1 hover:text-white disabled:opacity-30"
+        :disabled="page === 1"
+        @click="page--"
+      >
+        ← Zurück
+      </button>
+
+      <span>
+        {{ page }} / {{ totalPages }}
+      </span>
+
+      <button
+        class="px-2 py-1 hover:text-white disabled:opacity-30"
+        :disabled="page === totalPages"
+        @click="page++"
+      >
+        Weiter →
+      </button>
     </div>
 
-    <!-- Customers Grid -->
-    <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <CustomerCard
-        v-for="c in customers"
-        :key="c.id"
-        :customer="c"
-        @click="openCustomer(c.id)"
-      />
-    </div>
-
-    <!-- Modal -->
+    <!-- MODAL -->
     <CustomerForm
       v-if="showModal"
       :customer="selectedCustomer"
@@ -47,44 +100,65 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { crmService } from "../../services/crm.service";
-
+import { CustomerForm } from "../../components";
 import type { Customer } from "../../types/customer";
-import { CustomerForm, CustomerCard } from "../../components";
 
 const router = useRouter();
 
 const customers = ref<Customer[]>([]);
+const selectedCustomer = ref <Customer | null>(null);
 const isLoading = ref(true);
 
-// Modal state
-const showModal = ref(false);
-const selectedCustomer = ref<Customer | null>(null);
+const search = ref("");
+const page = ref(1);
+const pageSize = 8;
 
-function openCreateModal() {
-  selectedCustomer.value = null;
-  showModal.value = true;
+const showModal = ref(false);
+
+/* ---------------------------
+   DATA
+---------------------------- */
+async function load() {
+  isLoading.value = true;
+  customers.value = await crmService.getCustomers();
+  isLoading.value = false;
 }
 
+onMounted(load);
+
+/* ---------------------------
+   FILTER + PAGINATION
+---------------------------- */
+const filtered = computed(() =>
+  customers.value.filter(c =>
+    c.name.toLowerCase().includes(search.value.toLowerCase())
+  )
+);
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filtered.value.length / pageSize))
+);
+
+const pagedCustomers = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return filtered.value.slice(start, start + pageSize);
+});
+
+/* ---------------------------
+   ACTIONS
+---------------------------- */
 function openCustomer(id: string) {
   router.push(`/app/crm/customers/${id}`);
+}
+
+function openCreateModal() {
+  showModal.value = true;
 }
 
 async function reload() {
   await load();
 }
-
-async function load() {
-  try {
-    isLoading.value = true;
-    customers.value = await crmService.getCustomers();
-    console.log(customers.value);
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-onMounted(load);
 </script>

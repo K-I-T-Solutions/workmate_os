@@ -1,7 +1,7 @@
 <template>
   <div
     class="p-5 rounded-xl bg-bg-secondary border border-white/10 text-white shadow-soft cursor-pointer hover:bg-bg-secondary/80 transition space-y-2"
-    @click="$emit('click')"
+    @click="$emit('open')"
   >
     <!-- Name -->
     <h2 class="text-xl font-semibold leading-tight">
@@ -40,5 +40,5 @@ defineProps<{
   customer: Customer;
 }>();
 
-defineEmits(["click"]);
+defineEmits(["open"]);
 </script>
