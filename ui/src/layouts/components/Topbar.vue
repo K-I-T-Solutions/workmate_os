@@ -1,10 +1,6 @@
 <template>
   <header
-    class="wm-topbar fixed top-0 z-50 transition-all duration-300"
-    :style="{
-      left: sidebarWidth,
-      width: `calc(100% - ${sidebarWidth})`
-    }"
+    class="wm-topbar fixed top-0 z-50 transition-all duration-300 ease-in-out w-full"
   >
     <!-- Inner Container - Zentriert mit max-width -->
     <div class="topbar-inner">
@@ -12,12 +8,11 @@
       <div class="topbar-section-left">
         <!-- Mobile Menu -->
         <button
-          @click="sidebarStore.toggle"
           class="mobile-menu-btn"
           aria-label="Toggle Menu"
         >
-          <Menu class="w-5 h-5" v-if="!sidebarStore.isOpen" />
-          <X class="w-5 h-5" v-else />
+          <Menu class="w-5 h-5" " />
+          <X class="w-5 h-5"  />
         </button>
 
         <!-- Logo & Brand -->
@@ -28,7 +23,7 @@
               :src="logo"
               alt="WorkmateOS"
               class="logo-image"
-              @error="handleLogoError"
+              
             />
             <div v-else class="logo-fallback">
               W
@@ -69,10 +64,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { Menu, X, User as UserIcon } from "lucide-vue-next";
 import { WorkmateAssets } from "@/services/assets";
-import { useSidebarStore } from "@/stores/sidebar";
+
 
 interface Props {
   title?: string;
@@ -80,18 +75,9 @@ interface Props {
 
 defineProps<Props>();
 
-const sidebarStore = useSidebarStore();
 const logo = ref<string | null>(WorkmateAssets.workmateFavicon);
 
-// Sidebar Offset
-const sidebarWidth = computed(() => {
-  if (typeof window !== "undefined" && window.innerWidth < 768) return "0px";
-  return sidebarStore.isOpen || sidebarStore.isHovered
-    ? "var(--os-sidebar-width)"
-    : "64px";
-});
 
-const handleLogoError = () => (logo.value = null);
 
 // Time & Date
 const time = ref("");
