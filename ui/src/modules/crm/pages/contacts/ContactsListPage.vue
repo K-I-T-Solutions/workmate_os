@@ -35,6 +35,7 @@
         :contact="c"
         :customer-id="customerId"
         :is-primary="primaryContact?.id === c.id"
+        @openContact="emit('openContact',c.id)"
         @edit="emit('openContact', c.id)"
         @delete="removeContact(c.id)"
         @setPrimary="setPrimary(c.id)"

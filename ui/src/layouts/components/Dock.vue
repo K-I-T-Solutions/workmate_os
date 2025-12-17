@@ -7,7 +7,7 @@
       <div class="dock-items">
         <button
           v-for="item in dockItems"
-          :key="item.label"
+          :key="item.id"
           @click="openApp(item.id)"
           class="dock-item"
           :class="{ 'dock-item-active': isActive(item.id) }"
@@ -16,8 +16,6 @@
           <div class="dock-icon-wrapper">
             <!-- Active Indicator Dot -->
             <div v-if="isActive(item.id)" class="active-dot"></div>
-
-            <!-- Icon -->
             <component :is="item.icon" class="dock-icon" />
           </div>
 
@@ -32,7 +30,6 @@
 </template>
 
 <script setup lang="ts">
-
 import {
   Briefcase,
   Users,
@@ -44,6 +41,7 @@ import {
 
 import { useAppManager } from "../app-manager/useAppManager";
 import { apps } from "../app-manager/appRegistry";
+import { markRaw } from "vue";
 
 const { openWindow,activeWindow, windows } = useAppManager();
 
@@ -58,12 +56,12 @@ function openApp(appId: string) {
 
 // Dock items (App-Zuweisungen)
 const dockItems = [
-  { id: "crm", label: "CRM", icon: Users },
-  { id: "projects", label: "Projects", icon: Briefcase },
-  { id: "time", label: "Time", icon: Timer },
-  { id: "invoices", label: "Invoices", icon: Receipt },
-  { id: "finance", label: "Finance", icon: Wallet },
-  { id: "notes", label: "Notes", icon: MessageSquare },
+  { id: "crm", label: "CRM", icon: markRaw(Users) },
+  { id: "projects", label: "Projects", icon: markRaw(Briefcase) },
+  { id: "time", label: "Time", icon: markRaw(Timer) },
+  { id: "invoices", label: "Invoices", icon: markRaw(Receipt) },
+  { id: "finance", label: "Finance", icon: markRaw(Wallet) },
+  { id: "notes", label: "Notes", icon: markRaw(MessageSquare) },
 ];
 
 // Active State

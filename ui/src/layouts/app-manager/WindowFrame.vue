@@ -3,7 +3,7 @@
   <div
     class="window-frame"
     :class="{ 'window-frame--active': isActive }"
-    :style="frameStyle"
+    :style="frameStyleString"
     @mousedown="focus"
   >
     <!-- TITLEBAR -->
@@ -44,13 +44,16 @@ const { activeWindow, closeWindow, focusWindow, startDragFor, startResizeFor } =
 
 const isActive = computed(() => activeWindow.value === props.win.id);
 
-const frameStyle = computed(() => ({
-  top: props.win.y + "px",
-  left: props.win.x + "px",
-  width: props.win.width + "px",
-  height: props.win.height + "px",
-  zIndex: props.win.z,
-}));
+const frameStyleString = computed(() =>
+  `
+    top: ${props.win.y}px;
+    left: ${props.win.x}px;
+    width: ${props.win.width}px;
+    height: ${props.win.height}px;
+    z-index: ${props.win.z};
+  `
+);
+
 
 function startDrag(e: MouseEvent) {
   // auf Mobile nicht draggen

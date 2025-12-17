@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { CrmDashboardPage,CustomerDetailPage,ContactDetailPage,ContactListPage,CustomersListPage } from "./pages";
+
 type View =
       | "dashboard"
       | "customers"
@@ -44,10 +45,11 @@ function backToContacts(){
       @openCustomer="openCustomer"
     />
 
-    <ContactDetailPage
+    <CustomerDetailPage
       v-if="view === 'contact-detail'"
       :customerId="activeCustomerId!"
       :contactId="activeContactId!"
+      @openContacts="openContacts"
       @back="backToContacts"
       @deleted="backToContacts"
     />

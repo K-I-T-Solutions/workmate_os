@@ -6,9 +6,10 @@
       :key="w.id"
       :win="w"
     >
+    {{ debug(w) }}
       <!-- 🔥 HIER wird die App gerendert -->
       <component
-        :is="w.component"
+        :is="resolveComponent(w.appId)"
         v-bind="w.props"
       />
     </WindowFrame>
@@ -18,8 +19,18 @@
 <script setup lang="ts">
 import WindowFrame from "./WindowFrame.vue";
 import { useAppManager } from "./useAppManager";
+import { apps } from "./appRegistry";
 
 const { windows } = useAppManager();
+
+function resolveComponent(appID: string){
+  return apps.find(a=> a.id ===appID)?.component;
+}
+
+function debug(w: any){
+  console.log("WINDOW Render:", w)
+  return "";
+}
 </script>
 
 <style scoped>

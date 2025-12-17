@@ -6,6 +6,7 @@ import { router } from "./router/index.ts";
 import { WorkmateAssets } from "./services/assets.ts";
 import "./styles/tokens.css";
 
+
 // Set Favicon
 const faviconLink = document.querySelector("link[rel='icon']") || document.createElement('link');
 faviconLink.setAttribute('rel', 'icon');

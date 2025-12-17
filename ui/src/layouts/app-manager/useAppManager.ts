@@ -1,11 +1,11 @@
-import { reactive, ref } from "vue";
+import { reactive, ref, type Component, markRaw } from "vue";
 import { apps } from "./appRegistry"; // ⬅️ wichtig
 
 export interface WindowApp {
   id: string;
   appId: string;
   title: string;
-  component: any;
+  component: Component;
   props?: Record<string, any>;
   x: number;
   y: number;
@@ -70,8 +70,8 @@ export const appManager = {
       id,
       appId: app.id,
       title: app.title,
-      component: app.component,
-      props: {},
+      component: markRaw(app.component),
+      props: Object.create(null),
       width,
       height,
       x: (vw - width) / 2,
