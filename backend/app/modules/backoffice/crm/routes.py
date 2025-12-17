@@ -252,3 +252,19 @@ def set_primary_contact(
             detail=f"Contact with id {contact_id} not found or does not belong to customer {customer_id}"
         )
     return contact
+
+
+@router.post("/activities", response_model=schemas.ActivityResponse)
+def create_activity(data: schemas.ActivityCreate, db: Session = Depends(get_db)):
+    return crud.create_activity(db, data)
+
+@router.get("/activities/latest", response_model=list[schemas.ActivityResponse])
+def latest(limit: int = Query(5, ge=1, le=20), db: Session = Depends(get_db)):
+    return crud.latest_activities(db, limit)
+
+@router.get("/customers/{customer_id}/activities", response_model=list[schemas.ActivityResponse])
+def by_customer(customer_id, db: Session = Depends(get_db)):
+    return crud.activities_by_customer(db, customer_id)
+@router.get("/stats", response_model=schemas.CrmStatsResponse)
+def stats(db: Session = Depends(get_db)):
+    return crud.get_stats(db)

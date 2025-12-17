@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from enum import Enum
 from typing import TYPE_CHECKING
-
+from datetime import datetime
 from sqlalchemy import String, Text, ForeignKey, Index, CheckConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -367,3 +367,27 @@ class Contact(Base, UUIDMixin, TimestampMixin):
     def __repr__(self) -> str:
         primary = " [PRIMARY]" if self.is_primary else ""
         return f"<Contact(id={self.id}, name='{self.full_name}'{primary})>"
+
+class Activity(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "crm_activities"
+    __table_args__ = (
+        Index("ix_activity_customer_time", "customer_id", "occurred_at"),
+        Index("ix_activity_time", "occurred_at"),
+    )
+
+    customer_id: Mapped[str] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    contact_id: Mapped[str | None] = mapped_column(
+        ForeignKey("contacts.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # string + Validierung (pragmatisch)
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    customer = relationship("Customer")
+    contact = relationship("Contact")

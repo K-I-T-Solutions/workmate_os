@@ -25,7 +25,7 @@ class CustomerBase(BaseModel):
     website: Optional[str] = Field(None, max_length=255, description="Webseite")
     notes: Optional[str] = Field(None, description="Interne Notizen")
     status: str = Field(default="active", description="Status (active, inactive, lead, blocked)")
-    
+
     # Address Fields
     street: Optional[str] = Field(None, max_length=255, description="Straße und Hausnummer")
     zip_code: Optional[str] = Field(None, max_length=20, description="Postleitzahl")
@@ -59,7 +59,7 @@ class CustomerResponse(CustomerBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -103,7 +103,7 @@ class ContactResponse(ContactBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -119,10 +119,50 @@ class ContactResponseSimple(BaseModel):
     mobile: Optional[str] = None
     position: Optional[str] = None
     is_primary: bool
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
 class CustomerResponseWithContacts(CustomerResponse):
     """Customer Response mit allen Contacts."""
     contacts: list[ContactResponseSimple] = []
+
+# === Activity Schemas ===
+
+ALLOWED_TYPES = {"call", "email", "onsite", "remote", "note"}
+
+class ActivityCreate(BaseModel):
+    customer_id: UUID
+    contact_id: UUID | None = None
+    type: str = Field(..., description="call, email, onsite, remote, note")
+    description: str = Field(..., min_length=1)
+    occurred_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @classmethod
+    def validate_type(cls, v: str):
+        if v not in ALLOWED_TYPES:
+            raise ValueError(f"type must be one of {ALLOWED_TYPES}")
+        return v
+
+class ActivityResponse(BaseModel):
+    id: UUID
+    customer_id: UUID
+    contact_id: UUID | None
+    type: str
+    description: str
+    occurred_at: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+# === CRM Stats ===
+class CrmStatsResponse(BaseModel):
+    total_customers: int
+    active_customers: int
+    leads: int
+    blocked_customers: int
+
+    total_revenue: float
+    outstanding_revenue: float
+
+    active_projects: int
