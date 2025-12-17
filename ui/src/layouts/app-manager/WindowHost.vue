@@ -6,7 +6,6 @@
       :key="w.id"
       :win="w"
     >
-    {{ debug(w) }}
       <!-- 🔥 HIER wird die App gerendert -->
       <component
         :is="resolveComponent(w.appId)"
@@ -27,10 +26,6 @@ function resolveComponent(appID: string){
   return apps.find(a=> a.id ===appID)?.component;
 }
 
-function debug(w: any){
-  console.log("WINDOW Render:", w)
-  return "";
-}
 </script>
 
 <style scoped>

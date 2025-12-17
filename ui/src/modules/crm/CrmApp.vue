@@ -1,73 +1,61 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { CrmDashboardPage,CustomerDetailPage,ContactDetailPage,ContactListPage,CustomersListPage } from "./pages";
+import {
+  CrmDashboardPage,
+  CustomerDetailPage,
+  ContactDetailPage,
+  ContactListPage,
+  CustomersListPage,
+} from "./pages";
 
-type View =
-      | "dashboard"
-      | "customers"
-      | "customer-detail"
-      | "contacts"
-      | "contact-detail";
+import { useCrmNavigation } from "./composables/useCrmNavigation";
 
-const view = ref<View>("dashboard");
-const activeCustomerId = ref<string | null>(null);
-const activeContactId = ref<string | null>(null);
-function openCustomer(id: string){
-  activeCustomerId.value=id;
-  view.value = "customer-detail"
-}
-function openContacts(customerId: string){
-  activeCustomerId.value = customerId;
-  view.value = "contacts";
-}
-function openContact(contactId: string) {
-  activeContactId.value = contactId;
-  view.value = "contact-detail";
-}
-
-
-function backToContacts(){
-  view.value = "contacts"
-  activeContactId.value= null;
-}
+const {
+  view,
+  activeCustomerId,
+  activeContactId,
+  goDashboard,
+  goCustomers,
+  goCustomerDetail,
+  goContacts,
+  goContactDetail,
+} = useCrmNavigation();
 </script>
 
 <template>
   <div class="crm-app h-full">
 
-    <CrmDashboardPage
+   <CrmDashboardPage
       v-if="view === 'dashboard'"
-      @openCustomers="view = 'customers'"
+      @openCustomers="goCustomers"
     />
 
     <CustomersListPage
       v-if="view === 'customers'"
-      @openCustomer="openCustomer"
+      @openCustomer="goCustomerDetail"
+      @openDashboard="goDashboard"
     />
 
     <CustomerDetailPage
-      v-if="view === 'contact-detail'"
+      v-if="view === 'customer-detail'"
       :customerId="activeCustomerId!"
-      :contactId="activeContactId!"
-      @openContacts="openContacts"
-      @back="backToContacts"
-      @deleted="backToContacts"
+      @openContacts="goContacts"
+      @openContact="goContactDetail"
+      @back="goCustomers"
     />
-
 
     <ContactListPage
       v-if="view === 'contacts'"
       :customerId="activeCustomerId!"
-      @openContact="openContact"
-      @back="view = 'customer-detail'"
+      @openContact="goContactDetail"
+      @openDashboard="goDashboard"
+      @back="goCustomerDetail(activeCustomerId!)"
     />
 
     <ContactDetailPage
       v-if="view === 'contact-detail'"
       :customerId="activeCustomerId!"
       :contactId="activeContactId!"
-      @back="backToContacts"
-      @deleted="backToContacts"
+      @back="goContacts"
     />
 
 

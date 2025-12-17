@@ -113,6 +113,7 @@ function updateClock() {
   shortDate.value = now.toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "2-digit",
+    year: "2-digit",
   });
 
   fullDate.value = now.toLocaleDateString("de-DE", {
@@ -139,8 +140,8 @@ onUnmounted(() => {
 /* Container */
 .wm-topbar {
   height: var(--os-topbar-height);
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid var(--color-border-light);
 }
 

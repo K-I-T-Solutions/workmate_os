@@ -24,7 +24,12 @@
           <button class="btn-secondary" @click="$emit('back')">
             ← Zurück
           </button>
-          <button class="btn-secondary" @click="$emit('openContacts', customerId)"></button>
+          <button
+              class="btn-secondary"
+              @click="$emit('openContacts', customerId)"
+            >
+              Kontakte
+          </button>
           <button class="btn-primary" @click="openEdit">
             Bearbeiten
           </button>
@@ -58,11 +63,13 @@
             :contact="c"
             :customer-id="customerId"
             :is-primary="primaryContact?.id === c.id"
+            @openDetail="onOpenContact"
             @edit="openEdit"
           />
+
         </div>
       </div>
-
+      
       <!-- RIGHT: ACTIVITIES -->
       <aside class="space-y-4">
         <h2 class="text-lg font-semibold">Aktivitäten</h2>
@@ -78,19 +85,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
-import { useRoute } from "vue-router";
 import type { Customer } from "../../types/customer";
 import type { Contact } from "../../types/contact";
 import { crmService } from "../../services/crm.service";
 import { ContactCard } from "../../components";
 
-const route = useRoute();
-const customerId = route.params.customerId as string;
+
+const props = defineProps<{
+  customerId: string;
+}>();
 
 const emit = defineEmits<{
   (e: "back"): void;
   (e: "openContacts", customerId: string): void;
   (e: "editCustomer", customerId: string): void;
+  (e: "openContact", contactId: string):void;
 }>();
 
 const customer = ref<Customer | null>(null);
@@ -99,24 +108,26 @@ const primaryContact = ref<Contact | null>(null);
 const isLoading = ref(true);
 
 const customerContacts = computed(() =>
-  contacts.value.filter(c => c.customer_id === customerId)
+  contacts.value.filter(c => c.customer_id === props.customerId)
 );
 
 async function load() {
   try {
     isLoading.value = true;
-    customer.value = await crmService.getCustomer(customerId);
+    customer.value = await crmService.getCustomer(props.customerId);
     contacts.value = await crmService.getContacts();
     primaryContact.value =
-      await crmService.getPrimaryContact(customerId);
+      await crmService.getPrimaryContact(props.customerId);
   } finally {
     isLoading.value = false;
   }
 }
 
 function openEdit() {
-  emit("editCustomer", customerId);
+  emit("editCustomer", props.customerId);
 }
-
+function onOpenContact(contactId: string) {
+  emit("openContact", contactId);
+}
 onMounted(load);
 </script>

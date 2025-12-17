@@ -73,10 +73,10 @@
 
       <!-- BACK -->
       <button
-        class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
+        class="px-4 py-2 rounded bg-amber-700 border border-white/10 text-white hover:bg-bg-primary/80 transition"
         @click="$emit('back')"
       >
-        ← Zurück zum Kunden
+        ← Zurück zu Kontakten
       </button>
 
       <!-- EDIT MODAL -->
@@ -93,16 +93,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useRoute } from "vue-router";
 import type { Contact } from "../../types/contact";
 import ContactForm from "../../components/contacts/ContactForm.vue";
 import { crmService } from "../../services/crm.service";
 
-const route = useRoute();
 
-const customerId = route.params.customerId as string;
-const contactId = route.params.contactId as string;
-
+const props = defineProps<{
+  customerId: string,
+  contactId: string
+}>();
 const emit = defineEmits<{
   (e: "back"): void;
   (e: "deleted"): void;
@@ -117,8 +116,8 @@ const isPrimary = computed(
 );
 
 async function load() {
-  contact.value = await crmService.getContact(contactId);
-  primary.value = await crmService.getPrimaryContact(customerId);
+  contact.value = await crmService.getContact(props.contactId);
+  primary.value = await crmService.getPrimaryContact(props.customerId);
 }
 
 function openEdit() {
@@ -129,12 +128,12 @@ async function removeContact() {
   if (!contact.value) return;
   if (!confirm("Kontakt wirklich löschen?")) return;
 
-  await crmService.deleteContact(contactId);
+  await crmService.deleteContact(props.contactId);
   emit("deleted");
 }
 
 async function setPrimary() {
-  await crmService.setPrimaryContact(customerId, contactId);
+  await crmService.setPrimaryContact(props.customerId, props.contactId);
   await load();
 }
 

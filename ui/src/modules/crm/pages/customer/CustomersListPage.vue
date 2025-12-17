@@ -4,14 +4,18 @@
     <!-- HEADER -->
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold text-white">
-        Kunden
+        Kundenliste - K.I.T.
       </h1>
 
       <button
-        class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-sm hover:bg-white/5"
+        class="px-4 py-2 rounded bg-blue-500 border border-white/10 text-sm hover:bg-white/5"
         @click="openCreateModal"
       >
         + Neuer Kunde
+      </button>
+      <button class="px-4 py-2 rounded bg-orange-400 border border-white/10 text-sm hover:bg-white/5"
+      @click="openDashboard">
+      <- Startseite
       </button>
     </div>
 
@@ -101,13 +105,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
 import { crmService } from "../../services/crm.service";
 import { CustomerForm } from "../../components";
 import type { Customer } from "../../types/customer";
 
-const router = useRouter();
-
+const emit = defineEmits<{
+  (e: "openCustomer",id:string):void;
+  (e: "openDashboard"):void;
+}>();
 const customers = ref<Customer[]>([]);
 const selectedCustomer = ref <Customer | null>(null);
 const isLoading = ref(true);
@@ -151,7 +156,7 @@ const pagedCustomers = computed(() => {
    ACTIONS
 ---------------------------- */
 function openCustomer(id: string) {
-  router.push(`/app/crm/customers/${id}`);
+  emit("openCustomer",id);
 }
 
 function openCreateModal() {
@@ -160,5 +165,8 @@ function openCreateModal() {
 
 async function reload() {
   await load();
+}
+function openDashboard(){
+  emit("openDashboard")
 }
 </script>

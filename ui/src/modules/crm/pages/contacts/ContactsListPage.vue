@@ -5,14 +5,14 @@
     <!-- Action Bar -->
     <div class="flex justify-between items-center">
       <button
-        class="px-4 py-2 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
+        class="px-4 py-2 rounded bg-blue-500 border border-white/10 text-white hover:bg-bg-primary/80 transition"
         @click="openCreateModal"
       >
         + Kontakt hinzufügen
       </button>
 
       <button
-        class="px-4 py-2 rounded bg-bg-secondary border border-white/10 text-white hover:bg-bg-secondary/80 transition"
+        class="px-4 py-2 rounded bg-orange-400 border-white/10 text-white hover:bg-bg-secondary/80 transition"
         @click="emit('back')"
       >
         ← Zurück zum Kunden
@@ -57,13 +57,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
-import { useRoute } from "vue-router";
 import type { Contact } from "../../types/contact";
 import { ContactForm, ContactCard } from "../../components";
 import { crmService } from "../../services/crm.service";
 
-const route = useRoute();
-const customerId = route.params.customerId as string;
+
+const props = defineProps<{
+  customerId : string;
+}>();
 
 const emit = defineEmits<{
   (e: "back"): void;
@@ -77,7 +78,7 @@ const showModal = ref(false);
 const isLoading = ref(true);
 
 const filteredContacts = computed(() =>
-  contacts.value.filter(c => c.customer_id === customerId)
+  contacts.value.filter(c => c.customer_id === props.customerId)
 );
 
 function openCreateModal() {
@@ -93,7 +94,7 @@ async function load() {
   try {
     isLoading.value = true;
     contacts.value = await crmService.getContacts();
-    primaryContact.value = await crmService.getPrimaryContact(customerId);
+    primaryContact.value = await crmService.getPrimaryContact(props.customerId);
   } finally {
     isLoading.value = false;
   }
@@ -110,7 +111,7 @@ async function removeContact(id: string) {
 }
 
 async function setPrimary(id: string) {
-  await crmService.setPrimaryContact(customerId, id);
+  await crmService.setPrimaryContact(props.customerId, id);
   await load();
 }
 

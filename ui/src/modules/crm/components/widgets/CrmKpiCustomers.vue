@@ -8,5 +8,5 @@
 </template>
 
 <script setup lang="ts">
-const total = 12; // später aus Composable
+const total = 1; // später aus Composable
 </script>

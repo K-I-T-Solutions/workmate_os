@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-white">CRM</h1>
+      <h1 class="text-2xl font-bold text-white">CRM - Startseite</h1>
     </div>
 
     <!-- 4x4 Grid -->
