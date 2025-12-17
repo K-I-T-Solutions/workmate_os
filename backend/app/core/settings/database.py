@@ -4,12 +4,11 @@ WorkmateOS Database Configuration
 import uuid
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.dialects.postgresql import UUID
-from app.core.config import settings
-
+from app.core.settings.config import settings
 
 # Get DATABASE_URL from settings (Pydantic lädt .env automatisch)
 DATABASE_URL = settings.DATABASE_URL
+
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set.")

@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from decimal import Decimal
 
-from app.core.config import settings
+from app.core.settings.config import settings
 
 ASSETS_DIR = settings.ASSETS_DIR
 

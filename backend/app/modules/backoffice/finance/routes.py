@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from .models import ExpenseCategory
 from .schemas import (
     ExpenseCreate,

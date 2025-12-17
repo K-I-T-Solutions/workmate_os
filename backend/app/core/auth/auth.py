@@ -10,8 +10,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from app.core.databasedatabase import get_db
-from app import models
+from backend.app.core.settings.database import get_db
+from app.modules import  Employee
+
 
 # ============================================================
 # ⚙️ Keycloak / OpenID Konfiguration
@@ -108,12 +109,12 @@ async def get_current_user(
     user = None
 
     if email:
-        user = db.scalar(select(models.Employee).where(models.Employee.email == email))
+        user = db.scalar(select(Employee.Employee).where(Employee.Employee.email == email))
     if not user and username:
         user = db.scalar(
-            select(models.Employee).where(
-                (models.Employee.name.ilike(username))
-                | (models.Employee.employee_id.ilike(f"%{username}%"))
+            select(Employee.Employee).where(
+                (Employee.Employee.name.ilike(username))
+                | (Employee.Employee.employee_id.ilike(f"%{username}%"))
             )
         )
 

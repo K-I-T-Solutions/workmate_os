@@ -14,7 +14,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 
 from . import crud
 from .schemas import ChatMessageCreate, ChatMessageRead

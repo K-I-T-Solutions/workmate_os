@@ -6,7 +6,7 @@ from sqlalchemy import Column, String, Date, Boolean, Text, ForeignKey, TIMESTAM
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
-from app.core.database import Base, generate_uuid
+from app.core.settings.database import Base, generate_uuid
 from app.modules.backoffice.chat.models import ChatMessage
 from app.modules.dashboards.models import Dashboard, OSPreferences, UserSettings, Notification, ActivityEntry
 

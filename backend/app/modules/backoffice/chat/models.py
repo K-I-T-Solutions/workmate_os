@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import String, Text, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
-from app.core.mixins import UUIDMixin, TimestampMixin
+from app.core.settings.database import Base
+from app.core.misc.mixins import UUIDMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.modules.backoffice.projects.models import Project
@@ -24,10 +24,10 @@ if TYPE_CHECKING:
 class ChatMessage(Base, UUIDMixin, TimestampMixin):
     """
     Chat-Nachrichten für Projekte.
-    
+
     Ermöglicht projektbezogene Kommunikation zwischen
     Teammitgliedern mit vollständiger Historie.
-    
+
     Attributes:
         message: Nachrichteninhalt
         author: Verfasser der Nachricht
@@ -103,7 +103,7 @@ class ChatMessage(Base, UUIDMixin, TimestampMixin):
     def is_reply(self) -> bool:
         """
         Prüft ob Nachricht eine Antwort ist.
-        
+
         Returns:
             True wenn reply_to_id gesetzt ist
         """

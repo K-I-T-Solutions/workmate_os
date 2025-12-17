@@ -18,9 +18,9 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from sqlalchemy import String, Text, ForeignKey, DateTime, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.core.mixins import UUIDMixin, TimestampMixin
+from app.core.misc.mixins import UUIDMixin, TimestampMixin
 
-from app.core.database import Base
+from app.core.settings.database import Base
 
 if TYPE_CHECKING:
     from app.modules.employees.models import Employee
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 class TimeEntry(Base, UUIDMixin, TimestampMixin):
     """
     Tracks working sessions per employee and project.
-    
+
     ACHTUNG: Wenn du diese Version verwendest, lösche TimeEntry aus projects/models.py!
     """
 
@@ -53,12 +53,12 @@ class TimeEntry(Base, UUIDMixin, TimestampMixin):
     # Time Tracking
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     end_time: Mapped[datetime | None] = mapped_column(DateTime)
-    
+
     # Duration in minutes (calculated or manual)
     duration_minutes: Mapped[int | None] = mapped_column(
         comment="Duration in minutes"
     )
-    
+
     # Billing
     billable: Mapped[bool] = mapped_column(
         default=True,
@@ -68,14 +68,14 @@ class TimeEntry(Base, UUIDMixin, TimestampMixin):
         Numeric(10, 2),
         comment="Rate for this entry"
     )
-    
+
     # Content
     note: Mapped[str | None] = mapped_column(Text, comment="What was worked on")
     task_type: Mapped[str | None] = mapped_column(
         String(100),
         comment="development, meeting, support, documentation, etc."
     )
-    
+
     # Status
     is_approved: Mapped[bool] = mapped_column(default=False)
     is_invoiced: Mapped[bool] = mapped_column(default=False)
@@ -102,21 +102,21 @@ class TimeEntry(Base, UUIDMixin, TimestampMixin):
 class WorkingHoursTemplate(Base, UUIDMixin, TimestampMixin):
     """
     Defines standard working hours for employees.
-    
+
     Kann verwendet werden für:
     - Überstunden-Berechnung
     - Urlaubsberechnung
     - Arbeitszeitkonten
     """
-    
+
     __tablename__ = "working_hours_templates"
-    
+
     employee_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("employees.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
-    
+
     # Weekly hours
     monday_hours: Mapped[float] = mapped_column(Numeric(4, 2), default=8.0)
     tuesday_hours: Mapped[float] = mapped_column(Numeric(4, 2), default=8.0)
@@ -125,16 +125,16 @@ class WorkingHoursTemplate(Base, UUIDMixin, TimestampMixin):
     friday_hours: Mapped[float] = mapped_column(Numeric(4, 2), default=8.0)
     saturday_hours: Mapped[float] = mapped_column(Numeric(4, 2), default=0.0)
     sunday_hours: Mapped[float] = mapped_column(Numeric(4, 2), default=0.0)
-    
+
     # Or just total per week
     weekly_hours: Mapped[float] = mapped_column(
         Numeric(5, 2),
         default=40.0,
         comment="Total hours per week"
     )
-    
+
     # Relationships
     employee: Mapped["Employee"] = relationship("Employee")
-    
+
     def __repr__(self) -> str:
         return f"<WorkingHoursTemplate(employee={self.employee_id}, weekly={self.weekly_hours}h)>"

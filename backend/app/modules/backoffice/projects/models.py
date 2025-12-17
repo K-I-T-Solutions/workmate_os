@@ -21,8 +21,8 @@ from enum import Enum
 from sqlalchemy import String, Text, ForeignKey, Date, Numeric, Index, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.mixins import UUIDMixin, TimestampMixin
-from app.core.database import Base
+from app.core.misc.mixins import UUIDMixin, TimestampMixin
+from app.core.settings.database import Base
 
 if TYPE_CHECKING:
     from app.modules.backoffice.crm.models import Customer

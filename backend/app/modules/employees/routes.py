@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from app.modules.employees import crud, schemas
 
 # Create routers
@@ -33,7 +33,7 @@ def list_employees(
 ):
     """
     Get list of employees with filtering and pagination
-    
+
     - **skip**: Number of records to skip (for pagination)
     - **limit**: Max number of records to return
     - **search**: Search in name, email, employee_code
@@ -50,9 +50,9 @@ def list_employees(
         role_id=role_id,
         status=status
     )
-    
+
     page = (skip // limit) + 1
-    
+
     return {
         "total": total,
         "page": page,
@@ -92,7 +92,7 @@ def create_employee(
 ):
     """
     Create new employee
-    
+
     **Required fields:**
     - employee_code: Unique code (e.g. KIT-0001)
     - email: Valid email address
@@ -104,7 +104,7 @@ def create_employee(
             status_code=400,
             detail=f"Employee code '{employee.employee_code}' already exists"
         )
-    
+
     # Check if email already exists
     existing_email = crud.get_employee_by_email(db, employee.email)
     if existing_email:
@@ -112,7 +112,7 @@ def create_employee(
             status_code=400,
             detail=f"Email '{employee.email}' already exists"
         )
-    
+
     return crud.create_employee(db, employee)
 
 
@@ -134,7 +134,7 @@ def update_employee(
                     status_code=400,
                     detail=f"Email '{employee_update.email}' already exists"
                 )
-    
+
     employee = crud.update_employee(db, employee_id, employee_update)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")

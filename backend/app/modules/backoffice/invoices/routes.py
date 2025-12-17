@@ -20,7 +20,7 @@ from datetime import date
 import uuid
 import os
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from app.modules.backoffice.invoices import crud, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices import payments_crud

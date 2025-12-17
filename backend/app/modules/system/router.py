@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from app.core.settings.config import settings
 
 router = APIRouter(tags=["System"])
 
@@ -13,6 +14,6 @@ async def health_check():
 @router.get("/info")
 async def system_info():
     return {
-        "version": "0.1.0",
+        "version": settings.APP_VERSION,
         "environment": "development"
     }

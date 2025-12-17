@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, 
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.config import settings
+from app.core.settings.database import get_db
+from app.core.settings.config import settings
 from app.modules.documents import crud, schemas
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -49,7 +49,7 @@ def list_documents(
 ):
     """
     Get list of documents with filtering and pagination
-    
+
     - **skip**: Number of records to skip
     - **limit**: Max number of records to return
     - **search**: Search in title and filename
@@ -68,13 +68,13 @@ def list_documents(
         owner_id=owner_id,
         is_confidential=is_confidential
     )
-    
+
     # Add download URLs
     for doc in documents:
         doc.download_url = f"/api/documents/{doc.id}/download"  # type: ignore[attr-defined]
-    
+
     page = (skip // limit) + 1
-    
+
     return {
         "total": total,
         "page": page,
@@ -92,10 +92,10 @@ def get_document(
     document = crud.get_document(db, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     # Add download URL
     document.download_url = f"/api/documents/{document.id}/download"  # type: ignore[attr-defined]
-    
+
     return document
 
 
@@ -111,7 +111,7 @@ async def upload_document(
 ):
     """
     Upload a new document
-    
+
     **Form Data:**
     - **file**: The file to upload (required)
     - **owner_id**: UUID of the document owner (required)
@@ -122,28 +122,28 @@ async def upload_document(
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
-    
+
     # Read file content
     content = await file.read()
-    
+
     # Calculate checksum
     checksum = calculate_checksum(content)
-    
+
     # Generate unique filename
     file_extension = get_file_extension(file.filename)
     unique_filename = f"{uuid4()}{file_extension}"
     file_path = UPLOAD_DIR / unique_filename
-    
+
     # Save file
     with open(file_path, "wb") as f:
         f.write(content)
-    
+
     # Detect file type from extension
     file_type = file_extension.lstrip(".")
-    
+
     # Use filename as title if not provided
     doc_title = title or file.filename
-    
+
     # Create document record
     document_data = schemas.DocumentUpload(
         title=doc_title,
@@ -152,7 +152,7 @@ async def upload_document(
         linked_module=linked_module,
         is_confidential=is_confidential
     )
-    
+
     document = crud.create_document(
         db,
         file_path=str(file_path),
@@ -160,11 +160,11 @@ async def upload_document(
         owner_id=owner_id,
         document_data=document_data
     )
-    
+
     # Add download URL
     document.download_url = f"/api/documents/{document.id}/download"  # type: ignore[attr-defined]
     document.file_size = len(content)  # type: ignore[attr-defined]
-    
+
     return document
 
 
@@ -175,21 +175,21 @@ async def download_document(
 ):
     """
     Download document file
-    
+
     Returns the actual file for download
     """
     document = crud.get_document(db, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     file_path = Path(str(document.file_path))  # type: ignore[arg-type]
-    
+
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on disk")
-    
+
     # Get original filename from title or use document ID
     filename: str = str(document.title) if document.title is not None else f"document_{document_id}{file_path.suffix}"
-    
+
     return FileResponse(
         path=str(file_path),
         filename=filename,
@@ -207,7 +207,7 @@ def update_document(
     document = crud.update_document(db, document_id, document_update)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     document.download_url = f"/api/documents/{document.id}/download"  # type: ignore[attr-defined]
     return document
 
@@ -223,7 +223,7 @@ def delete_document(
     document = crud.delete_document(db, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     # Delete physical file
     file_path = Path(str(document.file_path))  # type: ignore[arg-type]
     if file_path.exists():
@@ -232,5 +232,5 @@ def delete_document(
         except Exception as e:
             # Log error but don't fail the request
             print(f"Warning: Could not delete file {file_path}: {e}")
-    
+
     return None

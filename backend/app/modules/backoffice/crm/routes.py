@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import Optional
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from . import  schemas, crud
 
 
@@ -31,7 +31,7 @@ def list_customers(
 ):
     """
     Liste alle Kunden.
-    
+
     Optional mit Filtern:
     - status: active, inactive, lead, blocked
     - search: Suche in Name und Email
@@ -98,7 +98,7 @@ def delete_customer(
 ):
     """
     Lösche einen Kunden.
-    
+
     ACHTUNG: Löscht auch alle zugehörigen Kontakte, Projekte und Rechnungen!
     """
     success = crud.delete_customer(db, customer_id)
@@ -121,7 +121,7 @@ def list_contacts(
 ):
     """
     Liste alle Kontakte.
-    
+
     Optional gefiltert nach customer_id.
     """
     return crud.get_contacts(
@@ -224,7 +224,7 @@ def get_primary_contact(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Customer with id {customer_id} not found"
         )
-    
+
     contact = crud.get_primary_contact(db, customer_id)
     if contact is None:
         raise HTTPException(
@@ -242,7 +242,7 @@ def set_primary_contact(
 ):
     """
     Setze einen Kontakt als primären Ansprechpartner.
-    
+
     Entfernt automatisch das Primary-Flag von allen anderen Kontakten des Kunden.
     """
     contact = crud.set_primary_contact(db, contact_id, customer_id)

@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from app.modules.reminders import crud, schemas
 
 router = APIRouter(prefix="/reminders", tags=["Reminders"])
@@ -39,7 +39,7 @@ def list_reminders(
 ):
     """
     Get list of reminders with filtering and pagination
-    
+
     - **owner_id**: Filter by owner
     - **status**: Filter by status (open, done, overdue)
     - **priority**: Filter by priority (low, medium, high, critical)
@@ -54,16 +54,16 @@ def list_reminders(
         priority=priority,
         overdue_only=overdue_only
     )
-    
+
     # Add calculated fields
     today = date.today()
     for reminder in reminders:
         if reminder.due_date is not None:
             reminder.days_until_due = calculate_days_until_due(reminder.due_date)  # type: ignore[attr-defined]
             reminder.is_overdue = reminder.due_date < today and reminder.status != "done"  # type: ignore[attr-defined]
-    
+
     page = (skip // limit) + 1
-    
+
     return {
         "total": total,
         "page": page,
@@ -81,12 +81,12 @@ def get_reminder(
     reminder = crud.get_reminder(db, reminder_id)
     if reminder is None:
         raise HTTPException(status_code=404, detail="Reminder not found")
-    
+
     # Add calculated fields
     if reminder.due_date is not None:
         reminder.days_until_due = calculate_days_until_due(reminder.due_date)  # type: ignore[attr-defined]
         reminder.is_overdue = reminder.due_date < date.today() and reminder.status != "done"  # type: ignore[attr-defined]
-    
+
     return reminder
 
 
@@ -97,11 +97,11 @@ def create_reminder(
 ):
     """
     Create new reminder
-    
+
     **Required fields:**
     - title: Reminder title
     - owner_id: UUID of the owner
-    
+
     **Optional fields:**
     - description: Detailed description
     - due_date: When the reminder is due

@@ -10,7 +10,7 @@ from datetime import date
 from contextlib import contextmanager
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.database import SessionLocal, engine, Base
+from backend.app.core.settings.database import SessionLocal, engine, Base
 from app.modules.employees.models import Department, Role, Employee
 from app.modules.backoffice.crm.models import Customer, Contact
 from app.modules.backoffice.projects.models import Project

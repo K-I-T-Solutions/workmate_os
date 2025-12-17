@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from app.modules.dashboards import crud, schemas
 
 router = APIRouter(prefix="/dashboards", tags=["Dashboards"])

@@ -5,7 +5,7 @@ Infrastructure services and system management
 from sqlalchemy import Column, String, ForeignKey, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.core.database import Base, generate_uuid
+from app.core.settings.database import Base, generate_uuid
 
 
 class InfraService(Base):

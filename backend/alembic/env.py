@@ -21,7 +21,7 @@ from alembic import context
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # === 2. BASE IMPORTIEREN ===
-from app.core.database import Base
+from backend.app.core.settings.database import Base
 
 # === 3. LOGGING-CONFIG ===
 config = context.config

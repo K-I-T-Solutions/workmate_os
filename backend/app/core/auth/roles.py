@@ -5,9 +5,9 @@ from functools import wraps
 import inspect, uuid
 from datetime import datetime
 
-from app.core.auth import get_current_user
-from app.database import get_db, SessionLocal
-from app.models import AuditLog
+from backend.app.core.auth.auth import get_current_user
+from backend.app.core.settings.database import get_db, SessionLocal
+from app
 
 # 🔁 Rollen-Aliases
 ROLE_ALIASES = {

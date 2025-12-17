@@ -6,7 +6,7 @@ from sqlalchemy import Column, String, Text, Date, Boolean, ForeignKey, TIMESTAM
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.core.database import Base, generate_uuid
+from app.core.settings.database import Base, generate_uuid
 
 
 class Reminder(Base):
@@ -18,11 +18,11 @@ class Reminder(Base):
     description = Column(Text)
     due_date = Column(Date)
     priority = Column(String, comment="low, medium, high, critical")
-    
+
     # Polymorphic entity linking
     linked_entity_type = Column(String, comment="Target type, e.g. Document, Ticket")
     linked_entity_id = Column(UUID(as_uuid=True))
-    
+
     owner_id = Column(UUID(as_uuid=True), ForeignKey("employees.id"))
     status = Column(String, default="open", comment="open, done, overdue")
     created_at = Column(TIMESTAMP, server_default=func.now())

@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import String, Text, ForeignKey, Index, CheckConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
-from app.core.mixins import UUIDMixin, TimestampMixin
+from app.core.settings.database import Base
+from app.core.misc.mixins import UUIDMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.modules.backoffice.projects.models import Project

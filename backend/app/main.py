@@ -3,15 +3,12 @@ WorkmateOS Backend - Main Application
 """
 import os
 from fastapi import FastAPI, Request
-from app.core.config import settings
+from app.core.settings import config
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import logging
-
-# Logging aktivieren
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from app.core.settings.config import settings
 
 # Module Imports
 from app.modules.system.router import router as system_router
@@ -26,6 +23,10 @@ from app.modules.backoffice.invoices.routes import router as invoices_router
 from app.modules.backoffice.chat import routes as chat_routes
 from app.modules.backoffice.finance import routes as finance_routes
 
+
+# Logging aktivieren
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ====== Basis Verzeichnis =====
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

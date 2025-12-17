@@ -6,7 +6,7 @@ from sqlalchemy import Column, String, Boolean, ForeignKey, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.core.database import Base, generate_uuid
+from app.core.settings.database import Base, generate_uuid
 
 
 class Document(Base):

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy import String, ForeignKey, TIMESTAMP, Boolean
 
-from app.core.database import Base, generate_uuid
+from app.core.settings.database import Base, generate_uuid
 
 if TYPE_CHECKING:
     # Nur für Typing – vermeidet Zirkularimporte
