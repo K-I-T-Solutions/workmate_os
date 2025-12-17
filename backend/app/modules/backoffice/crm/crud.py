@@ -319,13 +319,26 @@ def latest_activities(db: Session, limit: int = 5):
         .all()
     )
 
-def activities_by_customer(db: Session, customer_id):
-    return (
+def activities_by_customer(
+    db: Session,
+    customer_id: UUID,
+    contact_id: Optional[UUID] = None,
+    limit: Optional[int] = None,
+):
+    query = (
         db.query(models.Activity)
         .filter(models.Activity.customer_id == customer_id)
         .order_by(models.Activity.occurred_at.desc())
-        .all()
     )
+
+    if contact_id is not None:
+        query = query.filter(models.Activity.contact_id == contact_id)
+
+    if limit is not None:
+        query = query.limit(limit)
+
+    return query.all()
+
 def get_stats(db: Session):
     customers = db.query(models.Customer).all()
 

@@ -12,7 +12,7 @@
           <p class="text-white/60 text-sm flex flex-wrap gap-x-2">
             <span v-if="customer?.email">{{ customer.email }}</span>
             <span v-if="customer?.phone">· {{ customer.phone }}</span>
-            <span v-if="customer?.city">· {{ customer.city }}</span>
+            <span v-if="customer?.city">· {{ customer.city }}</span>Was
           </p>
 
           <p v-if="customer?.notes" class="text-white/50 text-sm mt-2">
@@ -21,19 +21,46 @@
         </div>
 
         <div class="flex gap-2 shrink-0">
-          <button class="btn-secondary" @click="$emit('back')">
+          <!-- ZURÜCK -->
+          <button
+            class="px-4 py-2 rounded-md
+                  bg-white/10
+                  border border-white/20
+                  text-sm text-white
+                  hover:bg-white/20
+                  transition"
+            @click="$emit('back')"
+          >
             ← Zurück
           </button>
+
+          <!-- KONTAKTE -->
           <button
-              class="btn-secondary"
-              @click="$emit('openContacts', customerId)"
-            >
-              Kontakte
+            class="px-4 py-2 rounded-md
+                  bg-blue-500/20
+                  border border-blue-400/30
+                  text-sm text-blue-200
+                  hover:bg-blue-500/30
+                  transition"
+            @click="$emit('openContacts', customerId)"
+          >
+            Kontakte
           </button>
-          <button class="btn-primary" @click="openEdit">
+
+          <!-- BEARBEITEN -->
+          <button
+            class="px-4 py-2 rounded-md
+                  bg-orange-500/20
+                  border border-orange-400/30
+                  text-sm text-orange-200
+                  hover:bg-orange-500/30
+                  transition"
+            @click="openEdit"
+          >
             Bearbeiten
           </button>
         </div>
+
       </div>
     </section>
 
@@ -69,15 +96,54 @@
 
         </div>
       </div>
-      
-      <!-- RIGHT: ACTIVITIES -->
+
+        <!-- RIGHT: ACTIVITIES -->
       <aside class="space-y-4">
         <h2 class="text-lg font-semibold">Aktivitäten</h2>
 
-        <div class="kit-card text-white/60">
-          Rechnungen, Projekte & Events kommen hier rein.
+        <div class="kit-card space-y-3">
+
+          <!-- Loading -->
+          <div v-if="activitiesLoading" class="text-white/50 text-sm">
+            Aktivitäten werden geladen…
+          </div>
+
+          <!-- Empty -->
+          <div
+            v-else-if="activities.length === 0"
+            class="text-white/50 text-sm"
+          >
+            Noch keine Aktivitäten vorhanden.
+          </div>
+
+          <!-- Timeline -->
+          <ul v-else class="space-y-3">
+            <li
+              v-for="a in activities"
+              :key="a.id"
+              class="flex gap-3 text-sm"
+            >
+              <div class="mt-0.5 text-white/50">
+                <component
+                  :is="iconFor(a.type)"
+                  class="w-4 h-4"
+                />
+              </div>
+
+              <div>
+                <div class="text-white/80 leading-snug">
+                  {{ a.description }}
+                </div>
+                <div class="text-xs text-white/40 mt-0.5">
+                  {{ formatDate(a.occurred_at) }}
+                </div>
+              </div>
+            </li>
+          </ul>
+
         </div>
       </aside>
+
 
     </section>
   </div>
@@ -89,7 +155,14 @@ import type { Customer } from "../../types/customer";
 import type { Contact } from "../../types/contact";
 import { crmService } from "../../services/crm.service";
 import { ContactCard } from "../../components";
-
+import { useCrmActivity } from "../../composables/useCrmActivity"; // ✅ NEU
+import {
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  StickyNote,
+} from "lucide-vue-next";
 
 const props = defineProps<{
   customerId: string;
@@ -106,7 +179,11 @@ const customer = ref<Customer | null>(null);
 const contacts = ref<Contact[]>([]);
 const primaryContact = ref<Contact | null>(null);
 const isLoading = ref(true);
-
+const {
+  activities,
+  loading: activitiesLoading,
+  fetchCustomerActivities,
+} = useCrmActivity();
 const customerContacts = computed(() =>
   contacts.value.filter(c => c.customer_id === props.customerId)
 );
@@ -118,6 +195,7 @@ async function load() {
     contacts.value = await crmService.getContacts();
     primaryContact.value =
       await crmService.getPrimaryContact(props.customerId);
+    fetchCustomerActivities(props.customerId);
   } finally {
     isLoading.value = false;
   }
@@ -128,6 +206,22 @@ function openEdit() {
 }
 function onOpenContact(contactId: string) {
   emit("openContact", contactId);
+}
+function iconFor(type: string) {
+  switch (type) {
+    case "call": return Phone;
+    case "email": return Mail;
+    case "onsite": return MapPin;
+    case "remote": return FileText;
+    default: return StickyNote;
+  }
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleString("de-DE", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }
 onMounted(load);
 </script>

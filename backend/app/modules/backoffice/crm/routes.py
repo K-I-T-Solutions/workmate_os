@@ -263,8 +263,26 @@ def latest(limit: int = Query(5, ge=1, le=20), db: Session = Depends(get_db)):
     return crud.latest_activities(db, limit)
 
 @router.get("/customers/{customer_id}/activities", response_model=list[schemas.ActivityResponse])
-def by_customer(customer_id, db: Session = Depends(get_db)):
-    return crud.activities_by_customer(db, customer_id)
+def by_customer(
+    customer_id: UUID,
+    contact_id: Optional[UUID] = Query(
+        None,
+        description="Optional: Filter nach Contact ID"
+    ),
+    limit: Optional[int] = Query(
+        None,
+        ge=1,
+        le=100,
+        description="Optional: Anzahl der letzten Aktivitäten"
+    ),
+    db: Session = Depends(get_db),
+):
+    return crud.activities_by_customer(
+        db,
+        customer_id=customer_id,
+        contact_id=contact_id,
+        limit=limit,
+    )
 @router.get("/stats", response_model=schemas.CrmStatsResponse)
 def stats(db: Session = Depends(get_db)):
     return crud.get_stats(db)
