@@ -13,6 +13,9 @@ from .models import ExpenseCategory
 
 class ExpenseBase(BaseModel):
     """Gemeinsame Felder für Expense-Create/Update."""
+    title: str = Field(
+        description="Bezeichnung der kosten"
+    )
     category: ExpenseCategory = Field(
         description="Ausgabenkategorie (travel, material, software, etc.)"
     )
@@ -52,6 +55,7 @@ class ExpenseCreate(ExpenseBase):
 
 class ExpenseUpdate(BaseModel):
     """Schema für partielle Updates (PATCH). Alle Felder optional."""
+    title : Optional[str] = ""
     category: Optional[ExpenseCategory] = None
     amount: Optional[Decimal] = Field(default=None, gt=0)
     description: Optional[str] = None
@@ -67,6 +71,7 @@ class ExpenseRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    title:str
     category: ExpenseCategory
     amount: Decimal
     description: str

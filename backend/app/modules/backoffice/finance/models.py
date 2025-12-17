@@ -46,10 +46,10 @@ class ExpenseCategory(str, Enum):
 class Expense(Base, UUIDMixin, TimestampMixin):
     """
     Ausgaben und Kosten.
-    
+
     Verwaltet projektbezogene oder allgemeine Ausgaben mit
     Kategorisierung und optionaler Zuordnung zu Rechnungen.
-    
+
     Attributes:
         category: Ausgabenkategorie (travel, material, software, etc.)
         amount: Ausgabenbetrag
@@ -69,6 +69,10 @@ class Expense(Base, UUIDMixin, TimestampMixin):
     )
 
     # Business Fields
+    title : Mapped[str] = mapped_column(
+        String(50),
+        comment="Bezeichnung der kosten"
+    )
     category: Mapped[str] = mapped_column(
         String(50),
         comment="Ausgabenkategorie (travel, material, software, etc.)"
@@ -119,7 +123,7 @@ class Expense(Base, UUIDMixin, TimestampMixin):
     def is_invoiced(self) -> bool:
         """
         Prüft ob Ausgabe bereits abgerechnet wurde.
-        
+
         Returns:
             True wenn eine Rechnung zugeordnet ist
         """

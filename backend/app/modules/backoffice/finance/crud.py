@@ -15,6 +15,7 @@ from .schemas import ExpenseCreate, ExpenseUpdate, ExpenseKpiResponse
 
 def create_expense(db: Session, data: ExpenseCreate) -> Expense:
     expense = Expense(
+        title = data.title,
         category=data.category.value if isinstance(data.category, ExpenseCategory) else data.category,
         amount=data.amount,
         description=data.description,
@@ -38,6 +39,7 @@ def get_expense(db: Session, expense_id: uuid.UUID) -> Optional[Expense]:
 def list_expenses(
     db: Session,
     *,
+    title : Optional[str]= None,
     category: Optional[ExpenseCategory] = None,
     project_id: Optional[uuid.UUID] = None,
     invoice_id: Optional[uuid.UUID] = None,
@@ -49,7 +51,9 @@ def list_expenses(
     """Liste von Ausgaben mit einfachen Filtern + total count."""
     stmt = select(Expense)
     count_stmt = select(func.count(Expense.id))
-
+    if title is not None:
+        stmt = stmt.where(Expense.title == title)
+        count_stmt=count_stmt.where(Expense.title == title)
     if category is not None:
         stmt = stmt.where(Expense.category == category.value)
         count_stmt = count_stmt.where(Expense.category == category.value)
@@ -108,6 +112,7 @@ def delete_expense(db: Session, expense: Expense) -> None:
 def get_expense_kpis(
     db: Session,
     *,
+    title: Optional[str]=None,
     category: Optional[ExpenseCategory] = None,
     project_id: Optional[uuid.UUID] = None,
     from_date: Optional[date] = None,
@@ -121,7 +126,9 @@ def get_expense_kpis(
         Expense.category,
         func.coalesce(func.sum(Expense.amount), 0)
     ).group_by(Expense.category)
-
+    if title is not None:
+        stmt = stmt.where(Expense.title == title)
+        cat_stmt=cat_stmt.where(Expense.title == title)
     if category is not None:
         stmt = stmt.where(Expense.category == category.value)
         cat_stmt = cat_stmt.where(Expense.category == category.value)

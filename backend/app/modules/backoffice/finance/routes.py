@@ -55,6 +55,7 @@ def create_expense_endpoint(
 )
 def list_expenses_endpoint(
     db: Session = Depends(get_db),
+    title: Optional[str] =Query(default=None),
     category: Optional[ExpenseCategory] = Query(default=None),
     project_id: Optional[uuid.UUID] = Query(default=None),
     invoice_id: Optional[uuid.UUID] = Query(default=None),
@@ -65,6 +66,7 @@ def list_expenses_endpoint(
 ) -> ExpenseListResponse:
     items, total = list_expenses(
         db,
+        title=title,
         category=category,
         project_id=project_id,
         invoice_id=invoice_id,
@@ -138,6 +140,7 @@ def delete_expense_endpoint(
 )
 def get_expense_kpis_endpoint(
     db: Session = Depends(get_db),
+    title: Optional[str]= Query(default=None),
     category: Optional[ExpenseCategory] = Query(default=None),
     project_id: Optional[uuid.UUID] = Query(default=None),
     from_date: Optional[date] = Query(default=None),
@@ -150,6 +153,7 @@ def get_expense_kpis_endpoint(
     """
     return get_expense_kpis(
         db,
+        title= title,
         category=category,
         project_id=project_id,
         from_date=from_date,
