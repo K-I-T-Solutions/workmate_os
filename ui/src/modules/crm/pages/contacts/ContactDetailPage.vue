@@ -1,93 +1,177 @@
 <template>
-  <div class="w-full h-full space-y-10 pb-20">
-    <!-- LOADING -->
-    <div v-if="!contact" class="text-white/50">
-      Kontakt wird geladen …
-    </div>
+  <div class="space-y-8 pb-20">
 
-    <!-- MAIN -->
-    <div v-else class="space-y-8">
-      <!-- HEADER -->
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-white leading-tight">
+    <!-- HERO -->
+    <section v-if="contact" class="flex justify-between items-start gap-6">
+      <div>
+        <h1 class="text-3xl font-bold text-white">
           {{ contact.firstname }} {{ contact.lastname }}
         </h1>
 
-        <div class="flex gap-3">
-          <button
-            class="px-4 py-2 rounded bg-bg-secondary border border-white/10 text-white hover:bg-bg-secondary/80 transition"
-            @click="openEdit"
-          >
-            Bearbeiten
-          </button>
+        <p class="text-white/60 text-sm">
+          {{ contact.position || "Kontakt" }}
+          <span v-if="contact.department"> · {{ contact.department }}</span>
+        </p>
+      </div>
 
-          <button
-            class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 transition"
-            @click="removeContact"
-          >
-            Löschen
-          </button>
+      <div class="flex gap-2 shrink-0">
+        <button class="kit-btn-secondary" @click="openEdit">
+          Bearbeiten
+        </button>
+        <button class="kit-btn-danger" @click="removeContact">
+          Löschen
+        </button>
+      </div>
+    </section>
+
+    <!-- LOADING -->
+    <div v-else class="text-white/60">
+      Kontakt wird geladen…
+    </div>
+
+    <!-- CONTENT GRID -->
+    <section v-if="contact" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- LEFT: CONTACT INFO -->
+      <div class="lg:col-span-2 space-y-6">
+        <div class="kit-panel space-y-4">
+          <h2 class="text-lg font-semibold">Kontaktinformationen</h2>
+
+          <div class="space-y-2 text-sm text-white/80">
+            <p>
+                <strong>Email: </strong>
+                  <a
+                  v-if="contact.email"
+                  :href="`mailto:${contact.email}`"
+                  class="text-blue-300 hover:underline"
+                >
+                  {{ contact.email }}
+                </a>
+                <span v-else class="text-white/40">–</span>
+              </p>
+
+              <p>
+                <strong>Telefon: </strong>
+                <a
+                  v-if="contact.phone"
+                  :href="telHref(contact.phone)"
+                  class="text-blue-300 hover:underline"
+                >
+                  {{ contact.phone }}
+                </a>
+                <span v-else class="text-white/40">–</span>
+              </p>
+
+              <p>
+                <strong>Mobil: </strong>
+                <a
+                  v-if="contact.mobile"
+                  :href="telHref(contact.mobile)"
+                  class="text-blue-300 hover:underline"
+                >
+                  {{ contact.mobile }}
+                </a>
+                <span v-else class="text-white/40">–</span>
+              </p>
+
+            <p><strong>Position:</strong> {{ contact.position || "-" }}</p>
+            <p><strong>Abteilung:</strong> {{ contact.department || "-" }}</p>
+          </div>
+
+          <div v-if="contact.notes" class="pt-3 text-white/70">
+            <p class="font-semibold mb-1">Notizen</p>
+            <p>{{ contact.notes }}</p>
+          </div>
+
+          <!-- PRIMARY -->
+          <div class="pt-4">
+            <span
+              v-if="isPrimary"
+              class="px-3 py-1 rounded-md
+                     bg-orange-500/20 text-orange-400
+                     border border-orange-500/40 text-sm"
+            >
+              Primary Contact
+            </span>
+
+            <button
+              v-else
+              class="px-4 py-2 rounded-md
+                bg-orange-500/20 border border-orange-500/40
+                text-sm text-orange-400
+                hover:border-orange-500/40transition"
+              @click="setPrimary"
+            >
+              Als Primary setzen
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- INFO PANEL -->
-      <div
-        class="p-6 rounded-xl bg-bg-secondary border border-white/10 text-white shadow-soft space-y-4"
+      <!-- RIGHT: ACTIVITIES -->
+<aside class="space-y-4">
+  <h2 class="text-lg font-semibold">Aktivitäten</h2>
+
+  <div class="kit-card space-y-3">
+
+    <!-- Loading -->
+    <div v-if="activitiesLoading" class="text-white/50 text-sm">
+      Aktivitäten werden geladen…
+    </div>
+
+    <!-- Empty -->
+    <div
+      v-else-if="activities.length === 0"
+      class="text-white/50 text-sm"
+    >
+      Noch keine Aktivitäten vorhanden.
+    </div>
+
+    <!-- Timeline -->
+    <ul v-else class="space-y-3">
+      <li
+        v-for="a in activities"
+        :key="a.id"
+        class="flex gap-3 text-sm"
       >
-        <h2 class="text-xl font-semibold">Informationen</h2>
-
-        <div class="space-y-2">
-          <p><strong>Email:</strong> {{ contact.email || "-" }}</p>
-          <p><strong>Telefon:</strong> {{ contact.phone || "-" }}</p>
-          <p><strong>Mobil:</strong> {{ contact.mobile || "-" }}</p>
-          <p><strong>Position:</strong> {{ contact.position || "-" }}</p>
-          <p><strong>Abteilung:</strong> {{ contact.department || "-" }}</p>
+        <div class="mt-0.5 text-white/50">
+          <component
+            :is="iconFor(a.type)"
+            class="w-4 h-4"
+          />
         </div>
 
-        <!-- NOTES -->
-        <div v-if="contact.notes" class="pt-2">
-          <p class="font-semibold">Notizen:</p>
-          <p class="text-white/70 leading-snug">
-            {{ contact.notes }}
-          </p>
+        <div>
+          <div class="text-white/80 leading-snug">
+            {{ a.description }}
+          </div>
+          <div class="text-xs text-white/40 mt-0.5">
+            {{ formatDate(a.occurred_at) }}
+          </div>
         </div>
+      </li>
+    </ul>
 
-        <!-- PRIMARY STATUS -->
-        <div class="pt-4">
-          <span
-            v-if="isPrimary"
-            class="px-3 py-1 rounded-md bg-orange-500/20 text-orange-400 border border-orange-500/40 text-sm"
-          >
-            Primary Contact
-          </span>
+  </div>
+</aside>
 
-          <button
-            v-else
-            @click="setPrimary"
-            class="mt-2 px-3 py-1 rounded-md bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
-          >
-            Als Primary setzen
-          </button>
-        </div>
-      </div>
+    </section>
 
-      <!-- BACK -->
-      <button
-        class="px-4 py-2 rounded bg-amber-700 border border-white/10 text-white hover:bg-bg-primary/80 transition"
-        @click="$emit('back')"
-      >
+    <!-- BACK -->
+    <div class="pt-4">
+      <button class="kit-btn-ghost" @click="$emit('back')">
         ← Zurück zu Kontakten
       </button>
-
-      <!-- EDIT MODAL -->
-      <ContactForm
-        v-if="showModal"
-        :contact="contact"
-        :customer-id="customerId"
-        @close="showModal = false"
-        @saved="reload"
-      />
     </div>
+
+    <!-- EDIT MODAL -->
+    <ContactForm
+      v-if="showModal"
+      :contact="contact"
+      :customer-id="customerId"
+      @close="showModal = false"
+      @saved="reload"
+    />
   </div>
 </template>
 
@@ -96,6 +180,14 @@ import { ref, computed, onMounted } from "vue";
 import type { Contact } from "../../types/contact";
 import ContactForm from "../../components/contacts/ContactForm.vue";
 import { crmService } from "../../services/crm.service";
+import type { CrmActivity } from "../../types/activity";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  StickyNote,
+} from "lucide-vue-next";
 
 
 const props = defineProps<{
@@ -107,6 +199,8 @@ const emit = defineEmits<{
   (e: "deleted"): void;
 }>();
 
+const activities = ref<CrmActivity[]>([]);
+const activitiesLoading = ref(false);
 const contact = ref<Contact | null>(null);
 const primary = ref<Contact | null>(null);
 const showModal = ref(false);
@@ -118,6 +212,17 @@ const isPrimary = computed(
 async function load() {
   contact.value = await crmService.getContact(props.contactId);
   primary.value = await crmService.getPrimaryContact(props.customerId);
+  activitiesLoading.value =true;
+  try {
+    activities.value = await crmService.getCustomerActivities(
+      props.customerId,{
+        contactId: props.contactId,
+        limit: 10,
+      }
+    );
+  }finally{
+    activitiesLoading.value=false;
+  }
 }
 
 function openEdit() {
@@ -136,7 +241,25 @@ async function setPrimary() {
   await crmService.setPrimaryContact(props.customerId, props.contactId);
   await load();
 }
+function telHref(value: string) {
+  return `tel:${value.replace(/\s+/g, "")}`;
+}
+function iconFor(type: string) {
+  switch (type) {
+    case "call": return Phone;
+    case "email": return Mail;
+    case "onsite": return MapPin;
+    case "remote": return FileText;
+    default: return StickyNote;
+  }
+}
 
+function formatDate(date: string) {
+  return new Date(date).toLocaleString("de-DE", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
 function reload() {
   load();
 }

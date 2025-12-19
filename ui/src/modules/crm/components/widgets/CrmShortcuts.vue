@@ -1,18 +1,34 @@
+<script setup lang="ts">
+import { UserPlus, Contact } from "lucide-vue-next";
+
+const emit = defineEmits<{
+  (e: "create-customer"): void;
+  (e: "create-contact"): void;
+}>();
+</script>
+
 <template>
-  <div>
-    <h3 class="text-white font-semibold mb-4">Schnellzugriffe</h3>
-    <div class="flex gap-2">
+  <div class="bg-white/5 border border-white/10 rounded-lg p-4">
+    <h3 class="text-white font-semibold mb-4">
+      Schnellzugriffe
+    </h3>
+
+    <div class="flex gap-3">
       <button
-        class="bg-white text-sm text-gray-800 px-3 py-2 rounded hover:bg-gray-100 transition"
+        class="kit-btn-primary"
+        @click="emit('create-customer')"
       >
-        + Kunde
+        <UserPlus class="w-4 h-4" />
+        Neuer Kunde
       </button>
+
       <button
-        class="bg-white text-sm text-gray-800 px-3 py-2 rounded hover:bg-gray-100 transition"
+        class="kit-btn-secondary"
+        @click="emit('create-contact')"
       >
-        + Kontakt
+        <Contact class="w-4 h-4" />
+        Neuer Kontakt
       </button>
     </div>
   </div>
 </template>
-

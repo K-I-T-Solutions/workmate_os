@@ -8,6 +8,8 @@ import {
 } from "./pages";
 
 import { useCrmNavigation } from "./composables/useCrmNavigation";
+import CustomerForm from "./components/customer/CustomerForm.vue";
+import ContactForm from "./components/contacts/ContactForm.vue";
 
 const {
   view,
@@ -18,16 +20,20 @@ const {
   goCustomerDetail,
   goContacts,
   goContactDetail,
+  openCreateContact,
+  openCreateCustomer
 } = useCrmNavigation();
 </script>
 
 <template>
   <div class="crm-app h-full">
-
    <CrmDashboardPage
-      v-if="view === 'dashboard'"
-      @openCustomers="goCustomers"
-    />
+  v-if="view === 'dashboard'"
+  @openCustomers="goCustomers"
+  @create-customer="openCreateCustomer"
+  @create-contact="openCreateContact"
+/>
+
 
     <CustomersListPage
       v-if="view === 'customers'"
@@ -57,7 +63,20 @@ const {
       :contactId="activeContactId!"
       @back="goContacts"
     />
+      <CustomerForm
+      v-if="view === 'customer-create'"
+      :customer="null"
+      @close="goCustomers"
+      @saved="goCustomers"
+    />
 
 
+    <ContactForm
+      v-if="view === 'contact-create'"
+      :contact="null"
+      :customerId="activeCustomerId!"
+      @close="goContacts"
+      @saved="goContacts"
+    />
   </div>
 </template>

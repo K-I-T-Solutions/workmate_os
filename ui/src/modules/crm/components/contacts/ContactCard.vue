@@ -28,14 +28,14 @@
     <!-- ACTION BAR (NOT CLICKABLE FOR DETAIL) -->
     <div class="flex gap-2 pt-2">
       <button
-        class="px-3 py-1 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
+        class="kit-btn-primary"
         @click="$emit('edit')"
       >
-        Bearbeiten
+       Öffnen
       </button>
 
       <button
-        class="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition"
+        class="kit-btn-danger"
         @click="$emit('delete')"
       >
         Löschen

@@ -8,12 +8,12 @@
       </h1>
 
       <button
-        class="px-4 py-2 rounded bg-blue-500 border border-white/10 text-sm hover:bg-white/5"
+        class="kit-btn-primary"
         @click="openCreateModal"
       >
         + Neuer Kunde
       </button>
-      <button class="px-4 py-2 rounded bg-orange-400 border border-white/10 text-sm hover:bg-white/5"
+      <button class="kit-btn-accent"
       @click="openDashboard">
       <- Startseite
       </button>

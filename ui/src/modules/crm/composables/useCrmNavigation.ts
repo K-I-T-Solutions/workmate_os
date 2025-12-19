@@ -5,7 +5,9 @@ export type CrmView =
   | "customers"
   | "customer-detail"
   | "contacts"
-  | "contact-detail";
+  | "contact-detail"
+  | "customer-create"
+  | "contact-create";
 
 export function useCrmNavigation() {
   // ─── STATE ────────────────────────────────────────────────
@@ -44,6 +46,13 @@ export function useCrmNavigation() {
     activeContactId.value = contactId;
     view.value = "contact-detail";
   }
+  function openCreateCustomer() {
+  view.value = "customer-create";
+}
+
+function openCreateContact() {
+  view.value = "contact-create";
+}
 
   // ─── EXPOSE API ───────────────────────────────────────────
   return {
@@ -56,5 +65,7 @@ export function useCrmNavigation() {
     goCustomerDetail,
     goContacts,
     goContactDetail,
+    openCreateContact,
+    openCreateCustomer
   };
 }

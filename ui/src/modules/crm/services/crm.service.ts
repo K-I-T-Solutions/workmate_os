@@ -107,4 +107,15 @@ export const crmService = {
     );
     return data;
   },
+  async searchCustomers(search: string) {
+    return api.get("/api/backoffice/crm/customers", {
+      params: {
+        search,        // Suche in Name + Email (laut API)
+        limit: 5,      // für Auto-Suggestion klein halten
+        skip: 0,
+        status: "active", // optional, aber sinnvoll
+      },
+    });
+  }
+
 };

@@ -1,122 +1,140 @@
 <template>
-  <div
-    class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
-  >
+  <!-- Modal Overlay -->
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+
+    <!-- Modal Panel -->
     <div
-      class="w-full max-w-xl bg-bg-secondary p-6 rounded-xl border border-white/10 shadow-soft space-y-6"
+      class="w-full max-w-xl max-h-[85vh]
+             bg-bg-secondary rounded-xl border border-white/10
+             shadow-soft flex flex-col"
     >
+
       <!-- Header -->
-      <div class="flex justify-between items-center">
-        <h2 class="text-xl font-semibold text-white">
+      <div
+        class="px-6 py-4 border-b border-white/10
+               grid grid-cols-[1fr_auto_1fr] items-center"
+      >
+        <div />
+
+        <h2 class="text-lg font-semibold text-white text-center">
           {{ isEdit ? "Kunden bearbeiten" : "Neuen Kunden hinzufügen" }}
         </h2>
 
         <button
-          class="px-3 py-1 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
           @click="$emit('close')"
+          class="kit-btn-close justify-self-end"
+          aria-label="Schließen"
         >
           ✕
         </button>
       </div>
 
-      <!-- Form -->
-      <form @submit.prevent="save" class="space-y-4">
-        <!-- Name -->
-        <div>
-          <label class="block text-sm text-white/70 mb-1">Name</label>
-          <input
-            v-model="form.name"
-            required
-            class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white"
-          />
-        </div>
+      <!-- Scrollbarer Inhalt -->
+      <form @submit.prevent="save" class="flex flex-col flex-1">
 
-        <!-- Email -->
-        <div>
-          <label class="block text-sm text-white/70 mb-1">Email</label>
-          <input
-            v-model="form.email"
-            type="email"
-            class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white"
-          />
-        </div>
+        <div class="px-6 py-4 overflow-y-auto space-y-3">
 
-        <!-- Phone -->
-        <div>
-          <label class="block text-sm text-white/70 mb-1">Telefon</label>
-          <input
-            v-model="form.phone"
-            class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white"
-          />
-        </div>
-
-        <!-- Address -->
-        <div>
-          <label class="block text-sm text-white/70 mb-1">Adresse</label>
-          <input
-            v-model="form.address"
-            class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white"
-          />
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
+          <!-- Name -->
           <div>
-            <label class="block text-sm text-white/70 mb-1">PLZ</label>
+            <label class="kit-label">Name</label>
             <input
-              v-model="form.zip"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white"
+              v-model="form.name"
+              required
+              class="kit-input"
             />
           </div>
 
+          <!-- Email -->
           <div>
-            <label class="block text-sm text-white/70 mb-1">Ort</label>
+            <label class="kit-label">Email</label>
             <input
-              v-model="form.city"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white"
+              v-model="form.email"
+              type="email"
+              class="kit-input"
             />
           </div>
+
+          <!-- Telefon -->
+          <div>
+            <label class="kit-label">Telefon</label>
+            <input
+              v-model="form.phone"
+              class="kit-input"
+            />
+          </div>
+
+          <!-- Adresse -->
+          <div>
+            <label class="kit-label">Adresse</label>
+            <input
+              v-model="form.address"
+              class="kit-input"
+            />
+          </div>
+
+          <!-- PLZ / Ort -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="kit-label">PLZ</label>
+              <input
+                v-model="form.zip"
+                class="kit-input"
+              />
+            </div>
+
+            <div>
+              <label class="kit-label">Ort</label>
+              <input
+                v-model="form.city"
+                class="kit-input"
+              />
+            </div>
+          </div>
+
+          <!-- Land -->
+          <div>
+            <label class="kit-label">Land</label>
+            <input
+              v-model="form.country"
+              class="kit-input"
+            />
+          </div>
+
+          <!-- Notizen -->
+          <div>
+            <label class="kit-label">Notizen</label>
+            <textarea
+              v-model="form.notes"
+              rows="2"
+              class="kit-input resize-none"
+            />
+          </div>
+
         </div>
 
-        <!-- Country -->
-        <div>
-          <label class="block text-sm text-white/70 mb-1">Land</label>
-          <input
-            v-model="form.country"
-            class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white"
-          />
-        </div>
-
-        <!-- Notes -->
-        <div>
-          <label class="block text-sm text-white/70 mb-1">Notizen</label>
-          <textarea
-            v-model="form.notes"
-            rows="3"
-            class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white resize-none"
-          ></textarea>
-        </div>
-
-        <!-- Actions -->
-        <div class="flex justify-end gap-3 pt-4">
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
           <button
             type="button"
             @click="$emit('close')"
-            class="px-4 py-2 rounded bg-bg-secondary border border-white/10 text-white hover:bg-bg-secondary/80 transition"
+            class="kit-btn-ghost"
           >
             Abbrechen
           </button>
 
           <button
             type="submit"
-            class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700 transition"
+            class="kit-btn-success"
           >
             {{ isEdit ? "Speichern" : "Erstellen" }}
           </button>
         </div>
+
       </form>
     </div>
   </div>
 </template>
+
 
 <script setup lang="ts">
 import { reactive, computed } from "vue";

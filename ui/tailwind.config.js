@@ -1,7 +1,11 @@
 import defaultTheme from "tailwindcss/defaultTheme";
 
 export default {
-  content: ["./index.html", "./src/**/*.{vue,js,ts}"],
+  content: [
+  "./index.html",
+  "./src/**/*.{vue,js,ts,css}",
+],
+
   theme: {
     extend: {
       colors: {

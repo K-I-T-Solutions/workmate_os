@@ -1,141 +1,167 @@
 <template>
   <!-- Modal Overlay -->
-  <div
-    class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
-  >
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+
     <!-- Modal Panel -->
     <div
-      class="w-full max-w-lg bg-bg-secondary p-6 rounded-xl border border-white/10 shadow-soft space-y-6"
+      class="w-full max-w-lg max-h-[85vh]
+             bg-bg-secondary rounded-xl border border-white/10
+             shadow-soft flex flex-col"
     >
+
       <!-- Header -->
-      <div class="flex justify-between items-center">
-        <h2 class="text-xl font-semibold text-white">
+      <div
+        class="px-6 py-4 border-b border-white/10
+               grid grid-cols-[1fr_auto_1fr] items-center"
+      >
+        <div />
+
+        <h2 class="text-lg font-semibold text-white text-center">
           {{ isEdit ? "Kontakt bearbeiten" : "Neuen Kontakt hinzufügen" }}
         </h2>
 
         <button
           @click="$emit('close')"
-          class="px-3 py-1 rounded bg-bg-primary border border-white/10 text-white hover:bg-bg-primary/80 transition"
+          class="kit-btn-close justify-center py-1"
+          aria-label="Schließen"
         >
           ✕
         </button>
       </div>
 
-      <!-- Form -->
-      <form @submit.prevent="save">
-        <div class="space-y-4">
-          <!-- Firstname -->
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Vorname</label>
+      <!-- Scrollbarer Inhalt -->
+      <form @submit.prevent="save" class="flex flex-col flex-1">
+
+        <div class="px-6 py-4 overflow-y-auto space-y-3">
+
+          <!-- Kunde -->
+          <div class="relative">
+            <label class="kit-label">Kunde</label>
+
             <input
-              v-model="form.firstname"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-              required
+              v-model="customerSearch"
+              placeholder="Kunde suchen…"
+              class="kit-input"
             />
+
+            <!-- Suggestions -->
+            <div
+              v-if="customerResults && customerResults.length"
+              class="absolute z-20 mt-1 w-full bg-bg-primary
+                     border border-white/10 rounded shadow-lg overflow-hidden"
+            >
+              <button
+                v-for="customer in customerResults || []"
+                :key="customer.id"
+                type="button"
+                @click="selectCustomer(customer)"
+                class="w-full text-left px-3 py-2 hover:bg-white/5 transition"
+              >
+                <div class="text-white font-medium">
+                  {{ customer.name }}
+                </div>
+                <div class="text-xs text-white/50">
+                  {{ customer.email }}
+                </div>
+              </button>
+            </div>
           </div>
 
-          <!-- Lastname -->
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Nachname</label>
-            <input
-              v-model="form.lastname"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-              required
-            />
+          <!-- Vorname / Nachname -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="kit-label">Vorname</label>
+              <input v-model="form.firstname" class="kit-input" required />
+            </div>
+            <div>
+              <label class="kit-label">Nachname</label>
+              <input v-model="form.lastname" class="kit-input" required />
+            </div>
           </div>
 
           <!-- Email -->
           <div>
-            <label class="block text-sm text-white/70 mb-1">Email</label>
-            <input
-              v-model="form.email"
-              type="email"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+            <label class="kit-label">Email</label>
+            <input v-model="form.email" type="email" class="kit-input" />
           </div>
 
-          <!-- Phone -->
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Telefon</label>
-            <input
-              v-model="form.phone"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+          <!-- Telefon / Mobil -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="kit-label">Telefon</label>
+              <input v-model="form.phone" class="kit-input" />
+            </div>
+            <div>
+              <label class="kit-label">Mobil</label>
+              <input v-model="form.mobile" class="kit-input" />
+            </div>
           </div>
 
-          <!-- Mobile -->
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Mobil</label>
-            <input
-              v-model="form.mobile"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+          <!-- Position / Abteilung -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="kit-label">Position</label>
+              <input v-model="form.position" class="kit-input" />
+            </div>
+            <div>
+              <label class="kit-label">Abteilung</label>
+              <input v-model="form.department" class="kit-input" />
+            </div>
           </div>
 
-          <!-- Position -->
+          <!-- Notizen -->
           <div>
-            <label class="block text-sm text-white/70 mb-1">Position</label>
-            <input
-              v-model="form.position"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-
-          <!-- Department -->
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Abteilung</label>
-            <input
-              v-model="form.department"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-
-          <!-- Notes -->
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Notizen</label>
+            <label class="kit-label">Notizen</label>
             <textarea
               v-model="form.notes"
-              rows="3"
-              class="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-            ></textarea>
+              rows="2"
+              class="kit-input resize-none"
+            />
           </div>
+
         </div>
 
-        <!-- Actions -->
-        <div class="flex justify-end gap-3 pt-6">
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
           <button
             type="button"
             @click="$emit('close')"
-            class="px-4 py-2 rounded bg-bg-secondary border border-white/10 text-white hover:bg-bg-secondary/80 transition"
+            class="kit-btn-ghost"
           >
             Abbrechen
           </button>
 
-          <button
-            type="submit"
-            class="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700 transition"
-          >
+          <button type="submit" class="kit-btn-success">
             {{ isEdit ? "Speichern" : "Erstellen" }}
           </button>
         </div>
+
       </form>
     </div>
   </div>
 </template>
 
+
 <script setup lang="ts">
-import { reactive, computed } from "vue";
+import { reactive, computed, watch, ref } from "vue";
 import { crmService } from "../../services/crm.service";
 import type { Contact } from "../../types/contact";
+import type { Customer } from "../../types/customer";
 
 const props = defineProps<{
   contact: Contact | null;
-  customerId: string;
+  customerId?: string;
 }>();
 
-const emit = defineEmits(["close", "saved"]);
+const emit = defineEmits<{
+  (e: "close"): void;
+  (e: "saved", customerId: string): void;
+}>();
 
 const isEdit = computed(() => !!props.contact);
+
+const customerSearch = ref("");
+const customerResults = ref<Customer[]>([]);
 
 const form = reactive<Partial<Contact>>({
   firstname: props.contact?.firstname || "",
@@ -149,14 +175,41 @@ const form = reactive<Partial<Contact>>({
   customer_id: props.customerId,
 });
 
+function selectCustomer(customer: Customer) {
+  customerSearch.value = customer.name;
+  customerResults.value = [];
+  form.customer_id = customer.id;
+}
+
+let searchTimeout: number | undefined;
+
+watch(customerSearch, (value) => {
+  if (!value || value.length < 2) {
+    customerResults.value = [];
+    return;
+  }
+
+  clearTimeout(searchTimeout);
+
+  searchTimeout = window.setTimeout(async () => {
+    const { data } = await crmService.searchCustomers(value);
+    customerResults.value = data;
+  }, 300);
+});
+
 async function save() {
+  if (!form.customer_id) {
+    alert("Bitte zuerst einen Kunden auswählen.");
+    return;
+  }
+
   if (isEdit.value) {
     await crmService.updateContact(props.contact!.id, form);
   } else {
     await crmService.createContact(form);
   }
 
-  emit("saved");
+  emit("saved", form.customer_id);
   emit("close");
 }
 </script>

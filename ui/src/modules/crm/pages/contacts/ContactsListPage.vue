@@ -9,20 +9,14 @@
       <!-- RIGHT -->
       <div class="flex gap-2">
         <button
-          class="px-4 py-2 rounded-md
-                bg-blue-500/20 border border-blue-400/30
-                text-sm text-blue-200
-                hover:bg-blue-500/30 transition"
+          class="kit-btn-primary"
           @click="openCreateModal"
         >
           + Kontakt
         </button>
 
         <button
-          class="px-4 py-2 rounded-md
-                bg-white/10 border border-white/20
-                text-sm text-white
-                hover:bg-white/20 transition"
+          class="kit-btn-secondary"
           @click="emit('back')"
         >
           ← Zurück
@@ -34,10 +28,7 @@
       v-model="search"
       type="text"
       placeholder="Suche nach Name oder E-Mail…"
-      class="px-3 py-2 rounded-md
-            bg-white/5 border border-white/10
-            text-sm text-white placeholder:text-white/40
-            focus:outline-none focus:border-white/30"
+      class="flex-1 px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-white placeholder-white/40 focus:outline-none focus:border-accent"
     />
 
     <label class="flex items-center gap-2 text-sm text-white/70">
