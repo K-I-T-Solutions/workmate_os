@@ -1,7 +1,7 @@
 .PHONY: help dev-up dev-down dev-logs dev-rebuild shell db-shell migrate-create migrate-up migrate-down migrate-current migrate-history migrate-auto backend-rebuild db-reset seed check-env
 
 COMPOSE = docker-compose -f infra/docker-compose.yml
-BACKEND = workmate_backend
+BACKEND = backend
 DB = central_postgres
 
 help:
