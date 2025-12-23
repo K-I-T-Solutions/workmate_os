@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue';
 import { useInvoicesNavigation } from './composables/useInvoicesNavigation';
 import InvoicesDashboardPage from './pages/InvoicesDashboardPage.vue';
 import InvoicesListPage from './pages/InvoicesListPage.vue';
@@ -15,6 +16,16 @@ const {
   goEdit,
   goBack,
 } = useInvoicesNavigation();
+
+// List reload trigger - increment when list should reload
+const listKey = ref(0);
+
+// Watch view changes and reload list when navigating to it
+watch(view, (newView) => {
+  if (newView === 'list') {
+    listKey.value++;
+  }
+});
 </script>
 
 <template>
@@ -29,6 +40,7 @@ const {
     <!-- List View -->
     <InvoicesListPage
       v-if="view === 'list'"
+      :key="listKey"
       @openInvoice="goDetail"
       @openCreate="goCreate"
       @back="goDashboard"

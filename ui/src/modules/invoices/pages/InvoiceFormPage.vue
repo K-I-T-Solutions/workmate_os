@@ -23,7 +23,7 @@ const emit = defineEmits<{
 }>();
 
 // Composables
-const { currentInvoice, loading, createInvoice, loadInvoice } = useInvoices();
+const { currentInvoice, loading, createInvoice, updateInvoice, loadInvoice } = useInvoices();
 
 // State
 const formData = ref({
@@ -87,16 +87,42 @@ const invoiceTaxAmount = computed(() => {
 });
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   if (props.invoiceId) {
-    loadInvoice(props.invoiceId);
-    // TODO: Populate form with currentInvoice data
-  }
+    await loadInvoice(props.invoiceId);
 
-  // Set default due date (14 days from now)
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 14);
-  formData.value.due_date = dueDate.toISOString().split('T')[0];
+    // Populate form with currentInvoice data
+    if (currentInvoice.value) {
+      formData.value = {
+        customer_id: currentInvoice.value.customer_id || '',
+        project_id: currentInvoice.value.project_id || '',
+        document_type: currentInvoice.value.document_type || 'invoice',
+        issued_date: currentInvoice.value.issued_date || '',
+        due_date: currentInvoice.value.due_date || '',
+        notes: currentInvoice.value.notes || '',
+        terms: currentInvoice.value.terms || '',
+        generate_pdf: true,
+      };
+
+      // Populate line items
+      if (currentInvoice.value.line_items && currentInvoice.value.line_items.length > 0) {
+        lineItems.value = currentInvoice.value.line_items.map((item) => ({
+          position: item.position,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_price: item.unit_price,
+          tax_rate: item.tax_rate,
+          discount_percent: item.discount_percent,
+        }));
+      }
+    }
+  } else {
+    // Set default due date (14 days from now) only for new invoices
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14);
+    formData.value.due_date = dueDate.toISOString().split('T')[0];
+  }
 });
 
 // Actions
@@ -169,7 +195,15 @@ async function handleSubmit() {
       generate_pdf: formData.value.generate_pdf,
     };
 
-    const invoice = await createInvoice(payload);
+    let invoice;
+
+    if (isEditMode.value && props.invoiceId) {
+      // Update existing invoice
+      invoice = await updateInvoice(props.invoiceId, payload);
+    } else {
+      // Create new invoice
+      invoice = await createInvoice(payload);
+    }
 
     if (invoice) {
       emit('saved', invoice.id);
