@@ -56,12 +56,12 @@ function openApp(appId: string) {
 
 // Dock items (App-Zuweisungen)
 const dockItems = [
-  { id: "crm", label: "CRM", icon: markRaw(Users) },
-  { id: "projects", label: "Projects", icon: markRaw(Briefcase) },
-  { id: "time", label: "Time", icon: markRaw(Timer) },
-  { id: "invoices", label: "Invoices", icon: markRaw(Receipt) },
-  { id: "finance", label: "Finance", icon: markRaw(Wallet) },
-  { id: "notes", label: "Notes", icon: markRaw(MessageSquare) },
+  { id: "crm", label: "Kunden", icon: markRaw(Users) },
+  { id: "projects", label: "Projekte", icon: markRaw(Briefcase) },
+  { id: "time", label: "Zeiterfassung", icon: markRaw(Timer) },
+  { id: "invoices", label: "Rechnungen", icon: markRaw(Receipt) },
+  { id: "finance", label: "Finanzen", icon: markRaw(Wallet) },
+  { id: "notes", label: "Chat", icon: markRaw(MessageSquare) },
 ];
 
 // Active State

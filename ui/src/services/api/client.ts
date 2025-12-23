@@ -1,7 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 
 // Base URL aus Environment oder Fallback
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
 // Axios Instance erstellen
 export const apiClient: AxiosInstance = axios.create({

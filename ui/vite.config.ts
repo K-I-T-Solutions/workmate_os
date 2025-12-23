@@ -1,7 +1,5 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import type { ViteDevServer } from "vite";
-import type { IncomingMessage, ServerResponse } from "http";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
@@ -11,23 +9,28 @@ export default defineConfig({
     vue(),
     {
       name: "host-filter",
-      configureServer(server: ViteDevServer) {
-        server.middlewares.use(
-          (
-            req: IncomingMessage,
-            res: ServerResponse,
-            next: (err?: unknown) => void
-          ) => {
-            const rawHost = req.headers.host;
-            const host = Array.isArray(rawHost) ? rawHost[0] : rawHost ?? "";
-            if (host.endsWith(".intern.phudevelopement.xyz")) return next();
-            if (host.endsWith(".phudevelopement.xyz")) return next();
-            if (host.startsWith("localhost")) return next();
-            res.statusCode = 403;
-            res.end("Host not allowed");
-          }
-        );
-      },
+      configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const rawHost =
+          req.headers["x-forwarded-host"] ?? req.headers.host;
+
+        const host = Array.isArray(rawHost) ? rawHost[0] : rawHost ?? "";
+        const hostname = host.split(":")[0];
+
+        if (
+          hostname === "localhost" ||
+          hostname === "127.0.0.1" ||
+          hostname === "workmate_ui" ||
+          hostname.endsWith(".intern.phudevelopement.xyz") ||
+          hostname.endsWith(".phudevelopement.xyz")
+        ) {
+          return next();
+        }
+
+        res.statusCode = 403;
+        res.end("Host not allowed");
+      });
+    }
     },
   ],
   resolve: {
@@ -40,8 +43,11 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     allowedHosts: [
+      "workmate_ui",
+      "workmate_backend",
       "workmate.intern.phudevelopement.xyz",
       "workmate.phudevelopement.xyz",
+      "workmate-api.phudevelopement.xyz",
       "api.workmate.intern.phudevelopement.xyz",
       "login.intern.phudevelopement.xyz",
       "localhost",

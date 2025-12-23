@@ -33,7 +33,7 @@ router = APIRouter(prefix="/backoffice/invoices", tags=["Backoffice Invoices"])
 # LIST & FILTERS
 # ============================================================================
 
-@router.get("/", response_model=schemas.InvoiceListResponse)
+@router.get("", response_model=schemas.InvoiceListResponse)
 def list_invoices(
     skip: int = Query(0, ge=0, description="Offset für Pagination"),
     limit: int = Query(100, ge=1, le=500, description="Max Anzahl Ergebnisse"),

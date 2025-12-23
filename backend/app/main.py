@@ -59,6 +59,10 @@ origins = [
     "https://api.workmate.intern.phudevelopement.xyz",
     "https://api.workmate.intern.phudevelopement.xyz:8000",
 
+    # API Domain für Frontend
+    "https://workmate-api.phudevelopement.xyz",
+    "http://workmate-api.phudevelopement.xyz",
+
     "https://login.intern.phudevelopement.xyz",
 
     # Docker Services
