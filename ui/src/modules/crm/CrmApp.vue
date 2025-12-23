@@ -49,6 +49,7 @@ const {
       :customerId="activeCustomerId!"
       @openContacts="goContacts"
       @openContact="goContactDetail"
+      @edit="goEditCustomer"
       @back="goCustomers"
     />
 
@@ -56,6 +57,8 @@ const {
       v-if="view === 'contacts'"
       :customerId="activeCustomerId!"
       @openContact="goContactDetail"
+      @createContact="openCreateContact"
+      @editContact="goEditContact(activeCustomerId!, $event)"
       @openDashboard="goDashboard"
       @back="goCustomerDetail(activeCustomerId!)"
     />
@@ -64,6 +67,7 @@ const {
       v-if="view === 'contact-detail'"
       :customerId="activeCustomerId!"
       :contactId="activeContactId!"
+      @edit="goEditContact(activeCustomerId!, $event)"
       @back="goContacts"
     />
 

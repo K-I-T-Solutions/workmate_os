@@ -23,6 +23,8 @@ const props = defineProps<{
 // Emits
 const emit = defineEmits<{
   openContact: [id: string];
+  createContact: [];
+  editContact: [id: string];
   back: [];
 }>();
 
@@ -142,7 +144,7 @@ function getFullName(contact: any): string {
           <p class="text-sm text-white/60 mt-1">von {{ customerName }}</p>
         </div>
       </div>
-      <button @click="$router?.push(`/crm/customers/${customerId}/contacts/create`)" class="kit-btn-primary">
+      <button @click="emit('createContact')" class="kit-btn-primary">
         <Plus :size="18" />
         Neuer Kontakt
       </button>
@@ -213,7 +215,7 @@ function getFullName(contact: any): string {
         <p class="text-white/60 mb-6">
           {{ hasFilters ? 'Keine Kontakte entsprechen den Filterkriterien' : 'Erstellen Sie den ersten Kontakt für diesen Kunden' }}
         </p>
-        <button v-if="!hasFilters" @click="$router?.push(`/crm/customers/${customerId}/contacts/create`)" class="kit-btn-primary">
+        <button v-if="!hasFilters" @click="emit('createContact')" class="kit-btn-primary">
           <Plus :size="18" />
           Ersten Kontakt erstellen
         </button>
@@ -297,7 +299,7 @@ function getFullName(contact: any): string {
                 Als Primär
               </button>
               <button
-                @click.stop="$router?.push(`/crm/customers/${customerId}/contacts/${contact.id}/edit`)"
+                @click.stop="emit('editContact', contact.id)"
                 class="p-2 hover:bg-blue-500/20 rounded-lg transition"
                 title="Kontakt bearbeiten"
               >

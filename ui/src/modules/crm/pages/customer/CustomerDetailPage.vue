@@ -32,6 +32,7 @@ const emit = defineEmits<{
   back: [];
   openContacts: [];
   openContact: [contactId: string];
+  edit: [customerId: string];
 }>();
 
 // Composables
@@ -149,7 +150,7 @@ function getActivityLabel(type: string): string {
           <Users :size="18" />
           Kontakte
         </button>
-        <button @click="$router?.push(`/crm/customers/${customer.id}/edit`)" class="kit-btn-secondary">
+        <button @click="emit('edit', customer.id)" class="kit-btn-secondary">
           <Edit :size="18" />
           Bearbeiten
         </button>

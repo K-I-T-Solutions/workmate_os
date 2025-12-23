@@ -27,6 +27,7 @@ const props = defineProps<{
 // Emits
 const emit = defineEmits<{
   back: [];
+  edit: [contactId: string];
 }>();
 
 // Composables
@@ -143,7 +144,7 @@ function getActivityLabel(type: string): string {
           <CheckCircle :size="18" />
           Als Primär
         </button>
-        <button @click="$router?.push(`/crm/customers/${customerId}/contacts/${contactId}/edit`)" class="kit-btn-secondary">
+        <button @click="emit('edit', contactId)" class="kit-btn-secondary">
           <Edit :size="18" />
           Bearbeiten
         </button>
