@@ -41,8 +41,9 @@ class CustomerStatus(str, Enum):
 
 class CustomerType(str, Enum):
     """Kundentyp."""
-    BUSINESS = "business"
+    CREATOR = "creator"
     INDIVIDUAL = "individual"
+    BUSINESS = "business"
     GOVERNMENT = "government"
 
 
@@ -58,7 +59,7 @@ class Customer(Base, UUIDMixin, TimestampMixin):
 
     Attributes:
         name: Kundenname / Firmenname
-        type: Kundentyp (business, individual, government)
+        type: Kundentyp (creator, individual, business, government)
         status: Aktueller Status (active, inactive, lead, blocked)
         tax_id: Steuernummer / USt-IdNr
         contacts: Liste der Ansprechpartner
@@ -67,6 +68,7 @@ class Customer(Base, UUIDMixin, TimestampMixin):
     """
     __tablename__ = "customers"
     __table_args__ = (
+        Index("ix_customers_customer_number", "customer_number"),
         Index("ix_customers_name", "name"),
         Index("ix_customers_email", "email"),
         Index("ix_customers_tax_id", "tax_id"),
@@ -77,12 +79,18 @@ class Customer(Base, UUIDMixin, TimestampMixin):
             name="check_customer_status_valid"
         ),
         CheckConstraint(
-            "type IN ('business', 'individual', 'government')",
+            "type IN ('creator', 'individual', 'business', 'government')",
             name="check_customer_type_valid"
         ),
     )
 
     # Basic Info
+    customer_number: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+        comment="Eindeutige Kundennummer (KIT-CUS-000001)"
+    )
     name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -91,7 +99,7 @@ class Customer(Base, UUIDMixin, TimestampMixin):
     type: Mapped[str | None] = mapped_column(
         String(50),
         default=CustomerType.BUSINESS.value,
-        comment="Kundentyp: business, individual, government"
+        comment="Kundentyp: creator, individual, business, government"
     )
 
     # Contact Info

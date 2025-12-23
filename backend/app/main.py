@@ -6,6 +6,9 @@ from fastapi import FastAPI, Request
 from app.core.settings import config
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware import Middleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from pathlib import Path
 import logging
 from app.core.settings.config import settings
@@ -68,6 +71,13 @@ origins = [
     # Docker Services
     "http://keycloak:8080",
 ]
+# ProxyHeadersMiddleware - MUSS VOR CORS kommen!
+# Respektiert X-Forwarded-Proto, X-Forwarded-Host von Caddy
+app.add_middleware(
+    ProxyHeadersMiddleware,
+    trusted_hosts=["*"],  # In Production: nur trusted IPs
+)
+
 # Debug Middleware um Origin zu sehen
 @app.middleware("http")
 async def log_origin(request: Request, call_next):

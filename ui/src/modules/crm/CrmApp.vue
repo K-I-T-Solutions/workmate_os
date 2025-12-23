@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue';
 import {
   CrmDashboardPage,
   CustomerDetailPage,
@@ -11,6 +12,13 @@ import CustomerFormPage from "./pages/CustomerFormPage.vue";
 import ContactFormPage from "./pages/ContactFormPage.vue";
 
 import { useCrmNavigation } from "./composables/useCrmNavigation";
+
+// Props for deep-linking from other apps
+const props = defineProps<{
+  initialView?: string;
+  initialCustomerId?: string;
+  initialContactId?: string;
+}>();
 
 const {
   view,
@@ -26,6 +34,24 @@ const {
   goEditCustomer,
   goEditContact,
 } = useCrmNavigation();
+
+// Handle deep-linking on mount
+onMounted(() => {
+  if (props.initialView && props.initialCustomerId) {
+    switch (props.initialView) {
+      case 'detail':
+        goCustomerDetail(props.initialCustomerId);
+        break;
+      case 'contact-detail':
+        if (props.initialContactId) {
+          goContactDetail(props.initialCustomerId, props.initialContactId);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+});
 </script>
 
 <template>

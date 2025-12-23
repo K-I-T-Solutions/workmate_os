@@ -98,14 +98,44 @@ async function confirmDelete() {
 }
 
 // ─── HELPERS ──────────────────────────────────────────────
-function getStatusBadge(isActive: boolean) {
-  return isActive
-    ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
-    : 'bg-white/5 border-white/10 text-white/60';
+function getStatusBadge(status: string) {
+  const badges = {
+    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
+    inactive: 'bg-white/5 border-white/10 text-white/60',
+    lead: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
+    blocked: 'bg-red-500/20 border-red-400/30 text-red-200',
+  };
+  return badges[status as keyof typeof badges] || badges.inactive;
 }
 
-function getStatusLabel(isActive: boolean): string {
-  return isActive ? 'Aktiv' : 'Inaktiv';
+function getStatusLabel(status: string): string {
+  const labels = {
+    active: 'Aktiv',
+    inactive: 'Inaktiv',
+    lead: 'Lead',
+    blocked: 'Blockiert',
+  };
+  return labels[status as keyof typeof labels] || 'Inaktiv';
+}
+
+function getTypeBadge(type: string | null) {
+  const badges = {
+    creator: 'bg-purple-500/20 border-purple-400/30 text-purple-200',
+    individual: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
+    business: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
+    government: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
+  };
+  return type ? (badges[type as keyof typeof badges] || badges.business) : badges.business;
+}
+
+function getTypeLabel(type: string | null): string {
+  const labels = {
+    creator: 'Creator',
+    individual: 'Privatperson',
+    business: 'Unternehmen',
+    government: 'Behörde',
+  };
+  return type ? (labels[type as keyof typeof labels] || 'Unternehmen') : 'Unternehmen';
 }
 </script>
 
@@ -145,6 +175,8 @@ function getStatusLabel(isActive: boolean): string {
             <option value="">Alle Status</option>
             <option value="active">Aktiv</option>
             <option value="inactive">Inaktiv</option>
+            <option value="lead">Lead</option>
+            <option value="blocked">Blockiert</option>
           </select>
         </div>
 
@@ -225,10 +257,18 @@ function getStatusLabel(isActive: boolean): string {
                 <span
                   :class="[
                     'px-2 py-1 rounded text-xs font-medium border',
-                    getStatusBadge(customer.is_active),
+                    getStatusBadge(customer.status),
                   ]"
                 >
-                  {{ getStatusLabel(customer.is_active) }}
+                  {{ getStatusLabel(customer.status) }}
+                </span>
+                <span
+                  :class="[
+                    'px-2 py-1 rounded text-xs font-medium border',
+                    getTypeBadge(customer.type),
+                  ]"
+                >
+                  {{ getTypeLabel(customer.type) }}
                 </span>
               </div>
 

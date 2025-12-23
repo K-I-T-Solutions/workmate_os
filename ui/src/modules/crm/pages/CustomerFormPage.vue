@@ -22,18 +22,39 @@ const emit = defineEmits<{
 // Composables
 const { currentCustomer, loading, createCustomer, updateCustomer, loadCustomer } = useCustomers();
 
+// Customer Type Options
+const customerTypes = [
+  { value: 'creator', label: 'Creator / Freelancer' },
+  { value: 'individual', label: 'Privatperson' },
+  { value: 'business', label: 'Unternehmen' },
+  { value: 'government', label: 'Behörde' },
+];
+
+// Customer Status Options
+const customerStatuses = [
+  { value: 'active', label: 'Aktiv' },
+  { value: 'inactive', label: 'Inaktiv' },
+  { value: 'lead', label: 'Lead' },
+  { value: 'blocked', label: 'Blockiert' },
+];
+
 // State
 const formData = ref({
   name: '',
   customer_number: '',
+  type: 'business',
   email: '',
   phone: '',
-  address: '',
-  zip: '',
+  tax_id: '',
+  website: '',
+  notes: '',
+  status: 'active',
+
+  // Address fields
+  street: '',
+  zip_code: '',
   city: '',
   country: 'Deutschland',
-  notes: '',
-  is_active: true,
 });
 
 const saving = ref(false);
@@ -52,14 +73,19 @@ onMounted(async () => {
       formData.value = {
         name: currentCustomer.value.name || '',
         customer_number: currentCustomer.value.customer_number || '',
+        type: currentCustomer.value.type || 'business',
         email: currentCustomer.value.email || '',
         phone: currentCustomer.value.phone || '',
-        address: currentCustomer.value.address || '',
-        zip: currentCustomer.value.zip || '',
+        tax_id: currentCustomer.value.tax_id || '',
+        website: currentCustomer.value.website || '',
+        notes: currentCustomer.value.notes || '',
+        status: currentCustomer.value.status || 'active',
+
+        // Address fields
+        street: currentCustomer.value.street || '',
+        zip_code: currentCustomer.value.zip_code || '',
         city: currentCustomer.value.city || '',
         country: currentCustomer.value.country || 'Deutschland',
-        notes: currentCustomer.value.notes || '',
-        is_active: currentCustomer.value.is_active,
       };
     }
   }
@@ -177,28 +203,39 @@ async function handleSubmit() {
 
           <!-- Kundennummer -->
           <div>
-            <label class="kit-label">Kundennummer (Optional)</label>
+            <label class="kit-label">Kundennummer</label>
             <input
               v-model="formData.customer_number"
               type="text"
-              placeholder="z.B. K-12345"
+              placeholder="Wird automatisch generiert"
               class="kit-input"
               :class="{ 'border-red-400': errors.customer_number }"
+              :disabled="true"
             />
-            <p class="text-xs text-white/40 mt-1">Wird automatisch generiert, falls leer</p>
+            <p class="text-xs text-white/40 mt-1">Wird automatisch generiert</p>
+          </div>
+
+          <!-- Kundentyp -->
+          <div>
+            <label class="kit-label">Kundentyp</label>
+            <select
+              v-model="formData.type"
+              class="kit-input"
+            >
+              <option v-for="type in customerTypes" :key="type.value" :value="type.value">
+                {{ type.label }}
+              </option>
+            </select>
           </div>
 
           <!-- Status -->
-          <div class="flex items-center gap-2 pt-6">
-            <input
-              v-model="formData.is_active"
-              type="checkbox"
-              id="is_active"
-              class="rounded"
-            />
-            <label for="is_active" class="text-sm text-white cursor-pointer">
-              Kunde ist aktiv
-            </label>
+          <div>
+            <label class="kit-label">Status</label>
+            <select v-model="formData.status" class="kit-input">
+              <option v-for="status in customerStatuses" :key="status.value" :value="status.value">
+                {{ status.label }}
+              </option>
+            </select>
           </div>
         </div>
       </div>

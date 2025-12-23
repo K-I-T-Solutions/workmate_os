@@ -46,11 +46,7 @@ export function useCustomers() {
       let filtered = response;
 
       if (filters?.status) {
-        filtered = filtered.filter((c) => {
-          if (filters.status === 'active') return c.is_active;
-          if (filters.status === 'inactive') return !c.is_active;
-          return true;
-        });
+        filtered = filtered.filter((c) => c.status === filters.status);
       }
 
       if (filters?.search) {

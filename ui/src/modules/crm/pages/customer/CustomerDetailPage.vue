@@ -3,6 +3,8 @@ import { ref, onMounted, computed } from 'vue';
 import { useCustomers } from '../../composables/useCustomers';
 import { useContacts } from '../../composables/useContacts';
 import { useCrmActivity } from '../../composables/useCrmActivity';
+import { apiClient } from '@/services/api/client';
+import { navigateToInvoice, createInvoiceForCustomer } from '@/services/navigation/crossAppNavigation';
 import {
   ChevronLeft,
   Edit,
@@ -20,6 +22,8 @@ import {
   Mail as MailIcon,
   MonitorPlay,
   FileText,
+  FolderOpen,
+  Receipt,
 } from 'lucide-vue-next';
 
 // Props
@@ -42,17 +46,60 @@ const { activities, loading: activitiesLoading, fetchCustomerActivities } = useC
 
 // State
 const showDeleteConfirm = ref(false);
+const projects = ref<any[]>([]);
+const invoices = ref<any[]>([]);
+const projectsLoading = ref(false);
+const invoicesLoading = ref(false);
 
 // Lifecycle
 onMounted(async () => {
   await loadCustomer(props.customerId);
   await loadContacts({ customerId: props.customerId });
   await fetchCustomerActivities(props.customerId, { limit: 10 });
+  await loadProjects();
+  await loadInvoices();
 });
 
 // Computed
 const customer = computed(() => currentCustomer.value);
 const primaryContact = computed(() => contacts.value.find((c) => c.is_primary) || null);
+
+const totalRevenue = computed(() => {
+  return invoices.value
+    .filter((inv: any) => inv.status === 'paid')
+    .reduce((sum: number, inv: any) => sum + (inv.total || 0), 0);
+});
+
+// Data Loading Functions
+async function loadProjects() {
+  projectsLoading.value = true;
+  try {
+    const response = await apiClient.get('/api/backoffice/projects', {
+      params: { customer_id: props.customerId }
+    });
+    projects.value = response.data || [];
+  } catch (error) {
+    console.error('Error loading projects:', error);
+    projects.value = [];
+  } finally {
+    projectsLoading.value = false;
+  }
+}
+
+async function loadInvoices() {
+  invoicesLoading.value = true;
+  try {
+    const response = await apiClient.get('/api/backoffice/invoices', {
+      params: { customer_id: props.customerId, limit: 100 }
+    });
+    invoices.value = response.data.items || [];
+  } catch (error) {
+    console.error('Error loading invoices:', error);
+    invoices.value = [];
+  } finally {
+    invoicesLoading.value = false;
+  }
+}
 
 // Actions
 async function handleDelete() {
@@ -70,14 +117,44 @@ async function handleSetPrimary(contactId: string) {
 }
 
 // Helpers
-function getStatusBadge(isActive: boolean) {
-  return isActive
-    ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
-    : 'bg-white/5 border-white/10 text-white/60';
+function getStatusBadge(status: string) {
+  const badges = {
+    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
+    inactive: 'bg-white/5 border-white/10 text-white/60',
+    lead: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
+    blocked: 'bg-red-500/20 border-red-400/30 text-red-200',
+  };
+  return badges[status as keyof typeof badges] || badges.inactive;
 }
 
-function getStatusLabel(isActive: boolean): string {
-  return isActive ? 'Aktiv' : 'Inaktiv';
+function getStatusLabel(status: string): string {
+  const labels = {
+    active: 'Aktiv',
+    inactive: 'Inaktiv',
+    lead: 'Lead',
+    blocked: 'Blockiert',
+  };
+  return labels[status as keyof typeof labels] || 'Inaktiv';
+}
+
+function getTypeBadge(type: string | null) {
+  const badges = {
+    creator: 'bg-purple-500/20 border-purple-400/30 text-purple-200',
+    individual: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
+    business: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
+    government: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
+  };
+  return type ? (badges[type as keyof typeof badges] || badges.business) : badges.business;
+}
+
+function getTypeLabel(type: string | null): string {
+  const labels = {
+    creator: 'Creator',
+    individual: 'Privatperson',
+    business: 'Unternehmen',
+    government: 'Behörde',
+  };
+  return type ? (labels[type as keyof typeof labels] || 'Unternehmen') : 'Unternehmen';
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -117,6 +194,70 @@ function getActivityLabel(type: string): string {
   };
   return labels[type] || type;
 }
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(value);
+}
+
+function getProjectStatusBadge(status: string) {
+  const badges: Record<string, string> = {
+    planning: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
+    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
+    on_hold: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
+    completed: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
+    cancelled: 'bg-red-500/20 border-red-400/30 text-red-200',
+  };
+  return badges[status] || 'bg-white/5 border-white/10 text-white/60';
+}
+
+function getProjectStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    planning: 'Planung',
+    active: 'Aktiv',
+    on_hold: 'Pausiert',
+    completed: 'Abgeschlossen',
+    cancelled: 'Abgebrochen',
+  };
+  return labels[status] || status;
+}
+
+function getInvoiceStatusBadge(status: string) {
+  const badges: Record<string, string> = {
+    draft: 'bg-white/5 border-white/10 text-white/60',
+    sent: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
+    paid: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
+    partial: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
+    overdue: 'bg-red-500/20 border-red-400/30 text-red-200',
+    cancelled: 'bg-red-500/20 border-red-400/30 text-red-200',
+  };
+  return badges[status] || 'bg-white/5 border-white/10 text-white/60';
+}
+
+function getInvoiceStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    draft: 'Entwurf',
+    sent: 'Versendet',
+    paid: 'Bezahlt',
+    partial: 'Teilweise bezahlt',
+    overdue: 'Überfällig',
+    cancelled: 'Storniert',
+  };
+  return labels[status] || status;
+}
+
+// Cross-App Navigation
+function handleInvoiceClick(invoiceId: string) {
+  navigateToInvoice(invoiceId);
+}
+
+function handleCreateInvoice() {
+  if (customer.value) {
+    createInvoiceForCustomer(customer.value.id);
+  }
+}
 </script>
 
 <template>
@@ -133,10 +274,18 @@ function getActivityLabel(type: string): string {
             <span
               :class="[
                 'px-2 py-1 rounded text-sm font-medium border',
-                getStatusBadge(customer.is_active),
+                getStatusBadge(customer.status),
               ]"
             >
-              {{ getStatusLabel(customer.is_active) }}
+              {{ getStatusLabel(customer.status) }}
+            </span>
+            <span
+              :class="[
+                'px-2 py-1 rounded text-sm font-medium border',
+                getTypeBadge(customer.type),
+              ]"
+            >
+              {{ getTypeLabel(customer.type) }}
             </span>
           </h1>
           <p class="text-sm text-white/60 mt-1">
@@ -235,11 +384,18 @@ function getActivityLabel(type: string): string {
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-white/60">Projekte:</span>
-              <span class="text-white font-medium">-</span>
+              <span v-if="projectsLoading" class="text-white/40">...</span>
+              <span v-else class="text-white font-medium">{{ projects.length }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/60">Rechnungen:</span>
+              <span v-if="invoicesLoading" class="text-white/40">...</span>
+              <span v-else class="text-white font-medium">{{ invoices.length }}</span>
             </div>
             <div class="flex justify-between text-sm pt-2 border-t border-white/10">
               <span class="text-white/60">Umsatz:</span>
-              <span class="text-white font-bold">-</span>
+              <span v-if="invoicesLoading" class="text-white/40">...</span>
+              <span v-else class="text-white font-bold">{{ formatCurrency(totalRevenue) }}</span>
             </div>
           </div>
         </div>
@@ -312,6 +468,117 @@ function getActivityLabel(type: string): string {
         <div v-else class="text-center py-8 text-white/40">
           <Users :size="40" class="mx-auto mb-2 opacity-50" />
           <p>Keine Kontakte vorhanden</p>
+        </div>
+      </div>
+
+      <!-- Projekte Section -->
+      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-white">Projekte</h3>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="projectsLoading" class="text-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+          <p class="text-white/60 text-sm mt-2">Lade Projekte...</p>
+        </div>
+
+        <!-- Projects -->
+        <div v-else-if="projects.length > 0" class="space-y-2">
+          <div
+            v-for="project in projects"
+            :key="project.id"
+            class="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition cursor-pointer"
+          >
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-orange-500/20 rounded-lg border border-orange-400/30">
+                <FolderOpen :size="16" class="text-orange-200" />
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-white">
+                    {{ project.title }}
+                  </span>
+                  <span
+                    :class="[
+                      'text-xs font-medium px-2 py-0.5 rounded border',
+                      getProjectStatusBadge(project.status)
+                    ]"
+                  >
+                    {{ getProjectStatusLabel(project.status) }}
+                  </span>
+                </div>
+                <div class="text-xs text-white/60">
+                  <span v-if="project.project_number">{{ project.project_number }}</span>
+                  <span v-if="project.start_date"> · Start: {{ new Date(project.start_date).toLocaleDateString('de-DE') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else class="text-center py-8 text-white/40">
+          <FolderOpen :size="40" class="mx-auto mb-2 opacity-50" />
+          <p>Keine Projekte vorhanden</p>
+        </div>
+      </div>
+
+      <!-- Rechnungen Section -->
+      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-white">Rechnungen</h3>
+          <button @click="handleCreateInvoice" class="kit-btn-primary text-sm">
+            <Plus :size="16" />
+            Neue Rechnung
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="invoicesLoading" class="text-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+          <p class="text-white/60 text-sm mt-2">Lade Rechnungen...</p>
+        </div>
+
+        <!-- Invoices -->
+        <div v-else-if="invoices.length > 0" class="space-y-2">
+          <div
+            v-for="invoice in invoices"
+            :key="invoice.id"
+            class="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition cursor-pointer"
+            @click="handleInvoiceClick(invoice.id)"
+          >
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
+                <Receipt :size="16" class="text-blue-200" />
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-white">
+                    {{ invoice.invoice_number }}
+                  </span>
+                  <span
+                    :class="[
+                      'text-xs font-medium px-2 py-0.5 rounded border',
+                      getInvoiceStatusBadge(invoice.status)
+                    ]"
+                  >
+                    {{ getInvoiceStatusLabel(invoice.status) }}
+                  </span>
+                </div>
+                <div class="text-xs text-white/60">
+                  <span v-if="invoice.issued_date">{{ new Date(invoice.issued_date).toLocaleDateString('de-DE') }}</span>
+                  <span v-if="invoice.total"> · {{ formatCurrency(invoice.total) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else class="text-center py-8 text-white/40">
+          <Receipt :size="40" class="mx-auto mb-2 opacity-50" />
+          <p>Keine Rechnungen vorhanden</p>
         </div>
       </div>
 

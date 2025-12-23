@@ -5,10 +5,55 @@ CRUD Operations für CRM Module.
 Datenbank-Operationen für Customer und Contact Models.
 """
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from uuid import UUID
 from typing import Optional
 
 from . import models, schemas
+
+
+# === Helper Functions ===
+
+def _generate_customer_number(db: Session) -> str:
+    """
+    Generiert die nächste Kundennummer im Format KIT-CUS-XXXXXX.
+
+    Beispiele:
+    - KIT-CUS-000001
+    - KIT-CUS-000042
+    - KIT-CUS-001337
+
+    Args:
+        db: Database Session
+
+    Returns:
+        Formatierte Kundennummer
+    """
+    # Hole die höchste existierende Nummer
+    # customer_number Format: "KIT-CUS-000001"
+    # Wir extrahieren nur die Zahl am Ende
+
+    last_customer = (
+        db.query(models.Customer)
+        .filter(models.Customer.customer_number.isnot(None))
+        .order_by(models.Customer.customer_number.desc())
+        .first()
+    )
+
+    if last_customer and last_customer.customer_number:
+        try:
+            # Extrahiere die Zahl aus "KIT-CUS-000001"
+            number_part = last_customer.customer_number.split('-')[-1]
+            next_number = int(number_part) + 1
+        except (ValueError, IndexError):
+            # Fallback falls Format nicht stimmt
+            next_number = 1
+    else:
+        # Erster Kunde
+        next_number = 1
+
+    # Formatiere mit führenden Nullen (6 Stellen)
+    return f"KIT-CUS-{next_number:06d}"
 
 
 # === Customer CRUD ===
@@ -66,7 +111,7 @@ def get_customer(db: Session, customer_id: UUID) -> Optional[models.Customer]:
 
 def create_customer(db: Session, data: schemas.CustomerCreate) -> models.Customer:
     """
-    Erstelle einen neuen Kunden.
+    Erstelle einen neuen Kunden mit automatisch generierter Kundennummer.
 
     Args:
         db: Database Session
@@ -75,7 +120,14 @@ def create_customer(db: Session, data: schemas.CustomerCreate) -> models.Custome
     Returns:
         Erstellter Customer
     """
-    new_customer = models.Customer(**data.model_dump())
+    # Generiere automatisch die nächste Kundennummer
+    customer_number = _generate_customer_number(db)
+
+    # Erstelle Customer mit generierter Nummer
+    customer_data = data.model_dump()
+    customer_data['customer_number'] = customer_number
+
+    new_customer = models.Customer(**customer_data)
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
