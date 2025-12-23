@@ -4,7 +4,7 @@ import { useCustomers } from '../../composables/useCustomers';
 import { useContacts } from '../../composables/useContacts';
 import { useCrmActivity } from '../../composables/useCrmActivity';
 import { apiClient } from '@/services/api/client';
-import { navigateToInvoice, createInvoiceForCustomer } from '@/services/navigation/crossAppNavigation';
+import { useAppManager } from '@/layouts/app-manager/useAppManager';
 import {
   ChevronLeft,
   Edit,
@@ -43,6 +43,7 @@ const emit = defineEmits<{
 const { currentCustomer, loading: customerLoading, loadCustomer, deleteCustomer } = useCustomers();
 const { contacts, loading: contactsLoading, loadContacts, setPrimaryContact } = useContacts();
 const { activities, loading: activitiesLoading, fetchCustomerActivities } = useCrmActivity();
+const { openWindow } = useAppManager();
 
 // State
 const showDeleteConfirm = ref(false);
@@ -114,6 +115,49 @@ async function handleDelete() {
 async function handleSetPrimary(contactId: string) {
   if (!customer.value) return;
   await setPrimaryContact(customer.value.id, contactId);
+}
+
+// Cross-App Navigation
+function openProjectsForCustomer() {
+  openWindow('projects', {
+    initialView: 'projects',
+    filterByCustomer: props.customerId,
+  });
+}
+
+function openProject(projectId: string) {
+  openWindow('projects', {
+    initialView: 'project-detail',
+    initialProjectId: projectId,
+  });
+}
+
+function createProject() {
+  openWindow('projects', {
+    initialView: 'project-create',
+    prefilledCustomerId: props.customerId,
+  });
+}
+
+function openInvoicesForCustomer() {
+  openWindow('invoices', {
+    initialView: 'list',
+    filterByCustomer: props.customerId,
+  });
+}
+
+function openInvoice(invoiceId: string) {
+  openWindow('invoices', {
+    initialView: 'detail',
+    initialInvoiceId: invoiceId,
+  });
+}
+
+function handleCreateInvoice() {
+  openWindow('invoices', {
+    initialView: 'create',
+    prefilledCustomerId: props.customerId,
+  });
 }
 
 // Helpers
@@ -246,17 +290,6 @@ function getInvoiceStatusLabel(status: string): string {
     cancelled: 'Storniert',
   };
   return labels[status] || status;
-}
-
-// Cross-App Navigation
-function handleInvoiceClick(invoiceId: string) {
-  navigateToInvoice(invoiceId);
-}
-
-function handleCreateInvoice() {
-  if (customer.value) {
-    createInvoiceForCustomer(customer.value.id);
-  }
 }
 </script>
 
@@ -475,6 +508,20 @@ function handleCreateInvoice() {
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-white">Projekte</h3>
+          <div class="flex gap-2">
+            <button
+              v-if="projects.length > 0"
+              @click="openProjectsForCustomer"
+              class="kit-btn-ghost text-sm"
+            >
+              <FolderOpen :size="16" />
+              Alle Projekte
+            </button>
+            <button @click="createProject" class="kit-btn-primary text-sm">
+              <Plus :size="16" />
+              Neues Projekt
+            </button>
+          </div>
         </div>
 
         <!-- Loading -->
@@ -489,6 +536,7 @@ function handleCreateInvoice() {
             v-for="project in projects"
             :key="project.id"
             class="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition cursor-pointer"
+            @click="openProject(project.id)"
           >
             <div class="flex items-center gap-3">
               <div class="p-2 bg-orange-500/20 rounded-lg border border-orange-400/30">
@@ -528,10 +576,20 @@ function handleCreateInvoice() {
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-white">Rechnungen</h3>
-          <button @click="handleCreateInvoice" class="kit-btn-primary text-sm">
-            <Plus :size="16" />
-            Neue Rechnung
-          </button>
+          <div class="flex gap-2">
+            <button
+              v-if="invoices.length > 0"
+              @click="openInvoicesForCustomer"
+              class="kit-btn-ghost text-sm"
+            >
+              <Receipt :size="16" />
+              Alle Rechnungen
+            </button>
+            <button @click="handleCreateInvoice" class="kit-btn-primary text-sm">
+              <Plus :size="16" />
+              Neue Rechnung
+            </button>
+          </div>
         </div>
 
         <!-- Loading -->
@@ -546,7 +604,7 @@ function handleCreateInvoice() {
             v-for="invoice in invoices"
             :key="invoice.id"
             class="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition cursor-pointer"
-            @click="handleInvoiceClick(invoice.id)"
+            @click="openInvoice(invoice.id)"
           >
             <div class="flex items-center gap-3">
               <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">

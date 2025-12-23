@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
+@import "./styles/themes.css";
+@import "./styles/theme-utilities.css";
 @import "./styles/components/button.css";
 @import "./styles/components/kit-components.css";
 
@@ -32,21 +34,21 @@ body {
   width: 100%;
 }
 
-/* Scrollbar Styling */
+/* Scrollbar Styling - Now uses theme variables */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 145, 0, 0.3);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 145, 0, 0.5);
+  background: var(--scrollbar-thumb-hover);
 }

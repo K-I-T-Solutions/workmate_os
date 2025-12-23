@@ -9,21 +9,31 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Keep default colors but add theme-aware colors
         bg: {
           primary: "var(--color-bg-primary)",
+          secondary: "var(--color-bg-secondary)",
+          tertiary: "var(--color-bg-tertiary)",
         },
         panel: {
           glass: "var(--color-panel-glass)",
+          'glass-hover': "var(--color-panel-glass-hover)",
         },
         accent: {
           primary: "var(--color-accent-primary)",
+          'primary-hover': "var(--color-accent-primary-hover)",
+          secondary: "var(--color-accent-secondary)",
         },
         text: {
           primary: "var(--color-text-primary)",
           secondary: "var(--color-text-secondary)",
+          tertiary: "var(--color-text-tertiary)",
+          muted: "var(--color-text-muted)",
         },
         border: {
           light: "var(--color-border-light)",
+          medium: "var(--color-border-medium)",
+          strong: "var(--color-border-strong)",
         },
       },
 

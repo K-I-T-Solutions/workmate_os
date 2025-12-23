@@ -34,7 +34,7 @@
 import {
   Briefcase,
   Users,
-  Timer,
+  Clock,
   Receipt,
   Wallet,
   MessageSquare,
@@ -50,7 +50,7 @@ const { openWindow, focusWindow, restoreWindow, activeWindow, windows } = useApp
 const dockItems = [
   { id: "crm", label: "Kunden", icon: markRaw(Users) },
   { id: "projects", label: "Projekte", icon: markRaw(Briefcase) },
-  { id: "time", label: "Zeiterfassung", icon: markRaw(Timer) },
+  { id: "time-tracking", label: "Zeiterfassung", icon: markRaw(Clock) },
   { id: "invoices", label: "Rechnungen", icon: markRaw(Receipt) },
   { id: "finance", label: "Finanzen", icon: markRaw(Wallet) },
   { id: "notes", label: "Chat", icon: markRaw(MessageSquare) },
@@ -106,7 +106,7 @@ function handleDockClick(appId: string) {
   width: 100%;
   height: var(--os-dock-height);
   z-index: 50;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-panel-glass);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border-light);
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -167,15 +167,15 @@ function handleDockClick(appId: string) {
   width: 3rem;
   height: 3rem;
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-panel-glass);
   border: 1px solid var(--color-border-light);
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .dock-item:hover .dock-icon-wrapper {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--color-border-primary);
+  background: var(--color-panel-glass-hover);
+  border-color: var(--color-border-medium);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 

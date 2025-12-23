@@ -10,7 +10,7 @@ import { useProjectsNavigation } from './composables/useProjectsNavigation';
 const props = defineProps<{
   initialView?: string;
   initialProjectId?: string;
-  initialCustomerId?: string;
+  prefilledCustomerId?: string;
 }>();
 
 const {
@@ -69,7 +69,7 @@ onMounted(() => {
     <!-- Project Create -->
     <ProjectFormPage
       v-if="view === 'project-create'"
-      :initialCustomerId="initialCustomerId"
+      :prefilledCustomerId="prefilledCustomerId"
       @back="goProjects"
       @saved="goProjectDetail"
     />

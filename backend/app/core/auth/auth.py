@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import requests
-import jwt
+import jwt as pyjwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 from jwt.algorithms import RSAAlgorithm
 from fastapi import Depends, HTTPException, Request, status
@@ -79,14 +79,14 @@ async def get_current_user(
 
     token = creds.credentials
     try:
-        header = jwt.get_unverified_header(token)
+        header = pyjwt.get_unverified_header(token)
         keys = get_jwks()
         key_data = keys.get(header.get("kid"))
         if not key_data:
             raise HTTPException(status_code=401, detail="Unknown key ID in token header")
 
         public_key = RSAAlgorithm.from_jwk(key_data)
-        decoded = jwt.decode(
+        decoded = pyjwt.decode(
             token,
             key=public_key,
             algorithms=["RS256"],

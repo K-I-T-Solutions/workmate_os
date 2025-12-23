@@ -2,8 +2,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { useInvoices } from '../composables/useInvoices';
 import type { InvoiceStatus, Payment, PaymentMethod, PaymentCreateRequest, PaymentUpdateRequest } from '../types';
-import { navigateToCustomer } from '@/services/navigation/crossAppNavigation';
 import { apiClient } from '@/services/api/client';
+import { useAppManager } from '@/layouts/app-manager/useAppManager';
 import {
   ChevronLeft,
   Download,
@@ -44,6 +44,7 @@ const {
   downloadPdf,
   openPdf,
 } = useInvoices();
+const { openWindow } = useAppManager();
 
 // State
 const showDeleteConfirm = ref(false);
@@ -111,8 +112,19 @@ function handleOpenPdf() {
 
 // Cross-App Navigation
 function handleCustomerClick() {
-  if (!invoice.value?.customer) return;
-  navigateToCustomer(invoice.value.customer.id);
+  if (!invoice.value?.customer_id) return;
+  openWindow('crm', {
+    initialView: 'customer-detail',
+    initialCustomerId: invoice.value.customer_id,
+  });
+}
+
+function handleProjectClick() {
+  if (!invoice.value?.project_id) return;
+  openWindow('projects', {
+    initialView: 'project-detail',
+    initialProjectId: invoice.value.project_id,
+  });
 }
 
 // Helpers
@@ -318,7 +330,28 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
           </div>
           <div class="text-white font-medium">{{ invoice.customer?.name || 'Unbekannt' }}</div>
           <div class="text-sm text-white/60 mt-1">{{ invoice.customer?.email || '-' }}</div>
-          <div class="text-xs text-blue-300 mt-2">→ Zum Kunden</div>
+          <div class="flex items-center gap-1 text-xs text-blue-300 mt-2">
+            <ExternalLink :size="12" />
+            Zum Kunden
+          </div>
+        </div>
+
+        <!-- Project Info (if available) -->
+        <div
+          v-if="invoice.project_id"
+          class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition cursor-pointer"
+          @click="handleProjectClick"
+        >
+          <div class="flex items-center gap-2 text-white/60 mb-3">
+            <FileText :size="16" />
+            <h3 class="text-sm font-medium">Projekt</h3>
+          </div>
+          <div class="text-white font-medium">Projekt</div>
+          <div class="text-sm text-white/60 mt-1">{{ invoice.project_id }}</div>
+          <div class="flex items-center gap-1 text-xs text-blue-300 mt-2">
+            <ExternalLink :size="12" />
+            Zum Projekt
+          </div>
         </div>
 
         <!-- Dates -->

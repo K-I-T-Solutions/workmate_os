@@ -1,5 +1,17 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { RouterView } from 'vue-router';
+import { onMounted } from 'vue';
+import { useAuth } from '@/composables/useAuth';
+import { useTheme } from '@/composables/useTheme';
+
+const { user } = useAuth();
+const { initializeTheme } = useTheme();
+
+// Initialize theme on app mount
+onMounted(() => {
+  const userTheme = user.value?.theme;
+  initializeTheme(userTheme);
+});
 </script>
 
 <template>

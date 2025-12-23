@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useProjects } from '../../composables/useProjects';
-import { navigateToCustomer } from '@/services/navigation/crossAppNavigation';
+import { useAppManager } from '@/layouts/app-manager/useAppManager';
 import {
   ChevronLeft,
   Edit,
@@ -12,6 +12,10 @@ import {
   Clock,
   TrendingUp,
   AlertCircle,
+  Users,
+  Receipt,
+  Plus,
+  ExternalLink,
 } from 'lucide-vue-next';
 
 // Props
@@ -27,6 +31,7 @@ const emit = defineEmits<{
 
 // Composables
 const { currentProject, loading, loadProject, deleteProject } = useProjects();
+const { openWindow } = useAppManager();
 
 // State
 const showDeleteConfirm = ref(false);
@@ -47,6 +52,40 @@ async function handleDelete() {
   if (success) {
     emit('back');
   }
+}
+
+// Cross-App Navigation
+function openCustomer() {
+  if (!project.value) return;
+  openWindow('crm', {
+    initialView: 'customer-detail',
+    initialCustomerId: project.value.customer_id,
+  });
+}
+
+function openTimeTracking() {
+  if (!project.value) return;
+  openWindow('time-tracking', {
+    initialView: 'entries',
+    filterByProject: project.value.id,
+  });
+}
+
+function openInvoices() {
+  if (!project.value) return;
+  openWindow('invoices', {
+    initialView: 'list',
+    filterByProject: project.value.id,
+  });
+}
+
+function createInvoice() {
+  if (!project.value) return;
+  openWindow('invoices', {
+    initialView: 'create',
+    prefilledProjectId: project.value.id,
+    prefilledCustomerId: project.value.customer_id,
+  });
 }
 
 // Helpers
@@ -239,31 +278,54 @@ function formatCurrency(value: number | null): string {
         </div>
       </div>
 
-      <!-- Time Entries Section (Placeholder) -->
+      <!-- Related Data Section -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <Clock :size="20" class="text-white/60" />
-            <h3 class="font-semibold text-white">Zeiterfassung</h3>
-          </div>
-        </div>
-        <div class="text-center py-8 text-white/40">
-          <Clock :size="32" class="mx-auto mb-2 opacity-50" />
-          <p class="text-sm">Zeiterfassungs-Modul wird noch implementiert</p>
-        </div>
-      </div>
+        <h3 class="font-semibold text-white mb-4">Verknüpfte Daten</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Customer Link -->
+          <button
+            @click="openCustomer"
+            class="flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition text-left"
+          >
+            <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
+              <Users :size="16" class="text-blue-200" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-white/50">Kunde</div>
+              <div class="text-sm font-medium text-white truncate">Zu Kunde</div>
+            </div>
+            <ExternalLink :size="14" class="text-white/40" />
+          </button>
 
-      <!-- Invoices Section (Placeholder) -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <Briefcase :size="20" class="text-white/60" />
-            <h3 class="font-semibold text-white">Rechnungen</h3>
-          </div>
-        </div>
-        <div class="text-center py-8 text-white/40">
-          <Briefcase :size="32" class="mx-auto mb-2 opacity-50" />
-          <p class="text-sm">Verknüpfung mit Rechnungen folgt</p>
+          <!-- Time Tracking Link -->
+          <button
+            @click="openTimeTracking"
+            class="flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition text-left"
+          >
+            <div class="p-2 bg-emerald-500/20 rounded-lg border border-emerald-400/30">
+              <Clock :size="16" class="text-emerald-200" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-white/50">Zeiterfassung</div>
+              <div class="text-sm font-medium text-white truncate">Zeiteinträge</div>
+            </div>
+            <ExternalLink :size="14" class="text-white/40" />
+          </button>
+
+          <!-- Invoices Link -->
+          <button
+            @click="openInvoices"
+            class="flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition text-left"
+          >
+            <div class="p-2 bg-purple-500/20 rounded-lg border border-purple-400/30">
+              <Receipt :size="16" class="text-purple-200" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-white/50">Rechnungen</div>
+              <div class="text-sm font-medium text-white truncate">Rechnungen</div>
+            </div>
+            <ExternalLink :size="14" class="text-white/40" />
+          </button>
         </div>
       </div>
     </template>

@@ -10,6 +10,23 @@ console.log('🔧 API Client Config:', {
   mode: import.meta.env.MODE,
 });
 
+// Event emitter for auth errors
+export const authEvents = {
+  onUnauthorized: [] as Array<() => void>,
+
+  subscribe(callback: () => void) {
+    this.onUnauthorized.push(callback);
+  },
+
+  unsubscribe(callback: () => void) {
+    this.onUnauthorized = this.onUnauthorized.filter(cb => cb !== callback);
+  },
+
+  emit() {
+    this.onUnauthorized.forEach(cb => cb());
+  }
+};
+
 // Axios Instance erstellen
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -17,16 +34,14 @@ export const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000, // 30 Sekunden
+  withCredentials: true, // For cookies/sessions if needed
 });
 
-// Request Interceptor (für später: JWT Token)
+// Request Interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Später: JWT Token aus Store holen
-    // const token = useAuthStore().token;
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    // Token is set via useAuth composable when logging in
+    // and via apiClient.defaults.headers.common['Authorization']
     return config;
   },
   (error) => {
@@ -42,25 +57,26 @@ apiClient.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          console.error('Unauthorized - bitte einloggen');
-          // Später: Redirect zu Login
+          console.error('❌ Unauthorized - Session expired or invalid token');
+          // Emit unauthorized event to trigger logout
+          authEvents.emit();
           break;
         case 403:
-          console.error('Forbidden - keine Berechtigung');
+          console.error('❌ Forbidden - Insufficient permissions');
           break;
         case 404:
-          console.error('Not Found');
+          console.error('❌ Not Found');
           break;
         case 500:
-          console.error('Server Error');
+          console.error('❌ Server Error');
           break;
         default:
-          console.error('API Error:', error.response.status);
+          console.error('❌ API Error:', error.response.status);
       }
     } else if (error.request) {
-      console.error('Network Error - keine Antwort vom Server');
+      console.error('❌ Network Error - keine Antwort vom Server');
     } else {
-      console.error('Error:', error.message);
+      console.error('❌ Error:', error.message);
     }
     return Promise.reject(error);
   }

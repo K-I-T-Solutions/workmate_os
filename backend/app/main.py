@@ -14,6 +14,7 @@ import logging
 from app.core.settings.config import settings
 
 # Module Imports
+from app.core.auth.routes import auth_router
 from app.modules.system.router import router as system_router
 from app.modules.employees.routes import router as employee_router
 from app.modules.documents.routes import router as documents_router
@@ -103,6 +104,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # === Module-Router ===
+app.include_router(auth_router, prefix="/api", tags=["Authentication"])
 app.include_router(system_router, prefix="/system", tags=["System"])
 app.include_router(employee_router, prefix="/api", tags=["Core"])
 app.include_router(documents_router, prefix="/api", tags=["Documents"])

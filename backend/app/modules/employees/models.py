@@ -66,6 +66,9 @@ class Employee(Base):
     employee_code = Column(String, nullable=False, unique=True, comment="KIT-0001 etc.")
     uuid_keycloak = Column(String, comment="Linked Keycloak user ID")
 
+    # Authentication
+    password_hash = Column(String, nullable=True, comment="Bcrypt hashed password for local auth")
+
     # Personal Info
     first_name = Column(String)
     last_name = Column(String)

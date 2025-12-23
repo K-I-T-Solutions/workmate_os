@@ -1,13 +1,29 @@
-@layer components{
-    .kit-label {
-      @apply block text-xs text-white/60 mb-1;
-    }
+@layer components {
+  .kit-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    margin-bottom: 0.25rem;
+  }
 
-   .kit-input {
-  background-color: var(--color-bg-primary);
-  @apply w-full border border-white/10 rounded
-         px-3 py-1.5 text-sm text-white
-         focus:outline-none focus:ring-2 focus:ring-orange-500;
-}
+  .kit-input {
+    width: 100%;
+    background-color: var(--color-bg-primary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    transition: all 0.2s;
+  }
 
+  .kit-input:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 2px rgba(255, 145, 0, 0.2);
+  }
+
+  .kit-input::placeholder {
+    color: var(--color-text-muted);
+  }
 }

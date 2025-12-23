@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useProjects } from '../composables/useProjects';
 import type { ProjectCreateRequest, ProjectUpdateRequest } from '../types/project';
+import { apiClient } from '@/services/api/client';
 import {
   ChevronLeft,
   Save,
@@ -11,7 +12,7 @@ import {
 // Props
 const props = defineProps<{
   projectId?: string; // Optional: wenn gesetzt = Edit-Mode
-  initialCustomerId?: string; // Für Create aus CRM
+  prefilledCustomerId?: string; // Für Create aus CRM
 }>();
 
 // Emits
@@ -52,7 +53,7 @@ const formData = ref<ProjectCreateRequest>({
   deadline: null,
   budget: null,
   hourly_rate: null,
-  customer_id: props.initialCustomerId || '',
+  customer_id: props.prefilledCustomerId || '',
   department_id: null,
   project_manager_id: null,
 });
@@ -60,12 +61,38 @@ const formData = ref<ProjectCreateRequest>({
 const saving = ref(false);
 const errors = ref<Record<string, string>>({});
 
+// Dropdown Data
+const employees = ref<any[]>([]);
+const departments = ref<any[]>([]);
+const loadingDropdowns = ref(false);
+
 // Computed
 const isEditMode = computed(() => !!props.projectId);
 const pageTitle = computed(() => isEditMode.value ? 'Projekt bearbeiten' : 'Neues Projekt');
 
+// Data Loading
+async function loadDropdownData() {
+  loadingDropdowns.value = true;
+  try {
+    const [employeesResponse, departmentsResponse] = await Promise.all([
+      apiClient.get('/api/employees'),
+      apiClient.get('/api/departments'),
+    ]);
+
+    employees.value = employeesResponse.data.employees || [];
+    departments.value = departmentsResponse.data || [];
+  } catch (error) {
+    console.error('Error loading dropdown data:', error);
+  } finally {
+    loadingDropdowns.value = false;
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Load dropdown data first
+  await loadDropdownData();
+
   if (props.projectId) {
     await loadProject(props.projectId);
     if (currentProject.value) {
@@ -215,6 +242,30 @@ async function handleSubmit() {
             </select>
           </div>
 
+          <!-- Projekt-Manager -->
+          <div>
+            <label class="kit-label">Projekt-Manager</label>
+            <select v-model="formData.project_manager_id" class="kit-input" :disabled="loadingDropdowns">
+              <option :value="null">Kein Projekt-Manager</option>
+              <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                {{ employee.first_name }} {{ employee.last_name }} ({{ employee.employee_code }})
+              </option>
+            </select>
+            <p v-if="loadingDropdowns" class="text-xs text-white/40 mt-1">Lade Mitarbeiter...</p>
+          </div>
+
+          <!-- Abteilung -->
+          <div>
+            <label class="kit-label">Abteilung</label>
+            <select v-model="formData.department_id" class="kit-input" :disabled="loadingDropdowns">
+              <option :value="null">Keine Abteilung</option>
+              <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                {{ dept.name }} ({{ dept.code }})
+              </option>
+            </select>
+            <p v-if="loadingDropdowns" class="text-xs text-white/40 mt-1">Lade Abteilungen...</p>
+          </div>
+
           <!-- Beschreibung -->
           <div class="md:col-span-2">
             <label class="kit-label">Beschreibung</label>
@@ -305,8 +356,7 @@ async function handleSubmit() {
       <!-- Section 4: Zuordnung (Hinweis) -->
       <div class="rounded-lg border border-blue-400/30 bg-blue-500/10 p-4">
         <p class="text-sm text-blue-200">
-          <strong>Hinweis:</strong> Kunde {{ isEditMode ? 'kann nach der Erstellung nicht geändert werden' : 'wird beim Speichern automatisch zugeordnet' }}.
-          Abteilungs- und Projektmanager-Zuordnung werden im nächsten Release verfügbar sein.
+          <strong>Hinweis:</strong> Der Kunde {{ isEditMode ? 'kann nach der Erstellung nicht mehr geändert werden' : 'wird beim Speichern automatisch zugeordnet' }}.
         </p>
       </div>
     </div>

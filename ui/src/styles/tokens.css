@@ -7,18 +7,10 @@
   /*
   ===========================================================
   🎨 COLORS
+  NOTE: Color tokens are now defined in themes.css
+  These are kept here as documentation but should not be used directly
   ===========================================================
   */
-
-  --color-bg-primary: #232223;
-  --color-panel-glass: rgba(255, 255, 255, 0.05);
-
-  --color-accent-primary: #ff9100;
-
-  --color-text-primary: #ffffff;
-  --color-text-secondary: rgba(255, 255, 255, 0.7);
-
-  --color-border-light: rgba(255, 255, 255, 0.1);
 
   /*
   ===========================================================

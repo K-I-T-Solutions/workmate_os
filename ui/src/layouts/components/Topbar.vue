@@ -49,14 +49,12 @@
           <span class="date-text">{{ shortDate }}</span>
         </div>
 
-        <!-- Profile -->
-        <button
-          class="profile-btn"
-          aria-label="Open profile menu"
-          @click="toggleProfileMenu"
-        >
-          <UserIcon class="w-4 h-4" />
-        </button>
+        <!-- User Dropdown -->
+        <UserDropdown
+          @open-profile="handleOpenProfile"
+          @open-settings="handleOpenSettings"
+          @logout="handleLogout"
+        />
       </div>
     </div>
   </header>
@@ -68,9 +66,9 @@ import {
   Menu,
   X,
   Clock,
-  User as UserIcon,
 } from "lucide-vue-next";
 import { WorkmateAssets } from "@/services/assets";
+import UserDropdown from "./UserDropdown.vue";
 
 /* Props */
 interface Props {
@@ -81,6 +79,9 @@ defineProps<Props>();
 /* Emits (optional, future-proof) */
 const emit = defineEmits<{
   (e: "toggle-menu", open: boolean): void;
+  (e: "open-profile"): void;
+  (e: "open-settings"): void;
+  (e: "logout"): void;
 }>();
 
 /* State */
@@ -93,8 +94,16 @@ function toggleMenu() {
   emit("toggle-menu", isMenuOpen.value);
 }
 
-function toggleProfileMenu() {
-  console.log("TODO: Profile menu");
+function handleOpenProfile() {
+  emit("open-profile");
+}
+
+function handleOpenSettings() {
+  emit("open-settings");
+}
+
+function handleLogout() {
+  emit("logout");
 }
 
 /* Clock */
@@ -141,7 +150,7 @@ onUnmounted(() => {
 .wm-topbar {
   height: var(--os-topbar-height);
   backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-panel-glass);
   border-bottom: 1px solid var(--color-border-light);
 }
 

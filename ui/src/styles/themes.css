@@ -1,0 +1,326 @@
+/* ===========================================================
+   🎨 WorkmateOS — Theme System
+   Multiple theme variants for K.I.T Solutions
+   =========================================================== */
+
+/* ===========================================================
+   K.I.T STANDARD (Default Dark Theme)
+   Based on Catppuccin Frappe
+   =========================================================== */
+:root,
+[data-theme="kit-standard"],
+[data-theme="catppuccin-frappe"] {
+  /* Background Colors */
+  --color-bg-primary: #232223;
+  --color-bg-secondary: #2a2829;
+  --color-bg-tertiary: #303030;
+  --color-panel-glass: rgba(255, 255, 255, 0.05);
+  --color-panel-glass-hover: rgba(255, 255, 255, 0.08);
+
+  /* Accent Colors */
+  --color-accent-primary: #ff9100;
+  --color-accent-primary-hover: #ffaa33;
+  --color-accent-secondary: #ff6b00;
+
+  /* Text Colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.7);
+  --color-text-tertiary: rgba(255, 255, 255, 0.5);
+  --color-text-muted: rgba(255, 255, 255, 0.4);
+
+  /* Border Colors */
+  --color-border-light: rgba(255, 255, 255, 0.1);
+  --color-border-medium: rgba(255, 255, 255, 0.2);
+  --color-border-strong: rgba(255, 255, 255, 0.3);
+
+  /* Status Colors */
+  --color-success: #a6e3a1;
+  --color-success-bg: rgba(166, 227, 161, 0.1);
+  --color-warning: #f9e2af;
+  --color-warning-bg: rgba(249, 226, 175, 0.1);
+  --color-error: #f38ba8;
+  --color-error-bg: rgba(243, 139, 168, 0.1);
+  --color-info: #89b4fa;
+  --color-info-bg: rgba(137, 180, 250, 0.1);
+
+  /* Scrollbar */
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 145, 0, 0.3);
+  --scrollbar-thumb-hover: rgba(255, 145, 0, 0.5);
+}
+
+/* ===========================================================
+   K.I.T WHITE (Light Theme)
+   Clean, professional light variant
+   =========================================================== */
+[data-theme="kit-white"] {
+  /* Background Colors */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fa;
+  --color-bg-tertiary: #e9ecef;
+  --color-panel-glass: rgba(0, 0, 0, 0.03);
+  --color-panel-glass-hover: rgba(0, 0, 0, 0.05);
+
+  /* Accent Colors */
+  --color-accent-primary: #ff9100;
+  --color-accent-primary-hover: #ff7700;
+  --color-accent-secondary: #ff6b00;
+
+  /* Text Colors */
+  --color-text-primary: #212529;
+  --color-text-secondary: #495057;
+  --color-text-tertiary: #6c757d;
+  --color-text-muted: #adb5bd;
+
+  /* Border Colors */
+  --color-border-light: rgba(0, 0, 0, 0.1);
+  --color-border-medium: rgba(0, 0, 0, 0.2);
+  --color-border-strong: rgba(0, 0, 0, 0.3);
+
+  /* Status Colors */
+  --color-success: #2d6a4f;
+  --color-success-bg: rgba(45, 106, 79, 0.1);
+  --color-warning: #e67700;
+  --color-warning-bg: rgba(230, 119, 0, 0.1);
+  --color-error: #d00000;
+  --color-error-bg: rgba(208, 0, 0, 0.1);
+  --color-info: #0077b6;
+  --color-info-bg: rgba(0, 119, 182, 0.1);
+
+  /* Scrollbar */
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(255, 145, 0, 0.3);
+  --scrollbar-thumb-hover: rgba(255, 145, 0, 0.6);
+}
+
+/* ===========================================================
+   K.I.T WHITE - Color Class Overrides
+   Make status colors darker for better contrast on light bg
+   =========================================================== */
+[data-theme="kit-white"] {
+  /* Blue Colors */
+  .text-blue-200,
+  .text-blue-300,
+  .text-blue-400 {
+    color: #1e40af !important; /* blue-800 */
+  }
+
+  .bg-blue-500\/20,
+  .bg-blue-500\/10 {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+  }
+
+  .border-blue-400\/30 {
+    border-color: rgba(37, 99, 235, 0.4) !important;
+  }
+
+  /* Emerald/Green Colors */
+  .text-emerald-200,
+  .text-emerald-300 {
+    color: #065f46 !important; /* emerald-800 */
+  }
+
+  .bg-emerald-500\/20,
+  .bg-emerald-500\/10 {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+  }
+
+  .border-emerald-400\/30 {
+    border-color: rgba(5, 150, 105, 0.4) !important;
+  }
+
+  /* Orange Colors */
+  .text-orange-200,
+  .text-orange-300 {
+    color: #c2410c !important; /* orange-800 */
+  }
+
+  .bg-orange-500\/20,
+  .bg-orange-400\/20,
+  .bg-orange-500\/10 {
+    background-color: rgba(249, 115, 22, 0.15) !important;
+  }
+
+  .border-orange-400\/30,
+  .border-orange-300\/30 {
+    border-color: rgba(234, 88, 12, 0.4) !important;
+  }
+
+  /* Red Colors */
+  .text-red-200,
+  .text-red-300 {
+    color: #991b1b !important; /* red-800 */
+  }
+
+  .bg-red-500\/20,
+  .bg-red-500\/10 {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+  }
+
+  .border-red-400\/30 {
+    border-color: rgba(220, 38, 38, 0.4) !important;
+  }
+
+  /* Yellow Colors */
+  .text-yellow-200,
+  .text-yellow-300 {
+    color: #854d0e !important; /* yellow-800 */
+  }
+
+  .bg-yellow-500\/20,
+  .bg-yellow-500\/10 {
+    background-color: rgba(234, 179, 8, 0.15) !important;
+  }
+
+  .border-yellow-400\/30 {
+    border-color: rgba(202, 138, 4, 0.4) !important;
+  }
+
+  /* Purple Colors */
+  .text-purple-200,
+  .text-purple-300 {
+    color: #6b21a8 !important; /* purple-800 */
+  }
+
+  .bg-purple-500\/20,
+  .bg-purple-500\/10 {
+    background-color: rgba(168, 85, 247, 0.15) !important;
+  }
+
+  .border-purple-400\/30 {
+    border-color: rgba(147, 51, 234, 0.4) !important;
+  }
+
+  /* Pink Colors */
+  .text-pink-200,
+  .text-pink-300 {
+    color: #9f1239 !important; /* pink-800 */
+  }
+
+  .bg-pink-500\/20,
+  .bg-pink-500\/10 {
+    background-color: rgba(236, 72, 153, 0.15) !important;
+  }
+
+  .border-pink-400\/30 {
+    border-color: rgba(219, 39, 119, 0.4) !important;
+  }
+
+  /* Indigo Colors */
+  .text-indigo-200,
+  .text-indigo-300 {
+    color: #3730a3 !important; /* indigo-800 */
+  }
+
+  .bg-indigo-500\/20,
+  .bg-indigo-500\/10 {
+    background-color: rgba(99, 102, 241, 0.15) !important;
+  }
+
+  .border-indigo-400\/30 {
+    border-color: rgba(79, 70, 229, 0.4) !important;
+  }
+}
+
+/* ===========================================================
+   K.I.T DARK BLUE (Alternative Dark Theme)
+   Deep blue tones for reduced eye strain
+   =========================================================== */
+[data-theme="kit-dark-blue"] {
+  /* Background Colors */
+  --color-bg-primary: #0d1b2a;
+  --color-bg-secondary: #1b263b;
+  --color-bg-tertiary: #263850;
+  --color-panel-glass: rgba(255, 255, 255, 0.05);
+  --color-panel-glass-hover: rgba(255, 255, 255, 0.08);
+
+  /* Accent Colors */
+  --color-accent-primary: #ff9100;
+  --color-accent-primary-hover: #ffaa33;
+  --color-accent-secondary: #ff6b00;
+
+  /* Text Colors */
+  --color-text-primary: #e0e1dd;
+  --color-text-secondary: rgba(224, 225, 221, 0.7);
+  --color-text-tertiary: rgba(224, 225, 221, 0.5);
+  --color-text-muted: rgba(224, 225, 221, 0.4);
+
+  /* Border Colors */
+  --color-border-light: rgba(255, 255, 255, 0.1);
+  --color-border-medium: rgba(255, 255, 255, 0.2);
+  --color-border-strong: rgba(255, 255, 255, 0.3);
+
+  /* Status Colors */
+  --color-success: #06ffa5;
+  --color-success-bg: rgba(6, 255, 165, 0.1);
+  --color-warning: #ffe66d;
+  --color-warning-bg: rgba(255, 230, 109, 0.1);
+  --color-error: #ff006e;
+  --color-error-bg: rgba(255, 0, 110, 0.1);
+  --color-info: #4cc9f0;
+  --color-info-bg: rgba(76, 201, 240, 0.1);
+
+  /* Scrollbar */
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 145, 0, 0.3);
+  --scrollbar-thumb-hover: rgba(255, 145, 0, 0.5);
+}
+
+/* ===========================================================
+   K.I.T MIDNIGHT (Ultra Dark Theme)
+   Pure black for OLED displays
+   =========================================================== */
+[data-theme="kit-midnight"] {
+  /* Background Colors */
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #0a0a0a;
+  --color-bg-tertiary: #141414;
+  --color-panel-glass: rgba(255, 255, 255, 0.03);
+  --color-panel-glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Accent Colors */
+  --color-accent-primary: #ff9100;
+  --color-accent-primary-hover: #ffaa33;
+  --color-accent-secondary: #ff6b00;
+
+  /* Text Colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.8);
+  --color-text-tertiary: rgba(255, 255, 255, 0.6);
+  --color-text-muted: rgba(255, 255, 255, 0.4);
+
+  /* Border Colors */
+  --color-border-light: rgba(255, 255, 255, 0.08);
+  --color-border-medium: rgba(255, 255, 255, 0.15);
+  --color-border-strong: rgba(255, 255, 255, 0.25);
+
+  /* Status Colors */
+  --color-success: #00ff87;
+  --color-success-bg: rgba(0, 255, 135, 0.1);
+  --color-warning: #ffcf00;
+  --color-warning-bg: rgba(255, 207, 0, 0.1);
+  --color-error: #ff0055;
+  --color-error-bg: rgba(255, 0, 85, 0.1);
+  --color-info: #00cfff;
+  --color-info-bg: rgba(0, 207, 255, 0.1);
+
+  /* Scrollbar */
+  --scrollbar-track: rgba(255, 255, 255, 0.03);
+  --scrollbar-thumb: rgba(255, 145, 0, 0.4);
+  --scrollbar-thumb-hover: rgba(255, 145, 0, 0.6);
+}
+
+/* ===========================================================
+   Update Scrollbar based on Theme
+   =========================================================== */
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}

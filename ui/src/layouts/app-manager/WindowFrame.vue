@@ -87,9 +87,9 @@ function close() {
 <style scoped>
 .window-frame {
   position: absolute;
-  background: #050509;
+  background: var(--color-bg-primary);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border-light);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
@@ -99,7 +99,7 @@ function close() {
 }
 
 .window-frame--active {
-  border-color: var(--color-accent-primary, #ff9100);
+  border-color: var(--color-accent-primary);
   box-shadow: 0 20px 70px rgba(0, 0, 0, 0.75);
 }
 
@@ -110,11 +110,7 @@ function close() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.06),
-    rgba(255, 255, 255, 0.02)
-  );
+  background: var(--color-bg-secondary);
   cursor: move;
   user-select: none;
 }
@@ -122,7 +118,7 @@ function close() {
 .window-title {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-text-primary);
 }
 
 .window-controls {
@@ -167,7 +163,7 @@ function close() {
   flex: 1;
   overflow: auto;
   padding: 20px;
-  background: #050509;
+  background: var(--color-bg-primary);
 }
 
 /* RESIZE HANDLE */
@@ -178,7 +174,7 @@ function close() {
   right: 4px;
   bottom: 4px;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--color-border-medium);
   border-top: none;
   border-left: none;
   cursor: se-resize;

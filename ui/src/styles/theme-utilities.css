@@ -1,0 +1,125 @@
+/* ===========================================================
+   🎨 Theme Utility Classes
+   Override Tailwind's default color classes with theme variables
+   This allows existing components to automatically adapt to themes
+   =========================================================== */
+
+@layer utilities {
+  /* Background Colors */
+  .bg-\[\#232223\] {
+    background-color: var(--color-bg-primary) !important;
+  }
+
+  /* Common Background Opacity Patterns - Tailwind escaped classes */
+  .bg-white\/5,
+  .bg-white\/3 {
+    background-color: var(--color-panel-glass) !important;
+  }
+
+  .bg-white\/8,
+  .bg-white\/10 {
+    background-color: var(--color-panel-glass-hover) !important;
+  }
+
+  /* Text Colors with Opacity */
+  .text-white\/80,
+  .text-white\/70 {
+    color: var(--color-text-secondary) !important;
+  }
+
+  .text-white\/60,
+  .text-white\/50 {
+    color: var(--color-text-tertiary) !important;
+  }
+
+  .text-white\/40 {
+    color: var(--color-text-muted) !important;
+  }
+
+  /* Border Colors with Opacity */
+  .border-white\/10 {
+    border-color: var(--color-border-light) !important;
+  }
+
+  .border-white\/20 {
+    border-color: var(--color-border-medium) !important;
+  }
+
+  .border-white\/30 {
+    border-color: var(--color-border-strong) !important;
+  }
+
+  /* Divide Colors (for lists with dividers) */
+  .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--color-border-light) !important;
+  }
+
+  /* Ring Colors (for focus states) */
+  .ring-white\/10 {
+    --tw-ring-color: var(--color-border-light) !important;
+  }
+}
+
+/* Specific color overrides for theme consistency */
+.text-white {
+  color: var(--color-text-primary) !important;
+}
+
+.bg-gray-900,
+.bg-gray-800,
+.bg-\[#2a2829\] {
+  background-color: var(--color-bg-secondary) !important;
+}
+
+.bg-gray-700,
+.bg-\[#303030\] {
+  background-color: var(--color-bg-tertiary) !important;
+}
+
+/* Accent Colors */
+.bg-\[\#ff9100\],
+.text-\[\#ff9100\],
+.border-\[\#ff9100\] {
+  background-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+/* Status Color Overrides for Light Theme Compatibility */
+[data-theme="kit-white"] .text-white {
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="kit-white"] .bg-gray-900,
+[data-theme="kit-white"] .bg-gray-800 {
+  background-color: var(--color-bg-secondary) !important;
+}
+
+/* Placeholder text colors */
+::placeholder {
+  color: var(--color-text-muted) !important;
+  opacity: 1;
+}
+
+::-webkit-input-placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+::-moz-placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+:-ms-input-placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+/* Selection colors */
+::selection {
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+}
+
+::-moz-selection {
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+}
