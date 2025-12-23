@@ -135,7 +135,7 @@ def get_invoice_by_number(
 # ============================================================================
 
 @router.post(
-    "/",
+    "",
     response_model=schemas.InvoiceResponse,
     status_code=status.HTTP_201_CREATED
 )
