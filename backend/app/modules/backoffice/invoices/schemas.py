@@ -159,7 +159,7 @@ class CustomerBriefResponse(BaseModel):
 
 class InvoiceBase(BaseModel):
     """Base Schema für Invoices."""
-    invoice_number: str = Field(..., min_length=1, max_length=50, description="Rechnungsnummer")
+    invoice_number: Optional[str] = Field(None, min_length=1, max_length=50, description="Rechnungsnummer (optional, wird automatisch generiert)")
     issued_date: Optional[date] = Field(None, description="Rechnungsdatum")
     due_date: Optional[date] = Field(None, description="Fälligkeitsdatum")
     customer_id: uuid.UUID = Field(..., description="Zugehöriger Kunde")
@@ -221,6 +221,7 @@ class InvoiceStatusUpdate(BaseModel):
 class InvoiceResponse(InvoiceBase):
     """Schema für Invoice Response."""
     id: uuid.UUID
+    invoice_number: str  # Override: In Response always present
     total: Decimal
     subtotal: Decimal
     tax_amount: Decimal
