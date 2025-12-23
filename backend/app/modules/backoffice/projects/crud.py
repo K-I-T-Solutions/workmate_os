@@ -3,8 +3,11 @@ from sqlalchemy.orm import Session
 from app.modules.backoffice.projects import models, schemas
 
 
-def get_projects(db: Session, skip: int = 0, limit: int = 50):
-    return db.query(models.Project).offset(skip).limit(limit).all()
+def get_projects(db: Session, skip: int = 0, limit: int = 50, customer_id: str = None):
+    query = db.query(models.Project)
+    if customer_id:
+        query = query.filter(models.Project.customer_id == customer_id)
+    return query.offset(skip).limit(limit).all()
 
 
 def get_project(db: Session, project_id: str):

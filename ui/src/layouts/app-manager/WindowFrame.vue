@@ -15,9 +15,14 @@
         {{ win.title }}
       </span>
 
-      <button class="window-close" @click.stop="close">
-        ✕
-      </button>
+      <div class="window-controls">
+        <button class="window-minimize" @click.stop="minimize" title="Minimieren">
+          −
+        </button>
+        <button class="window-close" @click.stop="close" title="Schließen">
+          ✕
+        </button>
+      </div>
     </div>
 
     <!-- CONTENT -->
@@ -39,7 +44,7 @@ const props = defineProps<{
   win: WindowApp;
 }>();
 
-const { activeWindow, closeWindow, focusWindow, startDragFor, startResizeFor } =
+const { activeWindow, closeWindow, minimizeWindow, focusWindow, startDragFor, startResizeFor } =
   useAppManager();
 
 const isActive = computed(() => activeWindow.value === props.win.id);
@@ -68,6 +73,10 @@ function startResize(e: MouseEvent) {
 
 function focus() {
   focusWindow(props.win.id);
+}
+
+function minimize() {
+  minimizeWindow(props.win.id);
 }
 
 function close() {
@@ -116,18 +125,41 @@ function close() {
   color: #ffffff;
 }
 
+.window-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.window-minimize,
 .window-close {
   width: 22px;
   height: 22px;
   border-radius: 999px;
   border: none;
-  background: #ef4444;
   color: white;
-  font-size: 0.8rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.window-minimize {
+  background: #facc15;
+}
+
+.window-minimize:hover {
+  opacity: 0.8;
+}
+
+.window-close {
+  background: #ef4444;
+}
+
+.window-close:hover {
+  opacity: 0.8;
 }
 
 /* CONTENT */

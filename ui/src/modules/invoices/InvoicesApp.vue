@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { useInvoicesNavigation } from './composables/useInvoicesNavigation';
 import InvoicesDashboardPage from './pages/InvoicesDashboardPage.vue';
 import InvoicesListPage from './pages/InvoicesListPage.vue';
 import InvoiceDetailPage from './pages/InvoiceDetailPage.vue';
 import InvoiceFormPage from './pages/InvoiceFormPage.vue';
+
+// Props for deep-linking from other apps
+const props = defineProps<{
+  initialView?: string;
+  initialInvoiceId?: string;
+  prefilledCustomerId?: string;
+}>();
 
 const {
   view,
@@ -24,6 +31,27 @@ const listKey = ref(0);
 watch(view, (newView) => {
   if (newView === 'list') {
     listKey.value++;
+  }
+});
+
+// Handle deep-linking on mount
+onMounted(() => {
+  if (props.initialView) {
+    switch (props.initialView) {
+      case 'detail':
+        if (props.initialInvoiceId) {
+          goDetail(props.initialInvoiceId);
+        }
+        break;
+      case 'create':
+        goCreate();
+        break;
+      case 'list':
+        goList();
+        break;
+      default:
+        break;
+    }
   }
 });
 </script>
@@ -57,6 +85,7 @@ watch(view, (newView) => {
     <!-- Create View -->
     <InvoiceFormPage
       v-if="view === 'create'"
+      :prefilledCustomerId="prefilledCustomerId"
       @back="goBack"
       @saved="goDetail"
     />

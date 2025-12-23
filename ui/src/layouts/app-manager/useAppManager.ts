@@ -12,6 +12,7 @@ export interface WindowApp {
   width: number;
   height: number;
   z: number;
+  minimized: boolean;
 }
 
 const windows = reactive<WindowApp[]>([]);
@@ -49,12 +50,16 @@ export const appManager = {
   windows,
   activeWindow,
 
-  openWindow(appId: string) {
+  openWindow(appId: string, props?: Record<string, any>) {
     const app = apps.find(a => a.id === appId);
     if (!app) return;
 
     const existing = windows.find(w => w.appId === appId);
     if (existing) {
+      // Update props if provided (for deep-linking)
+      if (props) {
+        Object.assign(existing.props ?? {}, props);
+      }
       appManager.focusWindow(existing.id);
       return existing.id;
     }
@@ -71,12 +76,13 @@ export const appManager = {
       appId: app.id,
       title: app.title,
       component: markRaw(app.component),
-      props: Object.create(null),
+      props: props ?? Object.create(null),
       width,
       height,
       x: (vw - width) / 2,
       y: (vh - height) / 2,
       z: ++zCounter,
+      minimized: false,
     };
 
     constrainWindow(win);
@@ -91,9 +97,32 @@ export const appManager = {
     if (i !== -1) windows.splice(i, 1);
   },
 
+  minimizeWindow(id: string) {
+    const win = windows.find(w => w.id === id);
+    if (!win) return;
+    win.minimized = true;
+    // If this was the active window, clear active
+    if (activeWindow.value === id) {
+      activeWindow.value = null;
+    }
+  },
+
+  restoreWindow(id: string) {
+    const win = windows.find(w => w.id === id);
+    if (!win) return;
+    win.minimized = false;
+    win.z = ++zCounter;
+    activeWindow.value = id;
+  },
+
   focusWindow(id: string) {
     const win = windows.find(w => w.id === id);
     if (!win) return;
+    // If minimized, restore it
+    if (win.minimized) {
+      appManager.restoreWindow(id);
+      return;
+    }
     win.z = ++zCounter;
     activeWindow.value = id;
   },

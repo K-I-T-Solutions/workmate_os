@@ -8,16 +8,17 @@
         <button
           v-for="item in dockItems"
           :key="item.id"
-          @click="openApp(item.id)"
+          @click="handleDockClick(item.id)"
           class="dock-item"
           :class="{ 'dock-item-active': isActive(item.id) }"
         >
           <!-- Icon Container -->
           <div class="dock-icon-wrapper">
-            <!-- Active Indicator Dot -->
-            <div v-if="isActive(item.id)" class="active-dot"></div>
             <component :is="item.icon" class="dock-icon" />
           </div>
+
+          <!-- Active Indicator Dot (below icon, like macOS) -->
+          <div v-if="isOpen(item.id)" class="active-dot"></div>
 
           <!-- Label -->
           <span class="dock-label">
@@ -43,16 +44,7 @@ import { useAppManager } from "../app-manager/useAppManager";
 import { apps } from "../app-manager/appRegistry";
 import { markRaw } from "vue";
 
-const { openWindow,activeWindow, windows } = useAppManager();
-
-
-// Öffnet eine App als Fenster
-function openApp(appId: string) {
-  const app = apps.find(a => a.id === appId);
-  if (!app) return;
-  openWindow(app.id);
-}
-
+const { openWindow, focusWindow, restoreWindow, activeWindow, windows } = useAppManager();
 
 // Dock items (App-Zuweisungen)
 const dockItems = [
@@ -64,14 +56,41 @@ const dockItems = [
   { id: "notes", label: "Chat", icon: markRaw(MessageSquare) },
 ];
 
-// Active State
-const isActive = (appId: string) => {
+// Check if any window of this app is open (even if minimized)
+function isOpen(appId: string): boolean {
+  return windows.some(w => w.appId === appId);
+}
+
+// Check if this app's window is currently active (focused)
+function isActive(appId: string): boolean {
   const winId = activeWindow.value;
   if (!winId) return false;
-  return windows.some(
-    (w) => w.id === winId && w.appId === appId
-  );
-};
+  return windows.some(w => w.id === winId && w.appId === appId);
+}
+
+// Handle dock icon click
+function handleDockClick(appId: string) {
+  // Find any window of this app
+  const existingWindow = windows.find(w => w.appId === appId);
+
+  if (existingWindow) {
+    // Window exists
+    if (existingWindow.minimized) {
+      // Restore from minimized
+      restoreWindow(existingWindow.id);
+    } else if (isActive(appId)) {
+      // If already active, minimize it (toggle behavior like macOS)
+      const appManager = useAppManager();
+      appManager.minimizeWindow(existingWindow.id);
+    } else {
+      // Focus the existing window
+      focusWindow(existingWindow.id);
+    }
+  } else {
+    // No window exists, open new one
+    openWindow(appId);
+  }
+}
 
 </script>
 
@@ -187,30 +206,20 @@ const isActive = (appId: string) => {
 }
 
 /* ============================================================
-   ACTIVE DOT INDICATOR
+   ACTIVE DOT INDICATOR (macOS style - below icon)
    ============================================================ */
 .active-dot {
-  position: absolute;
-  top: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   background: var(--color-accent-primary);
   border-radius: 50%;
   box-shadow: 0 0 8px rgba(var(--color-accent-primary-rgb, 99, 102, 241), 0.6);
-  animation: pulse-dot 2s ease-in-out infinite;
+  margin-top: -6px;
+  transition: all 200ms;
 }
 
-@keyframes pulse-dot {
-  0%, 100% {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: translateX(-50%) scale(1.2);
-  }
+.dock-item:hover .active-dot {
+  transform: scale(1.2);
 }
 
 /* ============================================================

@@ -14,6 +14,7 @@ import {
 // Props
 const props = defineProps<{
   invoiceId?: string; // Optional: wenn gesetzt = Edit-Mode
+  prefilledCustomerId?: string; // Optional: Customer ID vorauswählen (von CRM)
 }>();
 
 // Emits
@@ -122,6 +123,11 @@ onMounted(async () => {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 14);
     formData.value.due_date = dueDate.toISOString().split('T')[0];
+
+    // Set prefilled customer ID if provided (from cross-app navigation)
+    if (props.prefilledCustomerId) {
+      formData.value.customer_id = props.prefilledCustomerId;
+    }
   }
 });
 

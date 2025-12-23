@@ -1,15 +1,18 @@
 # app/modules/backoffice/projects/routes.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.core.settings.database import get_db
 from app.modules.backoffice.projects import crud, schemas
 
 router = APIRouter(prefix="/backoffice/projects", tags=["Backoffice Projects"])
 
 @router.get("/", response_model=List[schemas.ProjectResponse])
-def list_projects(db: Session = Depends(get_db)):
-    return crud.get_projects(db)
+def list_projects(
+    customer_id: Optional[str] = Query(None, description="Filter by customer ID"),
+    db: Session = Depends(get_db)
+):
+    return crud.get_projects(db, customer_id=customer_id)
 
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)

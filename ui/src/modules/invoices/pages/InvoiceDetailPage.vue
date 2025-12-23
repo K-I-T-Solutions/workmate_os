@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useInvoices } from '../composables/useInvoices';
-import type { InvoiceStatus } from '../types';
+import type { InvoiceStatus, Payment, PaymentMethod, PaymentCreateRequest, PaymentUpdateRequest } from '../types';
+import { navigateToCustomer } from '@/services/navigation/crossAppNavigation';
+import { apiClient } from '@/services/api/client';
 import {
   ChevronLeft,
   Download,
@@ -16,7 +18,8 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  FileText
+  FileText,
+  X
 } from 'lucide-vue-next';
 
 // Props
@@ -45,6 +48,30 @@ const {
 // State
 const showDeleteConfirm = ref(false);
 const statusLoading = ref(false);
+const showPaymentModal = ref(false);
+const editingPayment = ref<Payment | null>(null);
+const paymentLoading = ref(false);
+const paymentError = ref<string | null>(null);
+
+// Payment Form State
+const paymentForm = ref<PaymentCreateRequest>({
+  amount: 0,
+  payment_date: new Date().toISOString().split('T')[0],
+  method: 'bank_transfer',
+  reference: null,
+  note: null,
+});
+
+// Payment Methods
+const paymentMethods: { value: PaymentMethod; label: string }[] = [
+  { value: 'bank_transfer', label: 'Überweisung' },
+  { value: 'cash', label: 'Bargeld' },
+  { value: 'credit_card', label: 'Kreditkarte' },
+  { value: 'debit_card', label: 'EC-Karte' },
+  { value: 'paypal', label: 'PayPal' },
+  { value: 'sepa', label: 'SEPA-Lastschrift' },
+  { value: 'other', label: 'Sonstige' },
+];
 
 // Lifecycle
 onMounted(() => {
@@ -82,6 +109,12 @@ function handleOpenPdf() {
   openPdf(invoice.value.id, invoice.value.invoice_number);
 }
 
+// Cross-App Navigation
+function handleCustomerClick() {
+  if (!invoice.value?.customer) return;
+  navigateToCustomer(invoice.value.customer.id);
+}
+
 // Helpers
 function getStatusBadgeClass(status: InvoiceStatus): string {
   const classes = {
@@ -117,6 +150,103 @@ function formatCurrency(value: number): string {
 function formatDate(dateString: string | null): string {
   if (!dateString) return '-';
   return new Date(dateString).toLocaleDateString('de-DE');
+}
+
+// Payment Functions
+function openPaymentModal() {
+  if (!invoice.value) return;
+
+  editingPayment.value = null;
+  paymentForm.value = {
+    amount: invoice.value.outstanding_amount > 0 ? invoice.value.outstanding_amount : invoice.value.total,
+    payment_date: new Date().toISOString().split('T')[0],
+    method: 'bank_transfer',
+    reference: null,
+    note: null,
+  };
+  paymentError.value = null;
+  showPaymentModal.value = true;
+}
+
+function openEditPaymentModal(payment: Payment) {
+  editingPayment.value = payment;
+  paymentForm.value = {
+    amount: payment.amount,
+    payment_date: payment.payment_date.split('T')[0],
+    method: payment.method,
+    reference: payment.reference,
+    note: payment.note,
+  };
+  paymentError.value = null;
+  showPaymentModal.value = true;
+}
+
+function closePaymentModal() {
+  showPaymentModal.value = false;
+  editingPayment.value = null;
+  paymentError.value = null;
+}
+
+async function handleSavePayment() {
+  if (!invoice.value) return;
+
+  // Validation
+  if (paymentForm.value.amount <= 0) {
+    paymentError.value = 'Betrag muss größer als 0 sein';
+    return;
+  }
+
+  if (paymentForm.value.amount > invoice.value.outstanding_amount && !editingPayment.value) {
+    paymentError.value = `Betrag kann nicht größer als offener Betrag (${formatCurrency(invoice.value.outstanding_amount)}) sein`;
+    return;
+  }
+
+  paymentLoading.value = true;
+  paymentError.value = null;
+
+  try {
+    if (editingPayment.value) {
+      // Update existing payment
+      await apiClient.patch(
+        `/api/backoffice/invoices/payments/${editingPayment.value.id}`,
+        paymentForm.value
+      );
+    } else {
+      // Create new payment
+      await apiClient.post(
+        `/api/backoffice/invoices/${invoice.value.id}/payments`,
+        paymentForm.value
+      );
+    }
+
+    // Reload invoice to get updated data
+    await loadInvoice(props.invoiceId);
+    closePaymentModal();
+  } catch (err: any) {
+    paymentError.value = err.response?.data?.detail || 'Fehler beim Speichern der Zahlung';
+  } finally {
+    paymentLoading.value = false;
+  }
+}
+
+async function handleDeletePayment(paymentId: string) {
+  if (!confirm('Möchten Sie diese Zahlung wirklich löschen?')) return;
+
+  paymentLoading.value = true;
+
+  try {
+    await apiClient.delete(`/api/backoffice/invoices/payments/${paymentId}`);
+    await loadInvoice(props.invoiceId);
+  } catch (err: any) {
+    alert(err.response?.data?.detail || 'Fehler beim Löschen der Zahlung');
+  } finally {
+    paymentLoading.value = false;
+  }
+}
+
+function getPaymentMethodLabel(method: PaymentMethod): string {
+  const found = paymentMethods.find(m => m.value === method);
+  return found?.label || method;
 }
 </script>
 
@@ -178,13 +308,17 @@ function formatDate(dateString: string | null): string {
       <!-- Main Info Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Customer Info -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div
+          class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition cursor-pointer"
+          @click="handleCustomerClick"
+        >
           <div class="flex items-center gap-2 text-white/60 mb-3">
             <Building2 :size="16" />
             <h3 class="text-sm font-medium">Kunde</h3>
           </div>
           <div class="text-white font-medium">{{ invoice.customer?.name || 'Unbekannt' }}</div>
           <div class="text-sm text-white/60 mt-1">{{ invoice.customer?.email || '-' }}</div>
+          <div class="text-xs text-blue-300 mt-2">→ Zum Kunden</div>
         </div>
 
         <!-- Dates -->
@@ -279,7 +413,7 @@ function formatDate(dateString: string | null): string {
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-white">Zahlungen</h3>
-          <button class="kit-btn-primary text-sm">
+          <button @click="openPaymentModal" class="kit-btn-primary text-sm">
             <Plus :size="16" />
             Zahlung erfassen
           </button>
@@ -289,16 +423,37 @@ function formatDate(dateString: string | null): string {
           <div
             v-for="payment in invoice.payments"
             :key="payment.id"
-            class="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5"
+            class="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition group"
           >
-            <div>
-              <div class="text-white font-medium">{{ formatCurrency(payment.amount) }}</div>
-              <div class="text-xs text-white/60">
-                {{ formatDate(payment.payment_date) }} · {{ payment.method }}
-                <span v-if="payment.reference"> · {{ payment.reference }}</span>
+            <div class="flex-1">
+              <div class="flex items-center gap-3">
+                <CheckCircle :size="18" class="text-emerald-400 flex-shrink-0" />
+                <div>
+                  <div class="text-white font-medium">{{ formatCurrency(payment.amount) }}</div>
+                  <div class="text-xs text-white/60">
+                    {{ formatDate(payment.payment_date) }} · {{ getPaymentMethodLabel(payment.method) }}
+                    <span v-if="payment.reference"> · Ref: {{ payment.reference }}</span>
+                  </div>
+                  <div v-if="payment.note" class="text-xs text-white/40 mt-1">{{ payment.note }}</div>
+                </div>
               </div>
             </div>
-            <CheckCircle :size="18" class="text-emerald-400" />
+            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+              <button
+                @click="openEditPaymentModal(payment)"
+                class="p-1.5 rounded hover:bg-white/10 text-blue-300"
+                title="Bearbeiten"
+              >
+                <Edit :size="14" />
+              </button>
+              <button
+                @click="handleDeletePayment(payment.id)"
+                class="p-1.5 rounded hover:bg-white/10 text-red-300"
+                title="Löschen"
+              >
+                <Trash2 :size="14" />
+              </button>
+            </div>
           </div>
         </div>
         <div v-else class="text-center py-8 text-white/40">
@@ -341,6 +496,109 @@ function formatDate(dateString: string | null): string {
           <button @click="handleDelete" class="kit-btn-danger">
             <Trash2 :size="18" />
             Löschen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div
+      v-if="showPaymentModal"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click="closePaymentModal"
+    >
+      <div
+        class="rounded-lg border border-white/10 bg-stone-900 p-6 max-w-lg w-full"
+        @click.stop
+      >
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold text-white">
+            {{ editingPayment ? 'Zahlung bearbeiten' : 'Zahlung erfassen' }}
+          </h3>
+          <button @click="closePaymentModal" class="text-white/60 hover:text-white">
+            <X :size="20" />
+          </button>
+        </div>
+
+        <!-- Error Message -->
+        <div
+          v-if="paymentError"
+          class="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-400/30 text-red-200 text-sm"
+        >
+          {{ paymentError }}
+        </div>
+
+        <!-- Form -->
+        <div class="space-y-4">
+          <!-- Amount -->
+          <div>
+            <label class="kit-label">Betrag *</label>
+            <input
+              v-model.number="paymentForm.amount"
+              type="number"
+              step="0.01"
+              class="kit-input"
+              placeholder="0.00"
+              required
+            />
+            <p v-if="invoice" class="text-xs text-white/40 mt-1">
+              Offener Betrag: {{ formatCurrency(invoice.outstanding_amount) }}
+            </p>
+          </div>
+
+          <!-- Payment Date -->
+          <div>
+            <label class="kit-label">Zahlungsdatum *</label>
+            <input
+              v-model="paymentForm.payment_date"
+              type="date"
+              class="kit-input"
+              required
+            />
+          </div>
+
+          <!-- Payment Method -->
+          <div>
+            <label class="kit-label">Zahlungsmethode *</label>
+            <select v-model="paymentForm.method" class="kit-input">
+              <option v-for="method in paymentMethods" :key="method.value" :value="method.value">
+                {{ method.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Reference -->
+          <div>
+            <label class="kit-label">Referenz</label>
+            <input
+              v-model="paymentForm.reference"
+              type="text"
+              class="kit-input"
+              placeholder="z.B. Transaktions-ID, Belegnummer"
+            />
+          </div>
+
+          <!-- Note -->
+          <div>
+            <label class="kit-label">Notiz</label>
+            <textarea
+              v-model="paymentForm.note"
+              class="kit-input"
+              rows="3"
+              placeholder="Optionale Notiz zur Zahlung"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="flex gap-3 justify-end mt-6">
+          <button @click="closePaymentModal" class="kit-btn-ghost" :disabled="paymentLoading">
+            Abbrechen
+          </button>
+          <button @click="handleSavePayment" class="kit-btn-primary" :disabled="paymentLoading">
+            <span v-if="paymentLoading">Speichere...</span>
+            <span v-else>{{ editingPayment ? 'Aktualisieren' : 'Zahlung erfassen' }}</span>
           </button>
         </div>
       </div>
