@@ -7,9 +7,10 @@ import {
   CustomersListPage,
 } from "./pages";
 
+import CustomerFormPage from "./pages/CustomerFormPage.vue";
+import ContactFormPage from "./pages/ContactFormPage.vue";
+
 import { useCrmNavigation } from "./composables/useCrmNavigation";
-import CustomerForm from "./components/customer/CustomerForm.vue";
-import ContactForm from "./components/contacts/ContactForm.vue";
 
 const {
   view,
@@ -21,7 +22,9 @@ const {
   goContacts,
   goContactDetail,
   openCreateContact,
-  openCreateCustomer
+  openCreateCustomer,
+  goEditCustomer,
+  goEditContact,
 } = useCrmNavigation();
 </script>
 
@@ -63,20 +66,37 @@ const {
       :contactId="activeContactId!"
       @back="goContacts"
     />
-      <CustomerForm
+
+    <!-- Customer Create -->
+    <CustomerFormPage
       v-if="view === 'customer-create'"
-      :customer="null"
-      @close="goCustomers"
-      @saved="goCustomers"
+      @back="goCustomers"
+      @saved="goCustomerDetail"
     />
 
-
-    <ContactForm
-      v-if="view === 'contact-create'"
-      :contact="null"
+    <!-- Customer Edit -->
+    <CustomerFormPage
+      v-if="view === 'customer-edit'"
       :customerId="activeCustomerId!"
-      @close="goContacts"
-      @saved="goContacts"
+      @back="goCustomerDetail(activeCustomerId!)"
+      @saved="goCustomerDetail"
+    />
+
+    <!-- Contact Create -->
+    <ContactFormPage
+      v-if="view === 'contact-create'"
+      :customerId="activeCustomerId!"
+      @back="goContacts"
+      @saved="goContactDetail"
+    />
+
+    <!-- Contact Edit -->
+    <ContactFormPage
+      v-if="view === 'contact-edit'"
+      :customerId="activeCustomerId!"
+      :contactId="activeContactId!"
+      @back="goContactDetail(activeContactId!)"
+      @saved="goContactDetail"
     />
   </div>
 </template>

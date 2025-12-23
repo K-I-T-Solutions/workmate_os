@@ -4,10 +4,12 @@ export type CrmView =
   | "dashboard"
   | "customers"
   | "customer-detail"
+  | "customer-create"
+  | "customer-edit"
   | "contacts"
   | "contact-detail"
-  | "customer-create"
-  | "contact-create";
+  | "contact-create"
+  | "contact-edit";
 
 export function useCrmNavigation() {
   // ─── STATE ────────────────────────────────────────────────
@@ -47,12 +49,36 @@ export function useCrmNavigation() {
     view.value = "contact-detail";
   }
   function openCreateCustomer() {
-  view.value = "customer-create";
-}
+    view.value = "customer-create";
+    activeCustomerId.value = null;
+    activeContactId.value = null;
+  }
 
-function openCreateContact() {
-  view.value = "contact-create";
-}
+  function openCreateContact(customerId?: string) {
+    view.value = "contact-create";
+    if (customerId) {
+      activeCustomerId.value = customerId;
+    }
+    activeContactId.value = null;
+  }
+
+  /**
+   * Zur Kundenbearbeitung navigieren
+   */
+  function goEditCustomer(customerId: string) {
+    view.value = "customer-edit";
+    activeCustomerId.value = customerId;
+    activeContactId.value = null;
+  }
+
+  /**
+   * Zur Kontaktbearbeitung navigieren
+   */
+  function goEditContact(customerId: string, contactId: string) {
+    view.value = "contact-edit";
+    activeCustomerId.value = customerId;
+    activeContactId.value = contactId;
+  }
 
   // ─── EXPOSE API ───────────────────────────────────────────
   return {
@@ -65,7 +91,9 @@ function openCreateContact() {
     goCustomerDetail,
     goContacts,
     goContactDetail,
+    openCreateCustomer,
     openCreateContact,
-    openCreateCustomer
+    goEditCustomer,
+    goEditContact,
   };
 }
