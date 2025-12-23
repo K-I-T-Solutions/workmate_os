@@ -3,10 +3,6 @@ import axios, { type AxiosError, type AxiosInstance } from 'axios';
 // Base URL aus Environment oder Fallback
 const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://api.workmate.intern.phudevelopement.xyz';
 
-// Debug: Log API Base URL
-console.log('🔧 API Base URL:', API_BASE_URL);
-console.log('🔧 VITE_API_BASE env:', import.meta.env.VITE_API_BASE);
-
 // Axios Instance erstellen
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
