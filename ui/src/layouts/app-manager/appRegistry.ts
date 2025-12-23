@@ -2,6 +2,7 @@ import { markRaw } from "vue";
 import { icons } from "lucide-vue-next";
 import CrmApp from "@/modules/crm/CrmApp.vue";
 import InvoicesApp from "@/modules/invoices/InvoicesApp.vue";
+import ProjectsApp from "@/modules/projects/ProjectsApp.vue";
 
 export const apps = [
   {
@@ -19,6 +20,16 @@ export const apps = [
     title: "Rechnungen",
     icons: markRaw(icons.FileText),
     component: markRaw(InvoicesApp),
+    window: {
+      width: 1200,
+      height: 800
+    }
+  },
+  {
+    id: "projects",
+    title: "Projekte",
+    icons: markRaw(icons.Briefcase),
+    component: markRaw(ProjectsApp),
     window: {
       width: 1200,
       height: 800
