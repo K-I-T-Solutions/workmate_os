@@ -99,29 +99,45 @@ jobs:
       - name: Wait for services to be ready
         run: |
           echo "Waiting for services to start..."
-          sleep 10
+          sleep 15
 
-      - name: Health check with retries
+      - name: Verify containers are running
         run: |
-          echo "Checking backend health..."
+          echo "Checking if containers are running..."
+          ssh joshua@77.42.17.200 "cd /opt/workmate/infra && docker compose -f docker-compose.prod.yml ps"
+
+          echo "Verifying backend container is healthy..."
+          BACKEND_STATUS=$(ssh joshua@77.42.17.200 "docker inspect workmate_backend --format='{{.State.Status}}'")
+          echo "Backend status: $BACKEND_STATUS"
+
+          if [ "$BACKEND_STATUS" != "running" ]; then
+            echo "❌ Backend container is not running!"
+            ssh joshua@77.42.17.200 "cd /opt/workmate/infra && docker compose -f docker-compose.prod.yml logs --tail=50 backend"
+            exit 1
+          fi
+
+      - name: Health check via public URLs
+        run: |
+          echo "Checking backend health via public API..."
           MAX_RETRIES=12
           RETRY_COUNT=0
 
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if ssh joshua@77.42.17.200 "curl -f -s http://localhost:8000/system/health"; then
-              echo "✅ Backend is healthy!"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://api.workmate.kit-it-koblenz.de/system/health)
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend is healthy! (HTTP $HTTP_CODE)"
               break
             fi
             RETRY_COUNT=$((RETRY_COUNT + 1))
             if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              echo "Attempt $RETRY_COUNT/$MAX_RETRIES failed, waiting 5 seconds..."
+              echo "Attempt $RETRY_COUNT/$MAX_RETRIES - HTTP $HTTP_CODE, waiting 5 seconds..."
               sleep 5
             fi
           done
 
           if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
             echo "❌ Backend health check failed after $MAX_RETRIES attempts"
-            ssh joshua@77.42.17.200 "cd /opt/workmate/infra && docker compose -f docker-compose.prod.yml logs --tail=50 backend"
+            ssh joshua@77.42.17.200 "cd /opt/workmate/infra && docker compose -f docker-compose.prod.yml logs --tail=100 backend"
             exit 1
           fi
 
