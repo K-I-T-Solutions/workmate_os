@@ -38,37 +38,21 @@ jobs:
             --exclude 'venv' \
             ./ joshua@77.42.17.200:/opt/workmate/
 
-      - name: Create .env.prod locally
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
-          NEXTCLOUD_USER: ${{ secrets.NEXTCLOUD_USER }}
-          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
-          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
-          TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
+      - name: Create .env.prod on server directly
         run: |
-          cat > .env.prod <<'ENVEOF'
-          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          SECRET_KEY=${SECRET_KEY}
-          JWT_SECRET_KEY=${JWT_SECRET_KEY}
-          NEXTCLOUD_URL=${NEXTCLOUD_URL}
-          NEXTCLOUD_USER=${NEXTCLOUD_USER}
-          NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
+          ssh joshua@77.42.17.200 'cat > /opt/workmate/infra/.env.prod' <<ENVEOF
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          NEXTCLOUD_URL=${{ secrets.NEXTCLOUD_URL }}
+          NEXTCLOUD_USER=${{ secrets.NEXTCLOUD_USER }}
+          NEXTCLOUD_PASSWORD=${{ secrets.NEXTCLOUD_PASSWORD }}
           NEXTCLOUD_BASE_PATH=
-          ACME_EMAIL=${ACME_EMAIL}
-          TRAEFIK_DASHBOARD_AUTH=${TRAEFIK_DASHBOARD_AUTH}
+          ACME_EMAIL=${{ secrets.ACME_EMAIL }}
+          TRAEFIK_DASHBOARD_AUTH=${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
           UPLOAD_DIR=/root/workmate_os_uploads
           ASSETS_DIR=/app/assets
           ENVEOF
-          envsubst < .env.prod > .env.prod.tmp
-          mv .env.prod.tmp .env.prod
-
-      - name: Upload .env.prod to server
-        run: |
-          scp .env.prod joshua@77.42.17.200:/opt/workmate/infra/.env.prod
-          rm .env.prod
 
       - name: Verify secrets are set
         run: |
