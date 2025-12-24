@@ -5,6 +5,7 @@ import InvoicesApp from "@/modules/invoices/InvoicesApp.vue";
 import ProjectsApp from "@/modules/projects/ProjectsApp.vue";
 import TimeTrackingApp from "@/modules/time-tracking/TimeTrackingApp.vue";
 import ExpensesApp from "@/modules/expenses/ExpensesApp.vue";
+import FinanceApp from "@/modules/finance/FinanceApp.vue";
 
 export const apps = [
   {
@@ -55,6 +56,16 @@ export const apps = [
     window: {
       width: 1200,
       height: 800
+    }
+  },
+  {
+    id: "finance",
+    title: "Finanzen",
+    icons: markRaw(icons.Wallet),
+    component: markRaw(FinanceApp),
+    window: {
+      width: 1400,
+      height: 900
     }
   },
   // Weitere Apps können hier hinzugefügt werden
