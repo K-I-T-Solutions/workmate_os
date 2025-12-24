@@ -6,7 +6,7 @@
 <h3 align="center">The internal toolkit.</h3>
 
 <p align="center">
-  <a href="https://github.com/K-I-T-Solutions/workmate_os"><img src="https://img.shields.io/badge/Version-v0.5.0-orange?style=flat-square&logo=git" /></a>
+  <a href="https://github.com/K-I-T-Solutions/workmate_os"><img src="https://img.shields.io/badge/Version-v1.0.0-green?style=flat-square&logo=git" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Framework-Vue%203-42b883?style=flat-square&logo=vue.js" /></a>
   <a href="#"><img src="https://img.shields.io/badge/API-FastAPI-009688?style=flat-square&logo=fastapi" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Auth-Keycloak-ff9100?style=flat-square&logo=keycloak" /></a>
@@ -33,18 +33,19 @@ Ziel ist es, Verwaltungsarbeit **endlich einfach und modern** zu machen:
 
 ## 🧩 Module
 
-| Modul | Beschreibung |
-|:--|:--|
-| 👤 **HR / Personalverwaltung** | Mitarbeiterdaten, Verträge & Personalakten zentral verwalten |
-| 🕒 **Zeiterfassung** | Start/Stop-Erfassung, Tages- & Monatsübersicht, Export |
-| 📅 **Urlaub & Krankmeldung** | Digitale Workflows mit automatischen Status-Updates |
-| 🧾 **Finanzen & Abrechnung** | Leistungsübersicht, Stundenerfassung & Abrechnungs-Reports |
-| 🎫 **Ticketsystem** | Support & Aufgabenverwaltung mit Prioritäten & Fälligkeiten |
-| 💼 **CRM (Customer Relationship Management)** | Kunden, Projekte & Kommunikation im Überblick |
-| 📁 **DMS / Dokumentenverwaltung** | Sicherer Upload, Tagging & Zugriff nach Rollen |
-| 🔔 **Reminder / Fristen-System** | Automatische Erinnerungen & Statusfarben |
-| 📊 **Dashboard & KPIs** | Kennzahlen, Status & Aktivitätsübersicht |
-| 🧠 **Systemverwaltung** | Rollen, Berechtigungen, Keycloak-Integration & Audit-Logs |
+| Modul | Beschreibung | Status |
+|:--|:--|:--:|
+| 👤 **HR / Personalverwaltung** | Mitarbeiterdaten, Verträge & Personalakten zentral verwalten | ✅ |
+| 🕒 **Zeiterfassung** | Start/Stop-Erfassung, Tages- & Monatsübersicht, Export | ✅ |
+| 💼 **CRM** | Kundenverwaltung mit automatischer Kundennummer & Creator-Tracking | ✅ |
+| 📁 **Projekte** | Projektmanagement mit Kunden-Verknüpfung, Status & Filterung | ✅ |
+| 🧾 **Rechnungen** | Rechnungserstellung mit optionaler Rechnungsnummer | ✅ |
+| 💰 **Finanzen** | Zahlungen, Cashflow & Financial Reports | ✅ |
+| 💬 **Chat** | Interne Team-Kommunikation | ✅ |
+| 📁 **DMS / Dokumentenverwaltung** | Sicherer Upload, Tagging & Zugriff nach Rollen | ✅ |
+| 🔔 **Reminder / Fristen-System** | Automatische Erinnerungen & Statusfarben | ✅ |
+| 📊 **Dashboard & KPIs** | Kennzahlen, Status & Aktivitätsübersicht | ✅ |
+| 🧠 **Systemverwaltung** | Rollen, Berechtigungen & Audit-Logs | ✅ |
 
 ---
 
@@ -52,11 +53,28 @@ Ziel ist es, Verwaltungsarbeit **endlich einfach und modern** zu machen:
 
 | Bereich | Technologie |
 |:--|:--|
-| Frontend | Vue 3 + Vite + Tailwind CSS |
-| Backend | FastAPI + SQLAlchemy + PostgreSQL |
-| Authentifizierung | Keycloak (Realm „kit“) + Passkeys / SSO |
-| Infrastruktur | Docker Compose + Caddy (Reverse Proxy) |
-| Design | Catppuccin Frappe + K.I.T. Solutions Branding |
+| Frontend | Vue 3 + Vite + Tailwind CSS 4 |
+| Backend | FastAPI + SQLAlchemy + PostgreSQL 16 |
+| Authentifizierung | JWT-basierte Authentifizierung |
+| Infrastruktur | Docker Compose + Traefik (Reverse Proxy & SSL) |
+| Design | Custom Dark Theme + K.I.T. Solutions Branding |
+| CI/CD | GitHub Actions (automatisches Deployment) |
+
+---
+
+## 🌐 Production
+
+Die Anwendung läuft produktiv auf:
+
+* 🖥️ **Frontend:** [https://workmate.kit-it-koblenz.de](https://workmate.kit-it-koblenz.de)
+* 🌐 **API:** [https://api.workmate.kit-it-koblenz.de](https://api.workmate.kit-it-koblenz.de)
+* 📚 **API Docs:** [https://api.workmate.kit-it-koblenz.de/docs](https://api.workmate.kit-it-koblenz.de/docs)
+
+**Deployment:**
+- Automatisches Deployment via GitHub Actions bei Push auf `main`
+- Docker Compose mit Traefik Reverse Proxy
+- Let's Encrypt SSL-Zertifikate
+- Vollständig containerisiert (PostgreSQL, Backend, Frontend)
 
 ---
 
@@ -71,13 +89,12 @@ make ui-up
 
 # Gesamtes Dev-System
 make dev-up
-````
+```
 
-Lokale Umgebung:
-
-* 🌐 **API:** [https://api.workmate.test](https://api.workmate.test)
-* 🖥️ **UI:** [https://ui.workmate.test](https://ui.workmate.test)
-* 🔐 **Login:** [https://login.workmate.test](https://login.workmate.test)
+**Branch-Strategie:**
+- `main` - Production-Branch (automatisches Deployment)
+- `dev` - Development-Branch für neue Features
+- Feature-Branches → PR zu `dev` → PR zu `main`
 
 ---
 
