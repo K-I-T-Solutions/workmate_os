@@ -49,19 +49,19 @@ jobs:
           ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
           TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
         run: |
-          cat > .env.prod <<'EOF'
-POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-SECRET_KEY=${SECRET_KEY}
-JWT_SECRET_KEY=${JWT_SECRET_KEY}
-NEXTCLOUD_URL=${NEXTCLOUD_URL}
-NEXTCLOUD_USER=${NEXTCLOUD_USER}
-NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
-NEXTCLOUD_BASE_PATH=
-ACME_EMAIL=${ACME_EMAIL}
-TRAEFIK_DASHBOARD_AUTH=${TRAEFIK_DASHBOARD_AUTH}
-UPLOAD_DIR=/root/workmate_os_uploads
-ASSETS_DIR=/app/assets
-EOF
+          cat > .env.prod <<'ENVEOF'
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          SECRET_KEY=${SECRET_KEY}
+          JWT_SECRET_KEY=${JWT_SECRET_KEY}
+          NEXTCLOUD_URL=${NEXTCLOUD_URL}
+          NEXTCLOUD_USER=${NEXTCLOUD_USER}
+          NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD}
+          NEXTCLOUD_BASE_PATH=
+          ACME_EMAIL=${ACME_EMAIL}
+          TRAEFIK_DASHBOARD_AUTH=${TRAEFIK_DASHBOARD_AUTH}
+          UPLOAD_DIR=/root/workmate_os_uploads
+          ASSETS_DIR=/app/assets
+          ENVEOF
           envsubst < .env.prod > .env.prod.tmp
           mv .env.prod.tmp .env.prod
 
