@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useProjects } from '../../composables/useProjects';
+import { useAppManager } from '@/layouts/app-manager/useAppManager';
 import {
   Briefcase,
   CheckCircle,
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 
 // Composables
 const { projects, loading, loadProjects } = useProjects();
+const { openWindow } = useAppManager();
 
 // Lifecycle
 onMounted(() => {
@@ -79,6 +81,10 @@ function formatCurrency(value: number): string {
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('de-DE');
+}
+
+function openTimeTracking() {
+  openWindow('time-tracking');
 }
 </script>
 
@@ -251,11 +257,11 @@ function formatDate(dateString: string): string {
         <div class="text-xs text-white/60 mt-1">Projekt erstellen</div>
       </button>
 
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4 opacity-50 text-left">
-        <Clock :size="20" class="text-white/40 mb-2" />
+      <button @click="openTimeTracking" class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition text-left">
+        <Clock :size="20" class="text-purple-300 mb-2" />
         <div class="font-semibold text-white">Zeiterfassung</div>
-        <div class="text-xs text-white/60 mt-1">Folgt im nächsten Release</div>
-      </div>
+        <div class="text-xs text-white/60 mt-1">Zeiten verwalten</div>
+      </button>
     </div>
   </div>
 </template>

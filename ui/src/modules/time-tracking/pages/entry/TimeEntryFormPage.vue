@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useTimeTracking } from '../../composables/useTimeTracking';
 import type { TimeEntryCreateRequest } from '../../types/timeEntry';
+import { apiClient } from '@/services/api/client';
 import {
   ChevronLeft,
   Save,
@@ -42,6 +43,11 @@ const hourlyRate = ref<number | null>(null);
 // UI State
 const validationError = ref<string | null>(null);
 
+// Dropdown Data
+const employees = ref<any[]>([]);
+const projects = ref<any[]>([]);
+const loadingDropdowns = ref(false);
+
 // Computed
 const isEditMode = computed(() => !!props.entryId);
 
@@ -59,8 +65,29 @@ const taskTypeOptions = [
   { value: 'other', label: 'Sonstiges' },
 ];
 
+// Data Loading
+async function loadDropdownData() {
+  loadingDropdowns.value = true;
+  try {
+    const [employeesResponse, projectsResponse] = await Promise.all([
+      apiClient.get('/api/employees'),
+      apiClient.get('/api/projects'),
+    ]);
+
+    employees.value = employeesResponse.data.employees || [];
+    projects.value = projectsResponse.data || [];
+  } catch (error) {
+    console.error('Error loading dropdown data:', error);
+  } finally {
+    loadingDropdowns.value = false;
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Load dropdown data first
+  await loadDropdownData();
+
   if (isEditMode.value && props.entryId) {
     await loadEntry(props.entryId);
     if (currentEntry.value) {
@@ -290,32 +317,33 @@ function handleCancel() {
             </select>
           </div>
 
-          <!-- Project ID -->
+          <!-- Project -->
           <div>
             <label class="kit-label flex items-center gap-1">
               <Briefcase :size="14" />
-              Projekt-ID
+              Projekt
             </label>
-            <input
-              v-model="projectId"
-              type="text"
-              class="kit-input"
-              placeholder="Optional"
-            />
+            <select v-model="projectId" class="kit-input" :disabled="loadingDropdowns">
+              <option :value="null">Kein Projekt</option>
+              <option v-for="project in projects" :key="project.id" :value="project.id">
+                {{ project.title }} ({{ project.customer_name || 'Kein Kunde' }})
+              </option>
+            </select>
+            <p v-if="loadingDropdowns" class="text-xs text-white/40 mt-1">Lade Projekte...</p>
           </div>
 
-          <!-- Employee ID -->
+          <!-- Employee -->
           <div>
             <label class="kit-label flex items-center gap-1">
               <User :size="14" />
-              Mitarbeiter-ID
+              Mitarbeiter
             </label>
-            <input
-              v-model="employeeId"
-              type="text"
-              class="kit-input"
-              placeholder="current-user-id"
-            />
+            <select v-model="employeeId" class="kit-input" :disabled="loadingDropdowns">
+              <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                {{ employee.first_name }} {{ employee.last_name }} ({{ employee.employee_code }})
+              </option>
+            </select>
+            <p v-if="loadingDropdowns" class="text-xs text-white/40 mt-1">Lade Mitarbeiter...</p>
           </div>
 
           <!-- Billable Checkbox -->
