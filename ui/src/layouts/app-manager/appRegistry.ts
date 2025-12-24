@@ -64,8 +64,8 @@ export const apps = [
     icons: markRaw(icons.Wallet),
     component: markRaw(FinanceApp),
     window: {
-      width: 1400,
-      height: 900
+      width: 1200,
+      height: 800
     }
   },
   // Weitere Apps können hier hinzugefügt werden
