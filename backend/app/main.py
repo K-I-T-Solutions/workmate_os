@@ -52,6 +52,12 @@ origins = [
     "http://127.0.0.1:5173",
     "http://workmate_ui:5173",
 
+    # Production Domains
+    "https://workmate.kit-it-koblenz.de",
+    "https://api.workmate.kit-it-koblenz.de",
+    "http://workmate.kit-it-koblenz.de",
+    "http://api.workmate.kit-it-koblenz.de",
+
     # Interne Domains - ALLE Kombinationen
     "http://workmate.intern.phudevelopement.xyz",
     "http://workmate.intern.phudevelopement.xyz:5173",
