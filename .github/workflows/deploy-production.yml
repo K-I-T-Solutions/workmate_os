@@ -23,7 +23,7 @@ jobs:
       - name: Add server to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H workmate-01 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 77.42.17.200 >> ~/.ssh/known_hosts
 
       - name: Sync files to server
         run: |
@@ -36,11 +36,11 @@ jobs:
             --exclude '*.pyc' \
             --exclude '.venv' \
             --exclude 'venv' \
-            ./ workmate-01:/opt/workmate/
+            ./ joshua@77.42.17.200:/opt/workmate/
 
       - name: Create .env.prod on server
         run: |
-          ssh workmate-01 "cat > /opt/workmate/infra/.env.prod" << 'EOF'
+          ssh joshua@77.42.17.200 "cat > /opt/workmate/infra/.env.prod" << 'EOF'
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
@@ -56,7 +56,7 @@ jobs:
 
       - name: Build and restart containers
         run: |
-          ssh workmate-01 << 'ENDSSH'
+          ssh joshua@77.42.17.200 << 'ENDSSH'
             cd /opt/workmate/infra
             docker compose -f docker-compose.prod.yml --env-file .env.prod build
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
@@ -70,7 +70,7 @@ jobs:
       - name: Health check
         run: |
           echo "Checking backend health..."
-          ssh workmate-01 "curl -f http://localhost:8000/system/health || exit 1"
+          ssh joshua@77.42.17.200 "curl -f http://localhost:8000/system/health || exit 1"
 
           echo "Checking frontend..."
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de)
