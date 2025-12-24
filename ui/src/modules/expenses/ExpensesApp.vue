@@ -53,7 +53,12 @@ function handleFormClose() {
     />
 
     <!-- List -->
-    <ExpensesListPage v-else-if="view === 'list'" @editExpense="goEdit" />
+    <ExpensesListPage
+      v-else-if="view === 'list'"
+      @editExpense="goEdit"
+      @openDashboard="goDashboard"
+      @createExpense="goCreate"
+    />
 
     <!-- Create Form -->
     <ExpenseFormPage

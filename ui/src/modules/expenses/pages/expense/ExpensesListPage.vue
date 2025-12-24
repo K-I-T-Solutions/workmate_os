@@ -12,11 +12,15 @@ import {
   Calendar,
   Tag,
   Euro,
+  ChevronLeft,
+  Plus,
 } from 'lucide-vue-next';
 
 // Props & Emits
 const emit = defineEmits<{
   editExpense: [id: string];
+  openDashboard: [];
+  createExpense: [];
 }>();
 
 // Composables
@@ -130,31 +134,42 @@ function formatDate(dateString: string): string {
     <!-- Header -->
     <div class="p-6 border-b border-white/10">
       <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-xl font-semibold text-white">Alle Ausgaben</h2>
-          <p class="text-sm text-white/60 mt-1">
-            {{ filteredExpenses.length }} Ausgaben ·
-            {{ formatCurrency(totalAmount) }} gesamt
-          </p>
+        <div class="flex items-center gap-3">
+          <button @click="emit('openDashboard')" class="kit-btn-ghost">
+            <ChevronLeft :size="18" />
+          </button>
+          <div>
+            <h2 class="text-xl font-semibold text-white">Alle Ausgaben</h2>
+            <p class="text-sm text-white/60 mt-1">
+              {{ filteredExpenses.length }} Ausgaben ·
+              {{ formatCurrency(totalAmount) }} gesamt
+            </p>
+          </div>
         </div>
-        <button
-          @click="showFilters = !showFilters"
-          :class="[
-            'px-4 py-2 rounded-lg border font-medium transition-colors flex items-center gap-2',
-            hasActiveFilters
-              ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
-              : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10',
-          ]"
-        >
-          <Filter :size="18" />
-          Filter
-          <span
-            v-if="hasActiveFilters"
-            class="ml-1 px-1.5 py-0.5 bg-emerald-400/30 rounded text-xs"
+        <div class="flex gap-2">
+          <button
+            @click="showFilters = !showFilters"
+            :class="[
+              'px-4 py-2 rounded-lg border font-medium transition-colors flex items-center gap-2',
+              hasActiveFilters
+                ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
+                : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10',
+            ]"
           >
-            Aktiv
-          </span>
-        </button>
+            <Filter :size="18" />
+            Filter
+            <span
+              v-if="hasActiveFilters"
+              class="ml-1 px-1.5 py-0.5 bg-emerald-400/30 rounded text-xs"
+            >
+              Aktiv
+            </span>
+          </button>
+          <button @click="emit('createExpense')" class="kit-btn-primary">
+            <Plus :size="18" />
+            Neue Ausgabe
+          </button>
+        </div>
       </div>
 
       <!-- Filters Panel -->
