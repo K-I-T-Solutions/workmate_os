@@ -4,6 +4,8 @@ import CrmApp from "@/modules/crm/CrmApp.vue";
 import InvoicesApp from "@/modules/invoices/InvoicesApp.vue";
 import ProjectsApp from "@/modules/projects/ProjectsApp.vue";
 import TimeTrackingApp from "@/modules/time-tracking/TimeTrackingApp.vue";
+import ExpensesApp from "@/modules/expenses/ExpensesApp.vue";
+import FinanceApp from "@/modules/finance/FinanceApp.vue";
 
 export const apps = [
   {
@@ -41,6 +43,26 @@ export const apps = [
     title: "Zeiterfassung",
     icons: markRaw(icons.Clock),
     component: markRaw(TimeTrackingApp),
+    window: {
+      width: 1200,
+      height: 800
+    }
+  },
+  {
+    id: "expenses",
+    title: "Ausgaben",
+    icons: markRaw(icons.Receipt),
+    component: markRaw(ExpensesApp),
+    window: {
+      width: 1200,
+      height: 800
+    }
+  },
+  {
+    id: "finance",
+    title: "Finanzen",
+    icons: markRaw(icons.Wallet),
+    component: markRaw(FinanceApp),
     window: {
       width: 1200,
       height: 800

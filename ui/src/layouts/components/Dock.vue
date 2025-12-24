@@ -37,7 +37,7 @@ import {
   Clock,
   Receipt,
   Wallet,
-  MessageSquare,
+  Euro,
 } from "lucide-vue-next";
 
 import { useAppManager } from "../app-manager/useAppManager";
@@ -52,8 +52,9 @@ const dockItems = [
   { id: "projects", label: "Projekte", icon: markRaw(Briefcase) },
   { id: "time-tracking", label: "Zeiterfassung", icon: markRaw(Clock) },
   { id: "invoices", label: "Rechnungen", icon: markRaw(Receipt) },
+  { id: "expenses", label: "Ausgaben", icon: markRaw(Euro) },
   { id: "finance", label: "Finanzen", icon: markRaw(Wallet) },
-  { id: "notes", label: "Chat", icon: markRaw(MessageSquare) },
+  // Chat entfernt - Interne Kommunikation erfolgt über externe Systeme (Matrix/Mattermost) + Ticketsystem
 ];
 
 // Check if any window of this app is open (even if minimized)
