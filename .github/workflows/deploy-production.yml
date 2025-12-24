@@ -38,9 +38,9 @@ jobs:
             --exclude 'venv' \
             ./ joshua@77.42.17.200:/opt/workmate/
 
-      - name: Create .env.prod on server
+      - name: Create .env.prod locally
         run: |
-          ssh joshua@77.42.17.200 "cat > /opt/workmate/infra/.env.prod" <<EOF
+          cat > .env.prod <<EOF
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
@@ -53,6 +53,16 @@ jobs:
           UPLOAD_DIR=/root/workmate_os_uploads
           ASSETS_DIR=/app/assets
           EOF
+
+      - name: Upload .env.prod to server
+        run: |
+          scp .env.prod joshua@77.42.17.200:/opt/workmate/infra/.env.prod
+          rm .env.prod
+
+      - name: Verify secrets are set
+        run: |
+          echo "Checking if secrets were written correctly..."
+          ssh joshua@77.42.17.200 "grep -c 'POSTGRES_PASSWORD=' /opt/workmate/infra/.env.prod || echo 'ERROR: .env.prod not created correctly'"
 
       - name: Build and restart containers
         run: |
@@ -74,13 +84,15 @@ jobs:
           RETRY_COUNT=0
 
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if ssh joshua@77.42.17.200 "curl -f -s http://localhost:8000/system/health > /dev/null"; then
+            if ssh joshua@77.42.17.200 "curl -f -s http://localhost:8000/system/health"; then
               echo "✅ Backend is healthy!"
               break
             fi
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "Attempt $RETRY_COUNT/$MAX_RETRIES failed, waiting 5 seconds..."
-            sleep 5
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Attempt $RETRY_COUNT/$MAX_RETRIES failed, waiting 5 seconds..."
+              sleep 5
+            fi
           done
 
           if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
