@@ -1,0 +1,90 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  deploy:
+    name: Deploy to workmate-01
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H workmate-01 >> ~/.ssh/known_hosts
+
+      - name: Sync files to server
+        run: |
+          rsync -avz --delete \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude '.env*' \
+            --exclude '__pycache__' \
+            --exclude '*.pyc' \
+            --exclude '.venv' \
+            --exclude 'venv' \
+            ./ workmate-01:/opt/workmate/
+
+      - name: Create .env.prod on server
+        run: |
+          ssh workmate-01 "cat > /opt/workmate/infra/.env.prod" << 'EOF'
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          NEXTCLOUD_URL=${{ secrets.NEXTCLOUD_URL }}
+          NEXTCLOUD_USER=${{ secrets.NEXTCLOUD_USER }}
+          NEXTCLOUD_PASSWORD=${{ secrets.NEXTCLOUD_PASSWORD }}
+          NEXTCLOUD_BASE_PATH=
+          ACME_EMAIL=${{ secrets.ACME_EMAIL }}
+          TRAEFIK_DASHBOARD_AUTH=${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
+          UPLOAD_DIR=/root/workmate_os_uploads
+          ASSETS_DIR=/app/assets
+          EOF
+
+      - name: Build and restart containers
+        run: |
+          ssh workmate-01 << 'ENDSSH'
+            cd /opt/workmate/infra
+            docker compose -f docker-compose.prod.yml --env-file .env.prod build
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+          ENDSSH
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start..."
+          sleep 15
+
+      - name: Health check
+        run: |
+          echo "Checking backend health..."
+          ssh workmate-01 "curl -f http://localhost:8000/system/health || exit 1"
+
+          echo "Checking frontend..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de)
+          if [ "$RESPONSE" != "200" ]; then
+            echo "Frontend health check failed with status $RESPONSE"
+            exit 1
+          fi
+
+          echo "✅ All services healthy!"
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "🚀 Deployment successful!"
+          echo "Frontend: https://workmate.kit-it-koblenz.de"
+          echo "Backend: https://api.workmate.kit-it-koblenz.de"
+          echo "Traefik: https://traefik.workmate.kit-it-koblenz.de"
