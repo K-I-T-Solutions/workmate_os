@@ -38,26 +38,55 @@ jobs:
             --exclude 'venv' \
             ./ joshua@77.42.17.200:/opt/workmate/
 
-      - name: Create .env.prod on server directly
+      - name: Create .env.prod locally with secrets
         run: |
-          ssh joshua@77.42.17.200 'cat > /opt/workmate/infra/.env.prod' <<ENVEOF
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-          NEXTCLOUD_URL=${{ secrets.NEXTCLOUD_URL }}
-          NEXTCLOUD_USER=${{ secrets.NEXTCLOUD_USER }}
-          NEXTCLOUD_PASSWORD=${{ secrets.NEXTCLOUD_PASSWORD }}
+          cat > .env.prod << 'EOF'
+          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          SECRET_KEY=$SECRET_KEY
+          JWT_SECRET_KEY=$JWT_SECRET_KEY
+          NEXTCLOUD_URL=$NEXTCLOUD_URL
+          NEXTCLOUD_USER=$NEXTCLOUD_USER
+          NEXTCLOUD_PASSWORD=$NEXTCLOUD_PASSWORD
           NEXTCLOUD_BASE_PATH=
-          ACME_EMAIL=${{ secrets.ACME_EMAIL }}
-          TRAEFIK_DASHBOARD_AUTH=${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
+          ACME_EMAIL=$ACME_EMAIL
+          TRAEFIK_DASHBOARD_AUTH=$TRAEFIK_DASHBOARD_AUTH
           UPLOAD_DIR=/root/workmate_os_uploads
           ASSETS_DIR=/app/assets
-          ENVEOF
+          EOF
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
+          NEXTCLOUD_USER: ${{ secrets.NEXTCLOUD_USER }}
+          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
+          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+          TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
 
-      - name: Verify secrets are set
+      - name: Substitute environment variables
         run: |
-          echo "Checking if secrets were written correctly..."
-          ssh joshua@77.42.17.200 "grep -c 'POSTGRES_PASSWORD=' /opt/workmate/infra/.env.prod || echo 'ERROR: .env.prod not created correctly'"
+          envsubst < .env.prod > .env.prod.final
+          mv .env.prod.final .env.prod
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
+          NEXTCLOUD_USER: ${{ secrets.NEXTCLOUD_USER }}
+          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
+          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+          TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
+
+      - name: Upload .env.prod to server
+        run: |
+          scp .env.prod joshua@77.42.17.200:/opt/workmate/infra/.env.prod
+          rm .env.prod
+
+      - name: Verify secrets are set on server
+        run: |
+          echo "Verifying .env.prod content..."
+          ssh joshua@77.42.17.200 "wc -l /opt/workmate/infra/.env.prod"
+          ssh joshua@77.42.17.200 "grep -c 'POSTGRES_PASSWORD' /opt/workmate/infra/.env.prod"
 
       - name: Build and restart containers
         run: |
