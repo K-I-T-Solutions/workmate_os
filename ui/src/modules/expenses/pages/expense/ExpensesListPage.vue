@@ -165,7 +165,7 @@ function formatDate(dateString: string): string {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <!-- Title Search -->
           <div>
-            <label class="block text-sm text-white/60 mb-1">Bezeichnung</label>
+            <label class="kit-label">Bezeichnung</label>
             <div class="relative">
               <Search
                 :size="16"
@@ -175,7 +175,7 @@ function formatDate(dateString: string): string {
                 v-model="filters.title"
                 type="text"
                 placeholder="Suchen..."
-                class="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                class="kit-input pl-9"
                 @keyup.enter="applyFilters"
               />
             </div>
@@ -183,7 +183,7 @@ function formatDate(dateString: string): string {
 
           <!-- Category -->
           <div>
-            <label class="block text-sm text-white/60 mb-1">Kategorie</label>
+            <label class="kit-label">Kategorie</label>
             <div class="relative">
               <Tag
                 :size="16"
@@ -191,7 +191,7 @@ function formatDate(dateString: string): string {
               />
               <select
                 v-model="filters.category"
-                class="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none"
+                class="kit-input pl-9"
               >
                 <option :value="undefined">Alle</option>
                 <option
@@ -207,7 +207,7 @@ function formatDate(dateString: string): string {
 
           <!-- From Date -->
           <div>
-            <label class="block text-sm text-white/60 mb-1">Von Datum</label>
+            <label class="kit-label">Von Datum</label>
             <div class="relative">
               <Calendar
                 :size="16"
@@ -216,14 +216,14 @@ function formatDate(dateString: string): string {
               <input
                 v-model="filters.from_date"
                 type="date"
-                class="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                class="kit-input pl-9"
               />
             </div>
           </div>
 
           <!-- To Date -->
           <div>
-            <label class="block text-sm text-white/60 mb-1">Bis Datum</label>
+            <label class="kit-label">Bis Datum</label>
             <div class="relative">
               <Calendar
                 :size="16"
@@ -232,7 +232,7 @@ function formatDate(dateString: string): string {
               <input
                 v-model="filters.to_date"
                 type="date"
-                class="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                class="kit-input pl-9"
               />
             </div>
           </div>

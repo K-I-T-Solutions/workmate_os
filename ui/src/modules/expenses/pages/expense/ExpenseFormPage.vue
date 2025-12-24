@@ -198,14 +198,14 @@ function handleClose() {
       <div class="max-w-2xl mx-auto space-y-6">
         <!-- Title -->
         <div>
-          <label class="block text-sm font-medium text-white/80 mb-2">
+          <label class="kit-label">
             Bezeichnung <span class="text-red-400">*</span>
           </label>
           <input
             v-model="form.title"
             type="text"
             placeholder="z.B. Bahnticket nach Berlin"
-            class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            class="kit-input"
             :class="{ 'border-red-400/50': errors.title }"
           />
           <p v-if="errors.title" class="mt-1 text-sm text-red-400">{{ errors.title }}</p>
@@ -215,12 +215,12 @@ function handleClose() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Category -->
           <div>
-            <label class="block text-sm font-medium text-white/80 mb-2">
+            <label class="kit-label">
               Kategorie <span class="text-red-400">*</span>
             </label>
             <select
               v-model="form.category"
-              class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none"
+              class="kit-input"
             >
               <option v-for="(label, cat) in ExpenseCategoryLabels" :key="cat" :value="cat">
                 {{ label }}
@@ -230,7 +230,7 @@ function handleClose() {
 
           <!-- Amount -->
           <div>
-            <label class="block text-sm font-medium text-white/80 mb-2">
+            <label class="kit-label">
               Betrag (EUR) <span class="text-red-400">*</span>
             </label>
             <input
@@ -239,7 +239,7 @@ function handleClose() {
               step="0.01"
               min="0"
               placeholder="0.00"
-              class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              class="kit-input"
               :class="{ 'border-red-400/50': errors.amount }"
             />
             <p v-if="errors.amount" class="mt-1 text-sm text-red-400">{{ errors.amount }}</p>
@@ -248,14 +248,14 @@ function handleClose() {
 
         <!-- Description -->
         <div>
-          <label class="block text-sm font-medium text-white/80 mb-2">
+          <label class="kit-label">
             Beschreibung <span class="text-red-400">*</span>
           </label>
           <textarea
             v-model="form.description"
             rows="4"
             placeholder="Detaillierte Beschreibung der Ausgabe..."
-            class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
+            class="kit-input resize-none"
             :class="{ 'border-red-400/50': errors.description }"
           />
           <p v-if="errors.description" class="mt-1 text-sm text-red-400">
@@ -265,14 +265,14 @@ function handleClose() {
 
         <!-- Receipt Path (optional) -->
         <div>
-          <label class="block text-sm font-medium text-white/80 mb-2">
+          <label class="kit-label">
             Beleg-Pfad (optional)
           </label>
           <input
             v-model="form.receipt_path"
             type="text"
             placeholder="/pfad/zum/beleg.pdf"
-            class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            class="kit-input"
           />
           <p class="mt-1 text-xs text-white/40">
             Pfad oder URL zu Beleg/Quittung (z.B. Nextcloud-Link)
@@ -281,14 +281,14 @@ function handleClose() {
 
         <!-- Note (optional) -->
         <div>
-          <label class="block text-sm font-medium text-white/80 mb-2">
+          <label class="kit-label">
             Notizen (optional)
           </label>
           <textarea
             v-model="form.note"
             rows="3"
             placeholder="Zusätzliche Notizen..."
-            class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none"
+            class="kit-input resize-none"
           />
         </div>
 
