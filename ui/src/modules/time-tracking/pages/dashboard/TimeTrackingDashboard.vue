@@ -112,7 +112,7 @@ function formatDate(dateString: string): string {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-white">Zeiterfassung</h1>
@@ -178,7 +178,7 @@ function formatDate(dateString: string): string {
     </div>
 
     <!-- Today Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="flex items-center gap-2 mb-2">
           <Clock :size="16" class="text-blue-300" />
@@ -284,3 +284,22 @@ function formatDate(dateString: string): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .p-4 {
+    padding: 0.75rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .flex-col.gap-3 {
+    gap: 0.5rem;
+  }
+}
+</style>

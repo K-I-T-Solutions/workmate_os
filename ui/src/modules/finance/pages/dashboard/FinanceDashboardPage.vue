@@ -95,9 +95,9 @@ function getCategoryColor(category: string): string {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <h1 class="text-2xl font-bold text-white">Finanzen Dashboard</h1>
     </div>
 
@@ -109,7 +109,7 @@ function getCategoryColor(category: string): string {
     <!-- Dashboard Content -->
     <div v-else-if="overview" class="flex-1 overflow-y-auto space-y-4">
       <!-- KPI Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <!-- Total Revenue -->
         <div class="rounded-lg border border-white/10 bg-white/5 p-4">
           <div class="flex items-center justify-between mb-2">
@@ -181,7 +181,7 @@ function getCategoryColor(category: string): string {
       </div>
 
       <!-- Outstanding & Overdue -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <!-- Outstanding Revenue -->
         <div class="rounded-lg border border-white/10 bg-white/5 p-4">
           <div class="flex items-center gap-2 mb-3">
@@ -216,7 +216,7 @@ function getCategoryColor(category: string): string {
       </div>
 
       <!-- Charts Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <!-- Invoices by Status -->
         <div class="rounded-lg border border-white/10 bg-white/5 p-4">
           <h3 class="text-sm font-semibold text-white mb-4">Rechnungen nach Status</h3>
@@ -284,3 +284,22 @@ function getCategoryColor(category: string): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .p-4 {
+    padding: 0.75rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .flex-col.gap-3 {
+    gap: 0.5rem;
+  }
+}
+</style>

@@ -163,8 +163,8 @@ function handleClose() {
 <template>
   <div class="expense-form h-full flex flex-col">
     <!-- Header -->
-    <div class="p-6 border-b border-white/10">
-      <div class="flex items-center justify-between">
+    <div class="p-3 sm:p-6 border-b border-white/10">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div class="flex items-center gap-3">
           <div class="p-2 bg-emerald-500/20 rounded-lg">
             <Receipt :size="20" class="text-emerald-400" />
@@ -194,7 +194,7 @@ function handleClose() {
     </div>
 
     <!-- Form -->
-    <div v-else class="flex-1 overflow-y-auto p-6">
+    <div v-else class="flex-1 overflow-y-auto p-3 sm:p-6">
       <div class="max-w-2xl mx-auto space-y-6">
         <!-- Title -->
         <div>
@@ -212,7 +212,7 @@ function handleClose() {
         </div>
 
         <!-- Category & Amount -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- Category -->
           <div>
             <label class="kit-label">
@@ -308,11 +308,11 @@ function handleClose() {
     </div>
 
     <!-- Footer Actions -->
-    <div class="p-6 border-t border-white/10 bg-white/5">
-      <div class="flex justify-end gap-3">
+    <div class="p-3 sm:p-6 border-t border-white/10 bg-white/5">
+      <div class="flex flex-col sm:flex-row justify-end gap-3">
         <button
           @click="handleClose"
-          class="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-colors"
+          class="w-full sm:w-auto px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-colors"
           :disabled="isLoading"
         >
           Abbrechen
@@ -320,7 +320,7 @@ function handleClose() {
         <button
           @click="handleSave"
           :disabled="!isFormValid || isLoading"
-          class="px-6 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 rounded-lg text-emerald-200 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full sm:w-auto px-6 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 rounded-lg text-emerald-200 font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Save :size="18" />
           {{ isLoading ? 'Speichere...' : isEditMode ? 'Aktualisieren' : 'Erstellen' }}
@@ -329,3 +329,16 @@ function handleClose() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .rounded-lg.border {
+    padding: 0.75rem;
+  }
+
+  .text-xl {
+    font-size: 1.25rem;
+  }
+}
+</style>

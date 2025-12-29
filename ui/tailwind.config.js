@@ -2,11 +2,20 @@ import defaultTheme from "tailwindcss/defaultTheme";
 
 export default {
   content: [
-  "./index.html",
-  "./src/**/*.{vue,js,ts,css}",
-],
+    "./index.html",
+    "./src/**/*.{vue,js,ts,css}",
+  ],
 
   theme: {
+    screens: {
+      'xs': '480px',
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1200px',
+      '2xl': '1920px',
+    },
+
     extend: {
       colors: {
         // Keep default colors but add theme-aware colors
@@ -62,6 +71,14 @@ export default {
 
       backdropBlur: {
         glass: "var(--blur-glass)",
+      },
+
+      minHeight: {
+        'touch': 'var(--touch-target-min)',
+      },
+
+      minWidth: {
+        'touch': 'var(--touch-target-min)',
       },
     },
   },

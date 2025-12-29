@@ -66,9 +66,39 @@
   --os-dock-height: 80px;
   --os-topbar-height: 48px;
   --os-sidebar-width: 260px;
+
+  /*
+  ===========================================================
+  👆 TOUCH TARGETS (Mobile)
+  ===========================================================
+  */
+
+  --touch-target-min: 44px;
+  --touch-spacing: 12px;
 }
+
+/*
+===========================================================
+📱 RESPONSIVE ADJUSTMENTS
+===========================================================
+*/
+
 @media (max-width: 1024px) {
   :root {
-    --os-dock-height: 64px; /* Mobile etwas kleiner */
+    --os-dock-height: 64px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --os-dock-height: 60px;
+    --os-topbar-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --os-dock-height: 56px;
+    --os-topbar-height: 40px;
   }
 }

@@ -86,11 +86,11 @@ function getActivityLabel(type: string): string {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <h1 class="text-2xl font-bold text-white">CRM Dashboard</h1>
-      <div class="flex gap-2">
+      <div class="flex gap-2 w-full sm:w-auto">
         <button @click="emit('openCustomers')" class="kit-btn-ghost">
           <Users :size="18" />
           Alle Kunden
@@ -126,7 +126,7 @@ function getActivityLabel(type: string): string {
     <!-- Dashboard Content -->
     <div v-else-if="stats" class="flex-1 overflow-auto space-y-4">
       <!-- KPI Cards Grid (4 Spalten) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <!-- Total Customers -->
         <div class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition">
           <div class="flex items-center justify-between mb-3">
@@ -184,7 +184,7 @@ function getActivityLabel(type: string): string {
       <!-- Status-Übersicht (5 Spalten) -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <h2 class="text-lg font-semibold text-white mb-4">Status-Übersicht</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
           <!-- Aktive -->
           <div class="text-center p-4 rounded-lg border border-emerald-400/30 bg-emerald-500/20">
             <div class="text-2xl font-bold text-emerald-200">{{ stats.active_customers }}</div>
@@ -313,5 +313,24 @@ function getActivityLabel(type: string): string {
 </template>
 
 <style scoped>
-/* Zusätzliche Styles falls benötigt */
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .p-4 {
+    padding: 0.75rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+
+  .text-lg {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .flex-col.gap-3 {
+    gap: 0.5rem;
+  }
+}
 </style>

@@ -138,9 +138,9 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div class="flex items-center gap-3">
         <button @click="emit('back')" class="kit-btn-ghost">
           <ChevronLeft :size="18" />
@@ -148,14 +148,14 @@ async function handleSubmit() {
         <h1 class="text-2xl font-bold text-white">{{ pageTitle }}</h1>
       </div>
 
-      <div class="flex gap-2">
-        <button @click="emit('back')" class="kit-btn-ghost">
+      <div class="flex gap-2 w-full sm:w-auto">
+        <button @click="emit('back')" class="kit-btn-ghost flex-1 sm:flex-none">
           Abbrechen
         </button>
         <button
           @click="handleSubmit"
           :disabled="saving || loading"
-          class="kit-btn-primary"
+          class="kit-btn-primary flex-1 sm:flex-none"
         >
           <Loader2 v-if="saving" :size="18" class="animate-spin" />
           <Save v-else :size="18" />
@@ -185,7 +185,7 @@ async function handleSubmit() {
       <!-- Section 1: Allgemeine Informationen -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Allgemeine Informationen</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- Name -->
           <div>
             <label class="kit-label">
@@ -243,7 +243,7 @@ async function handleSubmit() {
       <!-- Section 2: Kontaktdaten -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Kontaktdaten</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- E-Mail -->
           <div>
             <label class="kit-label">E-Mail</label>
@@ -285,7 +285,7 @@ async function handleSubmit() {
             />
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <!-- PLZ -->
             <div>
               <label class="kit-label">Postleitzahl</label>
@@ -340,5 +340,14 @@ async function handleSubmit() {
 </template>
 
 <style scoped>
-/* Zusätzliche Styles falls benötigt */
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .rounded-lg.border {
+    padding: 0.75rem;
+  }
+
+  .text-lg {
+    font-size: 1rem;
+  }
+}
 </style>

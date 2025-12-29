@@ -186,31 +186,43 @@ function close() {
    ========================================= */
 @media (max-width: 1024px) {
   .window-frame {
-    position: fixed !important;
-    top: var(--os-topbar-height, 48px) !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: calc(
-      100vh - var(--os-topbar-height, 48px) - var(--os-dock-height, 72px)
-    ) !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: calc(100vh - var(--os-topbar-height) - var(--os-dock-height));
     border-radius: 0 !important;
     max-width: 100vw !important;
-    max-height: 100vh !important;
     box-shadow: none;
   }
 
   .window-titlebar {
     height: 40px;
     padding: 0 12px;
-    font-size: 0.85rem;
+    cursor: default;
   }
 
   .window-content {
-    padding: 16px;
+    padding: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: calc(100% - 40px);
   }
 
   .resize-handle {
-    display: none !important;
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .window-content {
+    padding: 8px;
+  }
+
+  .window-titlebar {
+    height: 36px;
+    padding: 0 8px;
   }
 }
 </style>

@@ -89,11 +89,11 @@ function openTimeTracking() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <h1 class="text-2xl font-bold text-white">Projekte Dashboard</h1>
-      <div class="flex gap-2">
+      <div class="flex gap-2 w-full sm:w-auto">
         <button @click="emit('openProjects')" class="kit-btn-ghost">
           <Briefcase :size="18" />
           Alle Projekte
@@ -106,7 +106,7 @@ function openTimeTracking() {
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
       <div v-for="i in 4" :key="i" class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="animate-pulse space-y-3">
           <div class="h-4 bg-white/10 rounded w-3/4"></div>
@@ -116,7 +116,7 @@ function openTimeTracking() {
     </div>
 
     <!-- KPI Cards -->
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
       <!-- Total Projects -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition">
         <div class="flex items-center gap-3 mb-2">
@@ -163,7 +163,7 @@ function openTimeTracking() {
     </div>
 
     <!-- Status Overview -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
       <!-- Active -->
       <div class="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-center">
         <div class="text-2xl font-bold text-emerald-200">{{ stats.active }}</div>
@@ -265,3 +265,26 @@ function openTimeTracking() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .p-4 {
+    padding: 0.75rem;
+  }
+
+  .p-3 {
+    padding: 0.625rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .flex-col.gap-3 {
+    gap: 0.5rem;
+  }
+}
+</style>
