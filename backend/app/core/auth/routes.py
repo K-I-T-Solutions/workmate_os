@@ -10,6 +10,7 @@ from typing import Optional
 
 from app.core.settings.database import get_db
 from app.core.auth.service import AuthService
+from app.core.auth.zitadel import ZitadelAuth
 from app.modules.employees.models import Employee
 from sqlalchemy import select
 
@@ -28,6 +29,12 @@ class LoginRequest(BaseModel):
     """Login request schema"""
     email: EmailStr
     password: str
+
+
+class OIDCLoginRequest(BaseModel):
+    """OIDC/SSO login request schema"""
+    id_token: str
+    access_token: str | None = None  # Optional: used to fetch user info
 
 
 class LoginResponse(BaseModel):
@@ -155,6 +162,82 @@ async def login(
         )
 
     # Create token
+    token_data = AuthService.create_token_for_user(db, employee)
+
+    # Prepare user data
+    user_data = {
+        "id": str(employee.id),
+        "employee_code": employee.employee_code,
+        "email": employee.email,
+        "first_name": employee.first_name,
+        "last_name": employee.last_name,
+        "role": {
+            "id": str(employee.role.id),
+            "name": employee.role.name,
+        } if employee.role else None,
+        "department": {
+            "id": str(employee.department.id),
+            "name": employee.department.name,
+            "code": employee.department.code,
+        } if employee.department else None,
+        "permissions": AuthService.get_user_permissions(db, employee),
+        "theme": employee.theme or "kit-standard",
+    }
+
+    return {
+        **token_data,
+        "user": user_data,
+    }
+
+
+@auth_router.post("/oidc/login", response_model=LoginResponse)
+async def oidc_login(
+    request: OIDCLoginRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate user with Zitadel OIDC token (SSO)
+    Returns JWT access token compatible with existing frontend
+    """
+    # Verify Zitadel token
+    zitadel_payload = await ZitadelAuth.verify_token(request.id_token)
+
+    if not zitadel_payload:
+        print("[DEBUG OIDC] Token verification failed")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired OIDC token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    print(f"[DEBUG OIDC] Token verified, payload: {zitadel_payload}")
+
+    # Fetch user info from UserInfo endpoint if access_token provided
+    user_info = None
+    if request.access_token:
+        user_info = await ZitadelAuth.get_user_info(request.access_token)
+        print(f"[DEBUG OIDC] UserInfo fetched: {user_info}")
+
+    # Merge user_info into payload (userinfo takes priority)
+    combined_payload = {**zitadel_payload}
+    if user_info:
+        combined_payload.update(user_info)
+
+    print(f"[DEBUG OIDC] Combined payload: {combined_payload}")
+
+    # Get or create user from Zitadel data
+    employee = ZitadelAuth.get_or_create_user(db, combined_payload)
+
+    print(f"[DEBUG OIDC] Employee result: {employee}")
+
+    if not employee:
+        print("[DEBUG OIDC] Failed to get/create employee")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Failed to authenticate user via OIDC",
+        )
+
+    # Create local JWT token (same as password login)
     token_data = AuthService.create_token_for_user(db, employee)
 
     # Prepare user data

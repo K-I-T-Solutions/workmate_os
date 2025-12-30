@@ -9,8 +9,10 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
+  Shield,
 } from 'lucide-vue-next';
 import { WorkmateAssets } from '@/services/assets';
+import { initiateZitadelLogin } from '@/services/zitadel';
 
 // Router
 const router = useRouter();
@@ -61,6 +63,11 @@ async function handleSubmit() {
 
 function togglePasswordVisibility() {
   showPassword.value = !showPassword.value;
+}
+
+async function handleSSOLogin() {
+  const redirect = route.query.redirect as string || '/app';
+  await initiateZitadelLogin(redirect);
 }
 
 // Focus email input on mount
@@ -175,6 +182,22 @@ onMounted(() => {
           <span v-else>Anmelden</span>
         </button>
       </form>
+
+      <!-- Divider -->
+      <div class="login-divider">
+        <span class="divider-text">oder</span>
+      </div>
+
+      <!-- SSO Login Button -->
+      <button
+        type="button"
+        class="sso-button"
+        @click="handleSSOLogin"
+        :disabled="loading"
+      >
+        <Shield :size="20" />
+        <span>Mit SSO anmelden</span>
+      </button>
 
       <!-- Footer -->
       <div class="login-footer">
@@ -476,6 +499,67 @@ onMounted(() => {
 }
 
 .submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Divider */
+.login-divider {
+  position: relative;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.login-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--color-border-light);
+}
+
+.divider-text {
+  position: relative;
+  display: inline-block;
+  padding: 0 1rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+/* SSO Button */
+.sso-button {
+  width: 100%;
+  padding: 0.875rem;
+  background: var(--color-panel-glass);
+  border: 1px solid var(--color-border-light);
+  border-radius: 0.75rem;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.sso-button:hover:not(:disabled) {
+  background: var(--color-panel-glass-hover);
+  border-color: var(--color-accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.sso-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.sso-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;

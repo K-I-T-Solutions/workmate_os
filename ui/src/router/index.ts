@@ -16,6 +16,14 @@ const routes = [
     meta: { requiresAuth: false },
   },
 
+  // Auth Callback (Public)
+  {
+    path: "/auth/callback",
+    name: "auth-callback",
+    component: () => import("@/pages/AuthCallbackPage.vue"),
+    meta: { requiresAuth: false },
+  },
+
   // Main App (Protected)
   {
     path: "/app",

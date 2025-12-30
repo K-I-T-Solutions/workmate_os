@@ -25,13 +25,20 @@ class Settings(BaseSettings):
     NEXTCLOUD_USER: str = os.getenv("NEXTCLOUD_USER","workmate-storage")
     NEXTCLOUD_PASSWORD: str = os.getenv("NEXTCLOUD_PASSWORD","workmate123!")
     NEXTCLOUD_BASE_PATH: str = os.getenv("NEXTCLOUD_BASE_PATH","")
-    # Keycloak (optional, für später)
+
+    # Zitadel OIDC Configuration
+    ZITADEL_ISSUER: str = os.getenv("ZITADEL_ISSUER", "https://auth.intern.phudevelopement.xyz")
+    ZITADEL_CLIENT_ID: str = os.getenv("ZITADEL_CLIENT_ID", "")
+    # Internal URL for backend-to-zitadel communication (Docker network)
+    ZITADEL_INTERNAL_URL: str = os.getenv("ZITADEL_INTERNAL_URL", "http://zitadel:8080")
+
+    # Keycloak (deprecated - wird durch Zitadel ersetzt)
     KEYCLOAK_URL: str | None = None
     KEYCLOAK_REALM: str = "kit"
     KEYCLOAK_CLIENT_ID: str = "workmate-backend"
 
     model_config = SettingsConfigDict(
-        env_file="../infra/.env",
+        env_file=".env",  # In Docker: /app/.env
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True,

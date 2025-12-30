@@ -134,7 +134,8 @@ async function handleLogout() {
    ============================================ */
 /* Windows float above dashboard */
 .window-layer {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 10;
   pointer-events: none; /* Allow clicks to pass through to dashboard when no windows */
 }

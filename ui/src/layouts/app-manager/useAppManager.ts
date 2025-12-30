@@ -54,6 +54,9 @@ export const appManager = {
     const app = apps.find(a => a.id === appId);
     if (!app) return;
 
+    // Note: Permission checks are handled in the UI (Dock component)
+    // This allows apps to open if called programmatically
+
     const existing = windows.find(w => w.appId === appId);
     if (existing) {
       // Update props if provided (for deep-linking)
