@@ -6,196 +6,196 @@ grand_parent: Wiki
 nav_order: 2
 ---
 
-# Frontend Documentation Index
+# Frontend Dokumentations-Index
 
-This document serves as an index to all frontend documentation for WorkmateOS.
+Dieses Dokument dient als Index für die gesamte Frontend-Dokumentation von WorkmateOS.
 
-## Documentation Files
+## Dokumentationsdateien
 
-All documentation is located in `/docs/` directory:
+Die gesamte Dokumentation befindet sich im `/docs/`-Verzeichnis:
 
-### 1. README_FRONTEND.md (START HERE)
-**File**: `/docs/README_FRONTEND.md`
-**Size**: ~10 KB
-**Read Time**: 10-15 minutes
+### 1. README_FRONTEND.md (HIER STARTEN)
+**Datei**: `/docs/README_FRONTEND.md`
+**Größe**: ~10 KB
+**Lesezeit**: 10-15 Minuten
 
-The entry point for all frontend documentation. Contains:
-- Overview of what's in each documentation file
-- Quick start for developers (5 min version)
-- How modules work (unique desktop-like architecture)
-- Module structure pattern
-- Data flow explanation
-- Key technologies and versions
-- Common development tasks
-- Architecture highlights
-- Debugging guide
-- Next steps
+Der Einstiegspunkt für die gesamte Frontend-Dokumentation. Enthält:
+- Überblick über jede Dokumentationsdatei
+- Schnellstart für Entwickler (5-Minuten-Version)
+- Wie Module funktionieren (einzigartige Desktop-ähnliche Architektur)
+- Modul-Strukturmuster
+- Datenfluss-Erklärung
+- Wichtige Technologien und Versionen
+- Häufige Entwicklungsaufgaben
+- Architektur-Highlights
+- Debugging-Leitfaden
+- Nächste Schritte
 
-**Best for**: Getting oriented, understanding overall architecture
-
----
-
-### 2. UI_ARCHITECTURE.md (COMPREHENSIVE GUIDE)
-**File**: `/docs/UI_ARCHITECTURE.md`
-**Size**: ~29 KB
-**Read Time**: 30-45 minutes
-
-Complete in-depth guide covering:
-- Complete directory structure with full paths and explanations
-- Application bootstrap flow (main.ts → App.vue → Router)
-- Router configuration with examples
-- Module system architecture in detail
-- Window manager system with interfaces and methods
-- CRM module as complete real-world example
-- Service layer pattern (crm.service.ts)
-- Navigation composables pattern
-- Data fetching composables pattern
-- Page components pattern
-- Type definitions organization
-- Component barrel exports
-- API client setup with Axios
-- Layout system (Topbar, Dock, WindowHost, WindowFrame)
-- State management with Pinia
-- Styling system (Design tokens + Tailwind)
-- Step-by-step guide to creating new module (10 steps)
-- Common patterns and best practices
-- Environment setup
-- Building and running
-- Technology stack summary
-
-**Best for**: Deep understanding, creating new modules, reference material
+**Am besten für**: Orientierung, Verständnis der Gesamtarchitektur
 
 ---
 
-### 3. ARCHITECTURE_VISUAL.md (DIAGRAMS)
-**File**: `/docs/ARCHITECTURE_VISUAL.md`
-**Size**: ~25 KB
-**Read Time**: 15-20 minutes
+### 2. UI_ARCHITECTURE.md (UMFASSENDER LEITFADEN)
+**Datei**: `/docs/UI_ARCHITECTURE.md`
+**Größe**: ~29 KB
+**Lesezeit**: 30-45 Minuten
 
-ASCII art diagrams showing:
-- Application structure hierarchy
-- Module internal architecture (CRM example)
-- Window manager system flow
-- Data fetching flow
-- Styling architecture
-- Data types organization
-- Component communication pattern
-- File creation checklist
+Vollständiger detaillierter Leitfaden mit:
+- Vollständige Verzeichnisstruktur mit Pfaden und Erklärungen
+- Anwendungs-Bootstrap-Ablauf (main.ts → App.vue → Router)
+- Router-Konfiguration mit Beispielen
+- Modul-System-Architektur im Detail
+- Fensterverwaltungssystem mit Schnittstellen und Methoden
+- CRM-Modul als vollständiges Praxisbeispiel
+- Service-Layer-Muster (crm.service.ts)
+- Navigations-Composables-Muster
+- Datenabruf-Composables-Muster
+- Seitenkomponenten-Muster
+- Organisation von Typdefinitionen
+- Komponenten-Barrel-Exports
+- API-Client-Setup mit Axios
+- Layout-System (Topbar, Dock, WindowHost, WindowFrame)
+- State Management mit Pinia
+- Styling-System (Design Tokens + Tailwind)
+- Schritt-für-Schritt-Anleitung zum Erstellen neuer Module (10 Schritte)
+- Häufige Muster und Best Practices
+- Umgebungssetup
+- Build und Ausführung
+- Technologie-Stack-Übersicht
 
-**Best for**: Visual learners, understanding relationships, seeing data flow
-
----
-
-### 4. QUICK_REFERENCE.md (LOOKUP GUIDE)
-**File**: `/docs/QUICK_REFERENCE.md`
-**Size**: ~11 KB
-**Read Time**: Varies (reference material)
-
-Quick lookup for:
-- File locations for common tasks
-- Existing module structures (CRM, Dashboard)
-- Common task code snippets:
-  - Adding new module
-  - Adding API endpoint
-  - Creating data fetching composable
-  - Using composable in component
-  - Adding navigation
-  - Styling components
-  - Creating Pinia store
-  - Adding type definitions
-- Important patterns with code
-- Environment variables
-- Running the application
-- Component hierarchy map
-- Available icons (lucide-vue-next)
-- TypeScript path aliases
-- Tailwind classes quick reference
-- Debugging tips
-- Common errors and fixes
-- Quick commands
-
-**Best for**: Fast lookups, remembering patterns, finding file locations
+**Am besten für**: Tiefes Verständnis, Erstellen neuer Module, Referenzmaterial
 
 ---
 
-## Recommended Reading Order
+### 3. ARCHITECTURE_VISUAL.md (DIAGRAMME)
+**Datei**: `/docs/ARCHITECTURE_VISUAL.md`
+**Größe**: ~25 KB
+**Lesezeit**: 15-20 Minuten
 
-### For New Developers (First Time)
-1. README_FRONTEND.md (10-15 min)
-2. ARCHITECTURE_VISUAL.md (15-20 min) - Skip if not a visual learner
-3. UI_ARCHITECTURE.md (30-45 min) - Focus on sections 1-5
+ASCII-Art-Diagramme zeigen:
+- Anwendungsstruktur-Hierarchie
+- Modul-interne Architektur (CRM-Beispiel)
+- Fensterverwaltungssystem-Ablauf
+- Datenabruf-Ablauf
+- Styling-Architektur
+- Datentypen-Organisation
+- Komponentenkommunikationsmuster
+- Dateierstellungs-Checkliste
 
-**Total: ~1 hour** to get comfortable with the architecture
-
-### For Creating a New Module
-1. QUICK_REFERENCE.md → Task 1: Add a New Module
-2. UI_ARCHITECTURE.md → Section 10: Creating a New Module
-3. Reference CRM module: `ui/src/modules/crm/`
-
-**Total: 30-45 minutes**
-
-### For Daily Development
-Keep QUICK_REFERENCE.md open as reference material
+**Am besten für**: Visuelle Lerner, Verständnis von Beziehungen, Datenfluss-Visualisierung
 
 ---
 
-## Quick Navigation by Task
+### 4. QUICK_REFERENCE.md (NACHSCHLAGEWERK)
+**Datei**: `/docs/QUICK_REFERENCE.md`
+**Größe**: ~11 KB
+**Lesezeit**: Variiert (Referenzmaterial)
 
-### "I want to understand the overall architecture"
+Schnelles Nachschlagen für:
+- Dateispeicherorte für häufige Aufgaben
+- Bestehende Modulstrukturen (CRM, Dashboard)
+- Code-Snippets für häufige Aufgaben:
+  - Neues Modul hinzufügen
+  - API-Endpunkt hinzufügen
+  - Datenabruf-Composable erstellen
+  - Composable in Komponente verwenden
+  - Navigation hinzufügen
+  - Komponenten stylen
+  - Pinia Store erstellen
+  - Typdefinitionen hinzufügen
+- Wichtige Muster mit Code
+- Umgebungsvariablen
+- Anwendung ausführen
+- Komponentenhierarchie-Karte
+- Verfügbare Icons (lucide-vue-next)
+- TypeScript-Pfad-Aliase
+- Tailwind-Klassen-Schnellreferenz
+- Debugging-Tipps
+- Häufige Fehler und Lösungen
+- Schnellbefehle
+
+**Am besten für**: Schnelles Nachschlagen, Muster merken, Dateispeicherorte finden
+
+---
+
+## Empfohlene Lesereihenfolge
+
+### Für neue Entwickler (Erstmalig)
+1. README_FRONTEND.md (10-15 Min.)
+2. ARCHITECTURE_VISUAL.md (15-20 Min.) - Überspringen, wenn kein visueller Lerntyp
+3. UI_ARCHITECTURE.md (30-45 Min.) - Fokus auf Abschnitte 1-5
+
+**Gesamt: ~1 Stunde** um sich mit der Architektur vertraut zu machen
+
+### Zum Erstellen eines neuen Moduls
+1. QUICK_REFERENCE.md → Aufgabe 1: Neues Modul hinzufügen
+2. UI_ARCHITECTURE.md → Abschnitt 10: Neues Modul erstellen
+3. Referenz CRM-Modul: `ui/src/modules/crm/`
+
+**Gesamt: 30-45 Minuten**
+
+### Für tägliche Entwicklung
+QUICK_REFERENCE.md als Referenzmaterial geöffnet halten
+
+---
+
+## Schnellnavigation nach Aufgabe
+
+### "Ich möchte die Gesamtarchitektur verstehen"
 → README_FRONTEND.md
 
-### "I want to create a new module"
-→ UI_ARCHITECTURE.md (Section 10) + QUICK_REFERENCE.md (Task 1)
+### "Ich möchte ein neues Modul erstellen"
+→ UI_ARCHITECTURE.md (Abschnitt 10) + QUICK_REFERENCE.md (Aufgabe 1)
 
-### "I want to add a new API endpoint"
-→ QUICK_REFERENCE.md (Task 2)
+### "Ich möchte einen neuen API-Endpunkt hinzufügen"
+→ QUICK_REFERENCE.md (Aufgabe 2)
 
-### "I want to understand how data flows"
-→ ARCHITECTURE_VISUAL.md + README_FRONTEND.md (Data Flow section)
+### "Ich möchte verstehen, wie Daten fließen"
+→ ARCHITECTURE_VISUAL.md + README_FRONTEND.md (Datenfluss-Abschnitt)
 
-### "I need to find a file location"
-→ QUICK_REFERENCE.md (File Locations Quick Lookup)
+### "Ich muss einen Dateispeicherort finden"
+→ QUICK_REFERENCE.md (Dateispeicherorte-Schnellsuche)
 
-### "I'm getting an error"
-→ QUICK_REFERENCE.md (Common Errors & Fixes)
+### "Ich bekomme einen Fehler"
+→ QUICK_REFERENCE.md (Häufige Fehler & Lösungen)
 
-### "I want to understand module navigation"
-→ UI_ARCHITECTURE.md (Section 5: Module Structure Pattern)
+### "Ich möchte die Modul-Navigation verstehen"
+→ UI_ARCHITECTURE.md (Abschnitt 5: Modul-Strukturmuster)
 
-### "I want to add styling to a component"
-→ README_FRONTEND.md (Styling Components) or QUICK_REFERENCE.md (Task 6)
+### "Ich möchte Styling zu einer Komponente hinzufügen"
+→ README_FRONTEND.md (Komponenten stylen) oder QUICK_REFERENCE.md (Aufgabe 6)
 
-### "I need to use Pinia for global state"
-→ QUICK_REFERENCE.md (Task 7)
+### "Ich muss Pinia für globalen State verwenden"
+→ QUICK_REFERENCE.md (Aufgabe 7)
 
-### "I want to understand the window manager"
-→ UI_ARCHITECTURE.md (Section 4: Module System Architecture) + ARCHITECTURE_VISUAL.md (Window Manager System)
-
----
-
-## Key Concepts to Understand
-
-These are explained in detail in the documentation:
-
-1. **Window Manager**: Desktop-like floating windows (not traditional routing)
-2. **Modules**: Self-contained apps with internal routing (no Vue Router)
-3. **Service Layer**: Handles API calls (crm.service.ts)
-4. **Composables**: Manage state and wrap services (useCrmStats.ts)
-5. **Design Tokens**: CSS custom properties for consistent styling
-6. **App Registry**: Central place to register all modules
-7. **Type Safety**: Strong TypeScript usage throughout
+### "Ich möchte den Window Manager verstehen"
+→ UI_ARCHITECTURE.md (Abschnitt 4: Modul-System-Architektur) + ARCHITECTURE_VISUAL.md (Fensterverwaltungssystem)
 
 ---
 
-## File Locations Quick Reference
+## Wichtige Konzepte zum Verstehen
 
-**Core Files**:
+Diese werden in der Dokumentation im Detail erklärt:
+
+1. **Window Manager**: Desktop-ähnliche schwebende Fenster (nicht traditionelles Routing)
+2. **Module**: In sich geschlossene Apps mit interner Routing (kein Vue Router)
+3. **Service Layer**: Behandelt API-Aufrufe (crm.service.ts)
+4. **Composables**: Verwalten State und wrappen Services (useCrmStats.ts)
+5. **Design Tokens**: CSS Custom Properties für konsistentes Styling
+6. **App Registry**: Zentrale Stelle zur Registrierung aller Module
+7. **Type Safety**: Durchgängige starke TypeScript-Nutzung
+
+---
+
+## Dateispeicherorte - Schnellreferenz
+
+**Kerndateien**:
 - Entry: `ui/src/main.ts`
 - Root: `ui/src/App.vue`
 - Router: `ui/src/router/index.ts`
 - Layout: `ui/src/layouts/AppLayout.vue`
 
-**Module System**:
+**Modul-System**:
 - Registry: `ui/src/layouts/app-manager/appRegistry.ts`
 - Window Manager: `ui/src/layouts/app-manager/useAppManager.ts`
 - Dock: `ui/src/layouts/components/Dock.vue`
@@ -207,20 +207,20 @@ These are explained in detail in the documentation:
 - Tokens: `ui/src/styles/tokens.css`
 - Base: `ui/src/styles/base.css`
 
-**Example Module (CRM)**:
+**Beispiel-Modul (CRM)**:
 - Entry: `ui/src/modules/crm/CrmApp.vue`
 - Service: `ui/src/modules/crm/services/crm.service.ts`
 - Navigation: `ui/src/modules/crm/composables/useCrmNavigation.ts`
 
-See QUICK_REFERENCE.md for complete file listing.
+Siehe QUICK_REFERENCE.md für vollständige Dateiauflistung.
 
 ---
 
-## Technology Stack
+## Technologie-Stack
 
 - Vue 3 (^3.5.22)
 - TypeScript (~5.9.3)
-- Vite 7.1.14 (with rolldown)
+- Vite 7.1.14 (mit rolldown)
 - Tailwind CSS 4
 - Vue Router 4
 - Pinia 3
@@ -229,126 +229,125 @@ See QUICK_REFERENCE.md for complete file listing.
 
 ---
 
-## Getting Started Commands
+## Erste Schritte - Befehle
 
 ```bash
-# Install dependencies
+# Abhängigkeiten installieren
 cd ui
 pnpm install
 
-# Start development server
+# Entwicklungsserver starten
 pnpm run dev
-# Visit http://localhost:5173
+# Besuche http://localhost:5173
 
-# Build for production
+# Für Produktion bauen
 pnpm run build
 
-# Check TypeScript errors
+# TypeScript-Fehler prüfen
 vue-tsc --noEmit
 ```
 
 ---
 
-## How to Use This Documentation
+## Wie diese Dokumentation zu verwenden ist
 
-1. **Find your documentation file** in the list above
-2. **Read the recommended sections** based on your task
-3. **Reference QUICK_REFERENCE.md** for code snippets and patterns
-4. **Look at CRM module** (`ui/src/modules/crm/`) for real-world examples
-5. **Use ARCHITECTURE_VISUAL.md** to visualize concepts
+1. **Finde deine Dokumentationsdatei** in der obigen Liste
+2. **Lies die empfohlenen Abschnitte** basierend auf deiner Aufgabe
+3. **Referenziere QUICK_REFERENCE.md** für Code-Snippets und Muster
+4. **Schau dir das CRM-Modul an** (`ui/src/modules/crm/`) für Praxisbeispiele
+5. **Nutze ARCHITECTURE_VISUAL.md** zur Visualisierung von Konzepten
 
 ---
 
-## Structure of Each Documentation File
+## Struktur jeder Dokumentationsdatei
 
 ### README_FRONTEND.md
-- Orientation and overview
-- Quick concepts
-- Architecture highlights
-- Common tasks
-- Getting help
+- Orientierung und Überblick
+- Schnelle Konzepte
+- Architektur-Highlights
+- Häufige Aufgaben
+- Hilfe bekommen
 
 ### UI_ARCHITECTURE.md
-- Complete reference
-- Code examples
-- Step-by-step guides
-- Best practices
-- Patterns explained
+- Vollständige Referenz
+- Code-Beispiele
+- Schritt-für-Schritt-Anleitungen
+- Best Practices
+- Erklärte Muster
 
 ### ARCHITECTURE_VISUAL.md
-- ASCII diagrams
-- Data flows
-- Component hierarchies
-- System relationships
-- File creation checklist
+- ASCII-Diagramme
+- Datenflüsse
+- Komponentenhierarchien
+- Systembeziehungen
+- Dateierstellungs-Checkliste
 
 ### QUICK_REFERENCE.md
-- File locations
-- Code snippets
-- Quick patterns
-- Commands
-- Debugging tips
+- Dateispeicherorte
+- Code-Snippets
+- Schnelle Muster
+- Befehle
+- Debugging-Tipps
 
 ---
 
-## Documentation Quality
+## Dokumentationsqualität
 
-Total documentation:
-- 4 comprehensive guides
-- ~2,600 lines of content
-- 75+ code examples
-- 20+ diagrams
-- Complete coverage of:
-  - Architecture
-  - Module creation
-  - API integration
+Gesamte Dokumentation:
+- 4 umfassende Leitfäden
+- ~2.600 Zeilen Inhalt
+- 75+ Code-Beispiele
+- 20+ Diagramme
+- Vollständige Abdeckung von:
+  - Architektur
+  - Modul-Erstellung
+  - API-Integration
   - Styling
   - Debugging
-  - Common patterns
-  - Existing examples
+  - Häufige Muster
+  - Bestehende Beispiele
 
 ---
 
-## Contributing to Documentation
+## Zur Dokumentation beitragen
 
-If you find issues or want to improve documentation:
-1. Check current files in `/docs/`
-2. Update relevant file
-3. Keep code examples current
-4. Add diagrams for complex concepts
-5. Maintain consistency with other files
-
----
-
-## Quick Checklist for Developers
-
-After reading documentation, you should understand:
-
-- [ ] How main.ts boots the app
-- [ ] Why we use window manager instead of routing
-- [ ] How modules are registered in appRegistry
-- [ ] Service → Composable → Component pattern
-- [ ] When to use types/, services/, composables/, pages/, components/
-- [ ] How to create a new module from scratch
-- [ ] Where to add new API endpoints
-- [ ] How design tokens work
-- [ ] How to style components
-- [ ] How to debug common issues
+Falls du Probleme findest oder die Dokumentation verbessern möchtest:
+1. Prüfe aktuelle Dateien in `/docs/`
+2. Aktualisiere relevante Datei
+3. Halte Code-Beispiele aktuell
+4. Füge Diagramme für komplexe Konzepte hinzu
+5. Wahre Konsistenz mit anderen Dateien
 
 ---
 
-## Need Help?
+## Schnelle Checkliste für Entwickler
 
-1. **"I don't understand X"** → Check README_FRONTEND.md overview
-2. **"How do I do X?"** → Check QUICK_REFERENCE.md
-3. **"Where is X?"** → Check QUICK_REFERENCE.md File Locations
-4. **"Show me an example"** → Look at ui/src/modules/crm/ or code examples in UI_ARCHITECTURE.md
-5. **"I'm getting error X"** → Check QUICK_REFERENCE.md Common Errors
+Nach dem Lesen der Dokumentation solltest du verstehen:
+
+- [ ] Wie main.ts die App bootet
+- [ ] Warum wir Window Manager statt Routing verwenden
+- [ ] Wie Module in appRegistry registriert werden
+- [ ] Service → Composable → Component Muster
+- [ ] Wann types/, services/, composables/, pages/, components/ zu verwenden sind
+- [ ] Wie man ein neues Modul von Grund auf erstellt
+- [ ] Wo neue API-Endpunkte hinzugefügt werden
+- [ ] Wie Design Tokens funktionieren
+- [ ] Wie man Komponenten stylt
+- [ ] Wie man häufige Probleme debuggt
 
 ---
 
-**Last Updated**: December 23, 2025
-**Documentation Version**: 1.0
-**Frontend Framework**: Vue 3
-**Status**: Complete and Ready to Use
+## Brauchst du Hilfe?
 
+1. **"Ich verstehe X nicht"** → Prüfe README_FRONTEND.md Überblick
+2. **"Wie mache ich X?"** → Prüfe QUICK_REFERENCE.md
+3. **"Wo ist X?"** → Prüfe QUICK_REFERENCE.md Dateispeicherorte
+4. **"Zeig mir ein Beispiel"** → Schau dir ui/src/modules/crm/ oder Code-Beispiele in UI_ARCHITECTURE.md an
+5. **"Ich bekomme Fehler X"** → Prüfe QUICK_REFERENCE.md Häufige Fehler
+
+---
+
+**Letzte Aktualisierung**: 23. Dezember 2025
+**Dokumentationsversion**: 1.0
+**Frontend-Framework**: Vue 3
+**Status**: Vollständig und einsatzbereit

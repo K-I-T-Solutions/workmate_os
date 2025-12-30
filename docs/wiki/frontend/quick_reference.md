@@ -6,46 +6,46 @@ grand_parent: Wiki
 nav_order: 3
 ---
 
-# WorkmateOS Frontend - Quick Reference Guide
+# WorkmateOS Frontend - Schnellreferenz-Leitfaden
 
-## File Locations Quick Lookup
+## Dateispeicherorte - Schnellsuche
 
-### Core Application Files
+### Kernanwendungsdateien
 - **Entry Point**: `ui/src/main.ts`
-- **Root Component**: `ui/src/App.vue`
-- **Global Router**: `ui/src/router/index.ts`
+- **Root-Komponente**: `ui/src/App.vue`
+- **Globaler Router**: `ui/src/router/index.ts`
 - **Main Layout**: `ui/src/layouts/AppLayout.vue`
 
-### Module System
-- **App Registry** (add new modules here): `ui/src/layouts/app-manager/appRegistry.ts`
+### Modul-System
+- **App Registry** (hier neue Module hinzufügen): `ui/src/layouts/app-manager/appRegistry.ts`
 - **Window Manager**: `ui/src/layouts/app-manager/useAppManager.ts`
 - **Window Container**: `ui/src/layouts/app-manager/WindowHost.vue`
 - **Window Wrapper**: `ui/src/layouts/app-manager/WindowFrame.vue`
 
-### Navigation Components
+### Navigations-Komponenten
 - **Topbar**: `ui/src/layouts/components/Topbar.vue`
-- **Dock** (app launcher, add items here): `ui/src/layouts/components/Dock.vue`
+- **Dock** (App-Launcher, hier Items hinzufügen): `ui/src/layouts/components/Dock.vue`
 
 ### API & Services
-- **API Client** (Axios setup): `ui/src/services/api/client.ts`
+- **API-Client** (Axios-Setup): `ui/src/services/api/client.ts`
 - **Assets**: `ui/src/services/assets.ts`
 
-### Global Composables
+### Globale Composables
 - `ui/src/composables/useDashboard.ts`
 - `ui/src/composables/useEmployees.ts`
 - `ui/src/composables/useProjects.ts`
 
 ### Styling
-- **Design Tokens**: `ui/src/styles/tokens.css` (CSS custom properties)
-- **Base Styles**: `ui/src/styles/base.css` (Global styles + Tailwind)
-- **Component Styles**: `ui/src/styles/components/button.css`
+- **Design Tokens**: `ui/src/styles/tokens.css` (CSS Custom Properties)
+- **Basis-Styles**: `ui/src/styles/base.css` (Globale Styles + Tailwind)
+- **Komponenten-Styles**: `ui/src/styles/components/button.css`
 
-### Existing Modules
+### Bestehende Module
 
-#### CRM Module
+#### CRM-Modul
 ```
 ui/src/modules/crm/
-├── CrmApp.vue                      # Entry point
+├── CrmApp.vue                      # Entry Point
 ├── pages/
 │   ├── dashboard/CrmDashboardPage.vue
 │   ├── customer/CustomersListPage.vue
@@ -63,11 +63,11 @@ ui/src/modules/crm/
 │   ├── widgets/CrmShortcuts.vue
 │   └── index.ts
 ├── composables/
-│   ├── useCrmNavigation.ts         # Module internal routing
-│   ├── useCrmStats.ts              # Stats loading state
-│   └── useCrmActivity.ts           # Activity management
+│   ├── useCrmNavigation.ts         # Modulinternes Routing
+│   ├── useCrmStats.ts              # Stats Loading State
+│   └── useCrmActivity.ts           # Activity Management
 ├── services/
-│   └── crm.service.ts              # API calls
+│   └── crm.service.ts              # API-Aufrufe
 └── types/
     ├── customer.ts
     ├── contact.ts
@@ -75,7 +75,7 @@ ui/src/modules/crm/
     └── stats.ts
 ```
 
-#### Dashboard Module
+#### Dashboard-Modul
 ```
 ui/src/modules/dashboard/
 ├── pages/DashboardPage.vue
@@ -85,37 +85,37 @@ ui/src/modules/dashboard/
 │   ├── widgets/RemindersWidget.vue
 │   ├── widgets/ShortcutsWidget.vue
 │   ├── widgets/ActivityFeedWidget.vue
-│   └── ... more widgets
+│   └── ... weitere Widgets
 ├── services/
-│   └── widgetRegistry.ts           # Widget registration
+│   └── widgetRegistry.ts           # Widget-Registrierung
 └── types/
     └── widgetTypes.ts
 ```
 
 ---
 
-## Common Tasks
+## Häufige Aufgaben
 
-### Task 1: Add a New Module
+### Aufgabe 1: Neues Modul hinzufügen
 
-**Files to Create:**
-1. `ui/src/modules/mymodule/MyModuleApp.vue` - Entry point
-2. `ui/src/modules/mymodule/types/mymodule.ts` - Types
-3. `ui/src/modules/mymodule/services/mymodule.service.ts` - API calls
+**Zu erstellende Dateien:**
+1. `ui/src/modules/mymodule/MyModuleApp.vue` - Entry Point
+2. `ui/src/modules/mymodule/types/mymodule.ts` - Typen
+3. `ui/src/modules/mymodule/services/mymodule.service.ts` - API-Aufrufe
 4. `ui/src/modules/mymodule/composables/useMyModuleNav.ts` - Navigation
-5. `ui/src/modules/mymodule/pages/MyPage.vue` - Pages
-6. `ui/src/modules/mymodule/components/MyComponent.vue` - Components
+5. `ui/src/modules/mymodule/pages/MyPage.vue` - Seiten
+6. `ui/src/modules/mymodule/components/MyComponent.vue` - Komponenten
 
-**Files to Modify:**
-1. `ui/src/layouts/app-manager/appRegistry.ts` - Add app to `apps` array
-2. `ui/src/layouts/components/Dock.vue` - Add item to `dockItems` array
-3. `ui/src/router/index.ts` (optional) - Add child route
+**Zu modifizierende Dateien:**
+1. `ui/src/layouts/app-manager/appRegistry.ts` - App zum `apps`-Array hinzufügen
+2. `ui/src/layouts/components/Dock.vue` - Item zum `dockItems`-Array hinzufügen
+3. `ui/src/router/index.ts` (optional) - Child-Route hinzufügen
 
 ---
 
-### Task 2: Add API Endpoint to Service
+### Aufgabe 2: API-Endpunkt zum Service hinzufügen
 
-**Location**: `ui/src/modules/crm/services/crm.service.ts`
+**Speicherort**: `ui/src/modules/crm/services/crm.service.ts`
 
 ```typescript
 async getCustomers(): Promise<Customer[]> {
@@ -126,9 +126,9 @@ async getCustomers(): Promise<Customer[]> {
 
 ---
 
-### Task 3: Create Data Fetching Composable
+### Aufgabe 3: Datenabruf-Composable erstellen
 
-**Location**: `ui/src/modules/crm/composables/useCrmStats.ts`
+**Speicherort**: `ui/src/modules/crm/composables/useCrmStats.ts`
 
 ```typescript
 import { ref } from "vue";
@@ -160,7 +160,7 @@ export function useCrmStats() {
 
 ---
 
-### Task 4: Use Composable in Component
+### Aufgabe 4: Composable in Komponente verwenden
 
 ```vue
 <script setup lang="ts">
@@ -185,34 +185,34 @@ onMounted(() => {
 
 ---
 
-### Task 5: Add Navigation to Module
+### Aufgabe 5: Navigation zum Modul hinzufügen
 
-**In Module Entry** (`CrmApp.vue`):
+**Im Modul-Entry** (`CrmApp.vue`):
 ```typescript
 const { view, activeCustomerId, goCustomerDetail, goCustomers } = useCrmNavigation();
 ```
 
-**In Child Component**:
+**In Child-Komponente**:
 ```typescript
 emit("openCustomer", id);
-// Parent catches: @openCustomer="goCustomerDetail"
+// Parent fängt ab: @openCustomer="goCustomerDetail"
 ```
 
 ---
 
-### Task 6: Style Component
+### Aufgabe 6: Komponente stylen
 
-**Using Tailwind (inline classes):**
+**Tailwind verwenden (Inline-Klassen):**
 ```vue
 <div class="px-4 py-2 bg-white/5 border border-white/10 rounded">
-  <h2 class="text-lg font-semibold text-white">Title</h2>
+  <h2 class="text-lg font-semibold text-white">Titel</h2>
 </div>
 ```
 
-**Using Design Tokens (CSS):**
+**Design Tokens verwenden (CSS):**
 ```vue
 <div class="my-custom-card">
-  <h2>Title</h2>
+  <h2>Titel</h2>
 </div>
 
 <style scoped>
@@ -226,21 +226,21 @@ emit("openCustomer", id);
 
 ---
 
-### Task 7: Register Global Pinia Store
+### Aufgabe 7: Globalen Pinia Store registrieren
 
-**Create Store**: `ui/src/stores/authStore.ts`
+**Store erstellen**: `ui/src/stores/authStore.ts`
 ```typescript
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
 export const useAuthStore = defineStore("auth", () => {
   const user = ref(null);
-  
+
   return { user };
 });
 ```
 
-**Use in Component**:
+**In Komponente verwenden**:
 ```typescript
 import { useAuthStore } from "@/stores/authStore";
 
@@ -250,9 +250,9 @@ console.log(authStore.user);
 
 ---
 
-### Task 8: Add Type Definition
+### Aufgabe 8: Typdefinition hinzufügen
 
-**Location**: `ui/src/modules/crm/types/customer.ts`
+**Speicherort**: `ui/src/modules/crm/types/customer.ts`
 
 ```typescript
 export interface Customer {
@@ -267,9 +267,9 @@ export interface Customer {
 
 ---
 
-## Important Patterns
+## Wichtige Muster
 
-### Service Pattern
+### Service-Muster
 ```typescript
 // services/crm.service.ts
 export const crmService = {
@@ -279,21 +279,21 @@ export const crmService = {
 };
 ```
 
-### Composable Pattern
+### Composable-Muster
 ```typescript
 // composables/useCrmStats.ts
 export function useCrmStats() {
   const data = ref(null);
   const loading = ref(false);
   const error = ref(null);
-  
+
   async function fetch() { ... }
-  
+
   return { data, loading, error, fetch };
 }
 ```
 
-### Component Event Pattern
+### Komponenten-Event-Muster
 ```vue
 <script setup>
 const emit = defineEmits<{
@@ -307,7 +307,7 @@ function handleClick(id: string) {
 </script>
 ```
 
-### Module Navigation Pattern
+### Modul-Navigations-Muster
 ```typescript
 // In CrmApp.vue
 const { view, activeId, goList, goDetail } = useCrmNavigation();
@@ -321,41 +321,41 @@ emit("openCustomer", id);
 
 ---
 
-## Environment Variables
+## Umgebungsvariablen
 
 ### .env (ui/.env)
 ```
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-### Access in Code
+### Zugriff im Code
 ```typescript
 import.meta.env.VITE_API_BASE_URL
 ```
 
 ---
 
-## Running the Application
+## Anwendung ausführen
 
 ```bash
-# Install dependencies
+# Abhängigkeiten installieren
 cd ui
 pnpm install
 
-# Development server (hot reload)
+# Entwicklungsserver (Hot Reload)
 pnpm run dev
-# Access at: http://localhost:5173
+# Zugriff unter: http://localhost:5173
 
-# Build for production
+# Für Produktion bauen
 pnpm run build
 
-# Preview production build
+# Produktions-Build in der Vorschau anzeigen
 pnpm run preview
 ```
 
 ---
 
-## Component Hierarchy Quick Map
+## Komponentenhierarchie - Schnellübersicht
 
 ```
 main.ts
@@ -364,8 +364,8 @@ main.ts
           ├─ /app → AppLayout
           │    ├─ Topbar
           │    ├─ WindowHost
-          │    │   └─ WindowFrame (multiple instances)
-          │    │       └─ CrmApp, ProjectsApp, etc (modules)
+          │    │   └─ WindowFrame (mehrere Instanzen)
+          │    │       └─ CrmApp, ProjectsApp, etc (Module)
           │    └─ Dock
           │
           ├─ /under-construction
@@ -374,9 +374,9 @@ main.ts
 
 ---
 
-## Pinia Store Locations (Currently Empty)
+## Pinia Store Speicherorte (aktuell leer)
 
-To create global state, add stores to:
+Um globalen State zu erstellen, füge Stores hinzu zu:
 ```
 ui/src/stores/
 ├── authStore.ts
@@ -385,7 +385,7 @@ ui/src/stores/
 └── ... etc
 ```
 
-Access with:
+Zugriff mit:
 ```typescript
 import { useAuthStore } from "@/stores/authStore";
 const authStore = useAuthStore();
@@ -393,24 +393,24 @@ const authStore = useAuthStore();
 
 ---
 
-## Available Icons (lucide-vue-next)
+## Verfügbare Icons (lucide-vue-next)
 
-Used in Dock and throughout UI:
+Verwendet in Dock und gesamter UI:
 ```typescript
 import { Users, Briefcase, Timer, Receipt, Wallet, MessageSquare } from "lucide-vue-next";
 ```
 
-See: https://lucide.dev/
+Siehe: https://lucide.dev/
 
 ---
 
-## TypeScript Path Aliases
+## TypeScript-Pfad-Aliase
 
 ```
 @ → ui/src/
 ```
 
-Example imports:
+Beispiel-Imports:
 ```typescript
 import CrmApp from "@/modules/crm/CrmApp.vue";
 import { crmService } from "@/modules/crm/services/crm.service";
@@ -421,9 +421,9 @@ import api from "@/services/api/client";
 
 ---
 
-## Tailwind Classes Quick Reference
+## Tailwind-Klassen - Schnellreferenz
 
-**Colors:**
+**Farben:**
 - `bg-bg-primary`, `bg-bg-secondary`
 - `text-white`, `text-white/70`, `text-white/50`
 - `border-white/10`
@@ -449,27 +449,27 @@ import api from "@/services/api/client";
 
 ---
 
-## Debugging Tips
+## Debugging-Tipps
 
-### Check API Responses
+### API-Antworten prüfen
 ```typescript
 const { data } = await api.get("/api/endpoint");
 console.log(data);
 ```
 
-### Check Component State
+### Komponenten-State prüfen
 ```vue
 <script setup>
 const myRef = ref("value");
 </script>
 
 <template>
-  <!-- Debug output -->
+  <!-- Debug-Ausgabe -->
   <pre>{{ myRef }}</pre>
 </template>
 ```
 
-### Check Router State
+### Router-State prüfen
 ```typescript
 import { useRouter, useRoute } from "vue-router";
 const router = useRouter();
@@ -477,7 +477,7 @@ const route = useRoute();
 console.log(route.path, route.params);
 ```
 
-### Check Window Manager State
+### Window Manager State prüfen
 ```typescript
 import { useAppManager } from "@/layouts/app-manager/useAppManager";
 const { windows, activeWindow } = useAppManager();
@@ -486,44 +486,43 @@ console.log(windows.value, activeWindow.value);
 
 ---
 
-## Common Errors & Fixes
+## Häufige Fehler & Lösungen
 
 ### "Cannot find module '@/modules/...'"
-- Check path in import statement
-- Use `@` alias correctly
-- Verify file exists
+- Pfad in Import-Anweisung prüfen
+- `@`-Alias korrekt verwenden
+- Prüfen, ob Datei existiert
 
 ### "Type '...' is not assignable to type '...'"
-- Check type definitions in `types/` folder
-- Ensure API response matches interface
+- Typdefinitionen in `types/`-Ordner prüfen
+- Sicherstellen, dass API-Antwort zum Interface passt
 
 ### "composable not defined"
-- Import from correct path: `from "../../composables/useXxx"`
-- Make sure `useXxx` is exported
+- Von korrektem Pfad importieren: `from "../../composables/useXxx"`
+- Sicherstellen, dass `useXxx` exportiert ist
 
-### API calls returning undefined
-- Check API base URL in `.env`
-- Verify API endpoint path matches backend
-- Check loading state before accessing data
+### API-Aufrufe geben undefined zurück
+- API-Basis-URL in `.env` prüfen
+- Verifizieren, dass API-Endpunkt-Pfad zum Backend passt
+- Loading-State prüfen, bevor auf Daten zugegriffen wird
 
 ---
 
-## Quick Commands
+## Schnellbefehle
 
 ```bash
-# Install dependencies
+# Abhängigkeiten installieren
 pnpm install
 
-# Start dev server
+# Dev-Server starten
 pnpm run dev
 
 # Build
 pnpm run build
 
-# Format code (if prettier configured)
+# Code formatieren (falls prettier konfiguriert)
 pnpm run format
 
-# Check types
+# Typen prüfen
 vue-tsc --noEmit
 ```
-

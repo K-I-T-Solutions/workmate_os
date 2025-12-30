@@ -1,47 +1,47 @@
 ---
 layout: default
-title: Architecture
+title: Architektur
 parent: Frontend
 grand_parent: Wiki
 nav_order: 1
 ---
 
-# WorkmateOS Frontend/UI Architecture Guide
+# WorkmateOS Frontend/UI Architektur-Leitfaden
 
-## Overview
+## Überblick
 
-The WorkmateOS frontend is a Vue 3 + TypeScript + Vite-based application using a **modular architecture** with a unique desktop-like window manager system. The application is organized into independent modules (CRM, Dashboard, etc.) that can be opened as floating windows within the main application.
+Das WorkmateOS Frontend ist eine Vue 3 + TypeScript + Vite-basierte Anwendung, die eine **modulare Architektur** mit einem einzigartigen desktop-ähnlichen Fensterverwaltungssystem verwendet. Die Anwendung ist in unabhängige Module (CRM, Dashboard, etc.) organisiert, die als schwebende Fenster innerhalb der Hauptanwendung geöffnet werden können.
 
 ---
 
-## 1. Overall Directory Structure
+## 1. Gesamte Verzeichnisstruktur
 
 ```
 ui/src/
-├── main.ts                          # Entry point
-├── App.vue                          # Root component
-├── style.css                        # Global styles
+├── main.ts                          # Einstiegspunkt
+├── App.vue                          # Root-Komponente
+├── style.css                        # Globale Styles
 │
 ├── router/
-│   └── index.ts                     # Vue Router configuration
+│   └── index.ts                     # Vue Router Konfiguration
 │
 ├── layouts/
-│   ├── AppLayout.vue                # Main layout (topbar + dock + window host)
+│   ├── AppLayout.vue                # Haupt-Layout (Topbar + Dock + Window Host)
 │   ├── app-manager/
-│   │   ├── appRegistry.ts           # Central app registration
-│   │   ├── useAppManager.ts         # Window manager logic
-│   │   ├── WindowHost.vue           # Container for all windows
-│   │   ├── WindowFrame.vue          # Individual window wrapper
+│   │   ├── appRegistry.ts           # Zentrale App-Registrierung
+│   │   ├── useAppManager.ts         # Fensterverwaltungslogik
+│   │   ├── WindowHost.vue           # Container für alle Fenster
+│   │   ├── WindowFrame.vue          # Individueller Fenster-Wrapper
 │   │   └── index.ts                 # Exports
 │   └── components/
-│       ├── Topbar.vue               # Top navigation bar
-│       ├── Dock.vue                 # Bottom app dock
+│       ├── Topbar.vue               # Obere Navigationsleiste
+│       ├── Dock.vue                 # Unteres App-Dock
 │       └── index.ts                 # Exports
 │
 ├── modules/
-│   ├── crm/                         # CRM Module
-│   │   ├── CrmApp.vue               # Module entry component
-│   │   ├── pages/                   # Page components
+│   ├── crm/                         # CRM-Modul
+│   │   ├── CrmApp.vue               # Modul-Einstiegskomponente
+│   │   ├── pages/                   # Seiten-Komponenten
 │   │   │   ├── dashboard/
 │   │   │   │   └── CrmDashboardPage.vue
 │   │   │   ├── customer/
@@ -50,7 +50,7 @@ ui/src/
 │   │   │   ├── contacts/
 │   │   │   │   ├── ContactsListPage.vue
 │   │   │   │   └── ContactDetailPage.vue
-│   │   │   └── index.ts             # Page exports
+│   │   │   └── index.ts             # Seiten-Exports
 │   │   ├── components/
 │   │   │   ├── customer/
 │   │   │   │   ├── CustomerCard.vue
@@ -65,11 +65,11 @@ ui/src/
 │   │   │   │   └── index.ts
 │   │   │   └── index.ts
 │   │   ├── composables/
-│   │   │   ├── useCrmNavigation.ts   # Navigation state management
-│   │   │   ├── useCrmStats.ts        # Statistics logic
-│   │   │   └── useCrmActivity.ts     # Activity management
+│   │   │   ├── useCrmNavigation.ts   # Navigationszustandsverwaltung
+│   │   │   ├── useCrmStats.ts        # Statistik-Logik
+│   │   │   └── useCrmActivity.ts     # Aktivitätsverwaltung
 │   │   ├── services/
-│   │   │   └── crm.service.ts        # API calls
+│   │   │   └── crm.service.ts        # API-Aufrufe
 │   │   └── types/
 │   │       ├── customer.ts
 │   │       ├── contact.ts
@@ -93,39 +93,39 @@ ui/src/
 │       │       ├── SystemMonitorWidget.vue
 │       │       └── index.ts
 │       ├── services/
-│       │   └── widgetRegistry.ts     # Widget registration
+│       │   └── widgetRegistry.ts     # Widget-Registrierung
 │       └── types/
-│           └── widgetTypes.ts        # Type definitions
+│           └── widgetTypes.ts        # Typ-Definitionen
 │
 ├── services/
 │   ├── api/
-│   │   └── client.ts                # Axios API client
-│   └── assets.ts                    # Asset paths
+│   │   └── client.ts                # Axios API Client
+│   └── assets.ts                    # Asset-Pfade
 │
 ├── composables/
-│   ├── useDashboard.ts              # Global dashboard logic
+│   ├── useDashboard.ts              # Globale Dashboard-Logik
 │   ├── useEmployees.ts
 │   ├── useProjects.ts
 │   └── useInvocies.ts
 │
 ├── styles/
-│   ├── tokens.css                   # Design tokens (colors, spacing, etc)
-│   ├── base.css                     # Global styles
+│   ├── tokens.css                   # Design-Tokens (Farben, Abstände, etc.)
+│   ├── base.css                     # Globale Styles
 │   └── components/
 │       ├── button.css
 │       └── kit-components.css
 │
-├── pages/                           # Global pages
+├── pages/                           # Globale Seiten
 │   ├── UnderConstruction.vue
 │   └── Linktree.vue
 │
 └── assets/
-    └── [images, fonts, etc]
+    └── [Bilder, Schriften, etc.]
 ```
 
 ---
 
-## 2. Application Bootstrap Flow
+## 2. Anwendungs-Bootstrap-Ablauf
 
 ### main.ts
 ```typescript
@@ -142,12 +142,12 @@ createApp(App)
   .mount("#app");
 ```
 
-**Key Points:**
-- Pinia is initialized for state management (currently not heavily used)
-- Vue Router manages global routing
-- App.vue is the root component
+**Wichtige Punkte:**
+- Pinia wird für State Management initialisiert (aktuell minimal genutzt)
+- Vue Router verwaltet globales Routing
+- App.vue ist die Root-Komponente
 
-### App.vue (Root Component)
+### App.vue (Root-Komponente)
 ```vue
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
@@ -158,20 +158,20 @@ import { RouterView } from 'vue-router'
 </template>
 ```
 
-Simple root that delegates to router.
+Einfache Root-Komponente, die an den Router delegiert.
 
 ---
 
-## 3. Router Configuration (router/index.ts)
+## 3. Router-Konfiguration (router/index.ts)
 
-The router uses two main routes:
+Der Router verwendet zwei Hauptrouten:
 
 ```typescript
 const routes = [
-  // Default redirect
+  // Standard-Weiterleitung
   { path: "/", redirect: "/under-construction" },
 
-  // Main app layout with modules
+  // Haupt-App-Layout mit Modulen
   {
     path: "/app",
     component: AppLayout,
@@ -184,12 +184,12 @@ const routes = [
       {
         path: "crm",
         name: "crm",
-        component: CrmApp,  // Module entry point
+        component: CrmApp,  // Modul-Einstiegspunkt
       }
     ],
   },
 
-  // Public routes
+  // Öffentliche Routen
   {
     path: "/under-construction",
     component: () => import("@/pages/UnderConstruction.vue"),
@@ -201,15 +201,15 @@ const routes = [
 ];
 ```
 
-**Pattern:** Child routes are lazy-loaded, except CrmApp which is imported directly.
+**Muster:** Child-Routen werden lazy-loaded, außer CrmApp, die direkt importiert wird.
 
 ---
 
-## 4. Module System Architecture
+## 4. Modul-System-Architektur
 
-### Module Registration (appRegistry.ts)
+### Modul-Registrierung (appRegistry.ts)
 
-Central registry for all modules:
+Zentrale Registrierung für alle Module:
 
 ```typescript
 import { markRaw } from "vue";
@@ -227,61 +227,61 @@ export const apps = [
       height: 700
     }
   },
-  // More apps here...
+  // Weitere Apps hier...
 ];
 ```
 
-**Key Points:**
-- Uses `markRaw()` to prevent Vue reactivity overhead
-- Each app has an `id`, `title`, `icon`, `component`, and default window size
-- This is used by the window manager to open apps
+**Wichtige Punkte:**
+- Verwendet `markRaw()`, um Vue-Reaktivitäts-Overhead zu vermeiden
+- Jede App hat eine `id`, `title`, `icon`, `component` und Standard-Fenstergröße
+- Wird vom Fenstermanager zum Öffnen von Apps verwendet
 
-### Window Manager (useAppManager.ts)
+### Fenstermanager (useAppManager.ts)
 
-Reactive state management for windows:
+Reaktive Zustandsverwaltung für Fenster:
 
 ```typescript
 export interface WindowApp {
-  id: string;              // Unique window instance ID
-  appId: string;           // Reference to app registry
+  id: string;              // Eindeutige Fensterinstanz-ID
+  appId: string;           // Referenz zur App-Registrierung
   title: string;
   component: Component;
   props?: Record<string, any>;
   x: number; y: number;    // Position
   width: number;
   height: number;
-  z: number;               // Z-index for layering
+  z: number;               // Z-Index für Layering
 }
 
 export const appManager = {
-  windows,          // Reactive array of open windows
-  activeWindow,     // Currently focused window
+  windows,          // Reaktives Array geöffneter Fenster
+  activeWindow,     // Aktuell fokussiertes Fenster
 
-  openWindow(appId),    // Open an app
-  closeWindow(id),      // Close a window
-  focusWindow(id),      // Focus a window (bring to front)
-  startDragFor(id, e),  // Drag handler
-  startResizeFor(id, e) // Resize handler
+  openWindow(appId),    // App öffnen
+  closeWindow(id),      // Fenster schließen
+  focusWindow(id),      // Fenster fokussieren (nach vorne bringen)
+  startDragFor(id, e),  // Drag-Handler
+  startResizeFor(id, e) // Resize-Handler
 };
 ```
 
-**Key Features:**
-- Multiple instances of same app can be open
-- Windows are draggable and resizable
-- Z-index managed for proper layering
-- Position/size constrained to viewport
+**Hauptfunktionen:**
+- Mehrere Instanzen derselben App können geöffnet sein
+- Fenster sind verschiebbar und in der Größe veränderbar
+- Z-Index wird für richtiges Layering verwaltet
+- Position/Größe auf Viewport begrenzt
 
 ---
 
-## 5. Module Structure Pattern - CRM Module Example
+## 5. Modul-Strukturmuster - CRM-Modul-Beispiel
 
-### Module Entry Point (CrmApp.vue)
+### Modul-Einstiegspunkt (CrmApp.vue)
 
-Acts as a router/container for the module:
+Fungiert als Router/Container für das Modul:
 
 ```vue
 <script setup lang="ts">
-import { 
+import {
   CrmDashboardPage,
   CustomersListPage,
   CustomerDetailPage,
@@ -306,7 +306,7 @@ const {
 
 <template>
   <div class="crm-app h-full">
-    <!-- Conditional rendering based on view state -->
+    <!-- Bedingte Darstellung basierend auf Ansichtszustand -->
     <CrmDashboardPage
       v-if="view === 'dashboard'"
       @openCustomers="goCustomers"
@@ -320,19 +320,19 @@ const {
       @openDashboard="goDashboard"
     />
 
-    <!-- More views... -->
+    <!-- Weitere Ansichten... -->
   </div>
 </template>
 ```
 
-**Pattern:**
-- Module has internal routing using composable-based state
-- No Vue Router child routes (self-contained)
-- View switching via conditional rendering
+**Muster:**
+- Modul hat internes Routing über Composable-basierten State
+- Keine Vue Router Child-Routen (in sich geschlossen)
+- Ansichtswechsel über bedingte Darstellung
 
-### Navigation Composable (useCrmNavigation.ts)
+### Navigations-Composable (useCrmNavigation.ts)
 
-Internal state management for module views:
+Interne Zustandsverwaltung für Modulansichten:
 
 ```typescript
 export type CrmView =
@@ -360,7 +360,7 @@ export function useCrmNavigation() {
     activeCustomerId.value = null;
   }
 
-  // ... more navigation functions
+  // ... weitere Navigationsfunktionen
 
   return {
     view,
@@ -368,25 +368,25 @@ export function useCrmNavigation() {
     activeContactId,
     goDashboard,
     goCustomers,
-    // ... more exports
+    // ... weitere Exports
   };
 }
 ```
 
-**Pattern:**
-- Pure composable with no dependencies on Vue Router
-- References passed via composable, not route params
-- Used throughout module for navigation
+**Muster:**
+- Pures Composable ohne Abhängigkeiten vom Vue Router
+- Referenzen über Composable übergeben, nicht über Route-Parameter
+- Im gesamten Modul für Navigation verwendet
 
-### API Service Layer (crm.service.ts)
+### API-Service-Schicht (crm.service.ts)
 
-Centralized API calls:
+Zentralisierte API-Aufrufe:
 
 ```typescript
 import api from "@/services/api/client";
 
 export const crmService = {
-  // Customers
+  // Kunden
   async getCustomers(): Promise<Customer[]> {
     const { data } = await api.get("/api/backoffice/crm/customers");
     return data;
@@ -401,19 +401,19 @@ export const crmService = {
     return api.post("/api/backoffice/crm/customers", payload);
   },
 
-  // Contacts
+  // Kontakte
   async getContacts(): Promise<Contact[]> {
     const { data } = await api.get("/api/backoffice/crm/contacts");
     return data;
   },
 
-  // Activities
+  // Aktivitäten
   async getLatestActivities(limit: number): Promise<CrmActivity[]> {
     const { data } = await api.get(`/api/backoffice/crm/activities/latest?limit=${limit}`);
     return data;
   },
 
-  // Stats
+  // Statistiken
   async getCrmStats(): Promise<CrmStats> {
     const { data } = await api.get("/api/backoffice/crm/stats");
     return data;
@@ -421,15 +421,15 @@ export const crmService = {
 };
 ```
 
-**Pattern:**
-- Service object with static methods
-- Uses shared axios client
-- Returns Promise<T> for proper typing
-- Handles URL construction and parameters
+**Muster:**
+- Service-Objekt mit statischen Methoden
+- Verwendet gemeinsamen Axios-Client
+- Gibt Promise<T> für richtige Typisierung zurück
+- Handhabt URL-Konstruktion und Parameter
 
-### Data Fetching Composable (useCrmStats.ts)
+### Datenabruf-Composable (useCrmStats.ts)
 
-Loading state + service integration:
+Ladezustand + Service-Integration:
 
 ```typescript
 export function useCrmStats() {
@@ -445,7 +445,7 @@ export function useCrmStats() {
       const data = await crmService.getCrmStats();
       stats.value = data;
     } catch (e: any) {
-      error.value = e.message ?? "Failed to load stats";
+      error.value = e.message ?? "Fehler beim Laden der Statistiken";
     } finally {
       loading.value = false;
     }
@@ -460,13 +460,13 @@ export function useCrmStats() {
 }
 ```
 
-**Pattern:**
-- Wraps service calls
-- Manages loading/error states
-- Returns reactive ref + fetch function
-- Used in components via `const { stats, loading } = useCrmStats()`
+**Muster:**
+- Wrapping von Service-Aufrufen
+- Verwaltet Lade-/Fehlerzustände
+- Gibt reaktive Ref + Fetch-Funktion zurück
+- In Komponenten verwendet via `const { stats, loading } = useCrmStats()`
 
-### Page Components (CustomersListPage.vue)
+### Seiten-Komponenten (CustomersListPage.vue)
 
 ```vue
 <template>
@@ -478,7 +478,7 @@ export function useCrmStats() {
       </button>
     </div>
 
-    <!-- Search/Filter -->
+    <!-- Suche/Filter -->
     <input v-model="search" type="text" placeholder="Kunde suchen…" />
 
     <!-- Grid -->
@@ -544,14 +544,14 @@ function openCustomer(id: string) {
 </script>
 ```
 
-**Pattern:**
-- Page emits events to parent (CrmApp.vue)
-- Uses composables for logic
-- Handles its own local state (search, pagination)
-- Service calls in onMounted
-- Computed for filtering/pagination
+**Muster:**
+- Seite emit Events zur übergeordneten Komponente (CrmApp.vue)
+- Verwendet Composables für Logik
+- Handhabt eigenen lokalen Zustand (Suche, Pagination)
+- Service-Aufrufe in onMounted
+- Computed für Filterung/Pagination
 
-### Type Definitions (types/customer.ts)
+### Typ-Definitionen (types/customer.ts)
 
 ```typescript
 export interface Customer {
@@ -571,13 +571,13 @@ export interface Customer {
 }
 ```
 
-**Pattern:**
-- All module types in dedicated `types/` folder
-- Exported interfaces, not classes
-- Nullable fields marked with `| null`
-- ISO date strings for dates
+**Muster:**
+- Alle Modul-Typen in dediziertem `types/`-Ordner
+- Exportierte Interfaces, keine Klassen
+- Nullable Felder mit `| null` gekennzeichnet
+- ISO-Datums-Strings für Daten
 
-### Component Barrel Exports (components/index.ts)
+### Komponenten-Barrel-Exports (components/index.ts)
 
 ```typescript
 // Cards
@@ -592,15 +592,15 @@ export { default as CustomerForm } from "./customer/CustomerForm.vue";
 export * from "./widgets";
 ```
 
-**Pattern:**
-- All components exported from index
-- Enables `import { CustomerForm } from "../../components"`
+**Muster:**
+- Alle Komponenten aus Index exportiert
+- Ermöglicht `import { CustomerForm } from "../../components"`
 
 ---
 
-## 6. API Client Setup (services/api/client.ts)
+## 6. API-Client-Setup (services/api/client.ts)
 
-Centralized Axios instance:
+Zentralisierte Axios-Instanz:
 
 ```typescript
 import axios, { type AxiosInstance } from 'axios';
@@ -615,20 +615,20 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 30000,
 });
 
-// Request Interceptor (JWT token would go here)
+// Request Interceptor (JWT Token würde hier hinzugefügt)
 apiClient.interceptors.request.use(
   (config) => {
-    // TODO: Add JWT token
+    // TODO: JWT Token hinzufügen
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor (Error Handling)
+// Response Interceptor (Fehlerbehandlung)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Global error handling (401, 403, 404, 500, etc)
+    // Globale Fehlerbehandlung (401, 403, 404, 500, etc)
     return Promise.reject(error);
   }
 );
@@ -636,22 +636,22 @@ apiClient.interceptors.response.use(
 export default apiClient;
 ```
 
-**Usage in Services:**
+**Verwendung in Services:**
 ```typescript
 const { data } = await api.get("/api/backoffice/crm/customers");
 ```
 
-**Features:**
-- Single instance shared across app
-- Base URL from environment
-- Ready for JWT interceptor
-- Centralized error handling
+**Funktionen:**
+- Einzelne Instanz wird app-weit geteilt
+- Base-URL aus Umgebungsvariablen
+- Bereit für JWT-Interceptor
+- Zentralisierte Fehlerbehandlung
 
 ---
 
-## 7. Layout System (AppLayout.vue)
+## 7. Layout-System (AppLayout.vue)
 
-Main container with topbar, window host, and dock:
+Haupt-Container mit Topbar, Window Host und Dock:
 
 ```vue
 <template>
@@ -659,20 +659,20 @@ Main container with topbar, window host, and dock:
     <!-- Topbar -->
     <KitTopbar />
 
-    <!-- Main Window Area -->
+    <!-- Haupt-Fensterbereich -->
     <div class="flex flex-1 overflow-hidden">
       <WindowHost class="flex-1" />
     </div>
 
-    <!-- Dock (Bottom) -->
+    <!-- Dock (Unten) -->
     <KitDock />
   </div>
 </template>
 ```
 
-### Dock Component (Dock.vue)
+### Dock-Komponente (Dock.vue)
 
-Bottom navigation bar for opening apps:
+Untere Navigationsleiste zum Öffnen von Apps:
 
 ```vue
 <script setup lang="ts">
@@ -680,7 +680,7 @@ const dockItems = [
   { id: "crm", label: "CRM", icon: markRaw(Users) },
   { id: "projects", label: "Projects", icon: markRaw(Briefcase) },
   { id: "time", label: "Time", icon: markRaw(Timer) },
-  // More items...
+  // Weitere Items...
 ];
 
 function openApp(appId: string) {
@@ -694,15 +694,15 @@ const isActive = (appId: string) => {
 </script>
 ```
 
-**Features:**
-- Uses lucide-vue-next icons (markRaw for performance)
-- Integrates with useAppManager
-- Shows active state when app window is open
-- Responsive design (hidden on mobile)
+**Funktionen:**
+- Verwendet lucide-vue-next Icons (markRaw für Performance)
+- Integriert mit useAppManager
+- Zeigt aktiven Zustand, wenn App-Fenster geöffnet ist
+- Responsive Design (versteckt auf Mobilgeräten)
 
 ### Window Host (WindowHost.vue)
 
-Container for all floating windows:
+Container für alle schwebenden Fenster:
 
 ```vue
 <template>
@@ -712,7 +712,7 @@ Container for all floating windows:
       :key="w.id"
       :win="w"
     >
-      <!-- App component rendered here -->
+      <!-- App-Komponente wird hier gerendert -->
       <component :is="resolveComponent(w.appId)" v-bind="w.props" />
     </WindowFrame>
   </div>
@@ -721,71 +721,71 @@ Container for all floating windows:
 
 ### Window Frame (WindowFrame.vue)
 
-Individual window wrapper with titlebar, resize handle:
+Individueller Fenster-Wrapper mit Titelleiste, Resize-Handle:
 
 ```vue
 <template>
   <div class="window-frame" :style="frameStyleString" @mousedown="focus">
-    <!-- Titlebar (draggable) -->
+    <!-- Titelleiste (verschiebbar) -->
     <div class="window-titlebar" @mousedown.stop="startDrag">
       <span>{{ win.title }}</span>
       <button @click.stop="close">✕</button>
     </div>
 
-    <!-- Content -->
+    <!-- Inhalt -->
     <div class="window-content">
       <slot />
     </div>
 
-    <!-- Resize handle -->
+    <!-- Resize-Handle -->
     <div class="resize-handle" @mousedown.stop="startResize" />
   </div>
 </template>
 ```
 
-**Features:**
-- Positioned absolutely with dynamic x, y, width, height
-- Draggable titlebar
-- Resizable via corner handle
-- Close button
-- Focus on click (z-index management)
+**Funktionen:**
+- Absolut positioniert mit dynamischem x, y, width, height
+- Verschiebbare Titelleiste
+- Größenänderbar über Eckengriff
+- Schließen-Button
+- Fokus bei Klick (Z-Index-Verwaltung)
 
 ---
 
 ## 8. State Management (Pinia)
 
-Currently Pinia is set up but **minimally used**. The app relies on:
-- **Composables** for local state (useCrmNavigation, useCrmStats, etc)
-- **Service layer** for API calls
-- **Reactive refs** for component state
+Aktuell ist Pinia eingerichtet, aber **minimal genutzt**. Die App setzt auf:
+- **Composables** für lokalen Zustand (useCrmNavigation, useCrmStats, etc.)
+- **Service-Schicht** für API-Aufrufe
+- **Reaktive Refs** für Komponentenzustand
 
-**When to add a Pinia store:**
-- Global app state (user, auth, theme)
-- Shared state across multiple modules
-- Complex state transitions
+**Wann einen Pinia Store hinzufügen:**
+- Globaler App-Zustand (User, Auth, Theme)
+- Geteilter Zustand über mehrere Module
+- Komplexe Zustandsübergänge
 
 ---
 
-## 9. Styling System
+## 9. Styling-System
 
-### Design Tokens (styles/tokens.css)
+### Design-Tokens (styles/tokens.css)
 
-CSS custom properties for consistency:
+CSS Custom Properties für Konsistenz:
 
 ```css
 :root {
-  /* Colors */
+  /* Farben */
   --color-bg-primary: #232223;
   --color-accent-primary: #ff9100;
   --color-text-primary: #ffffff;
   --color-text-secondary: rgba(255, 255, 255, 0.7);
   --color-border-light: rgba(255, 255, 255, 0.1);
 
-  /* Typography */
+  /* Typografie */
   --font-primary: "Fira Sans", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  /* Spacing */
+  /* Abstände */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -800,22 +800,22 @@ CSS custom properties for consistency:
 
 ### Tailwind CSS
 
-Uses Tailwind v4 with `@tailwindcss/vite` plugin:
+Verwendet Tailwind v4 mit `@tailwindcss/vite` Plugin:
 
 ```vue
 <div class="px-6 py-4 bg-white/5 border border-white/10 rounded-lg">
-  <h2 class="text-lg font-semibold text-white">Title</h2>
+  <h2 class="text-lg font-semibold text-white">Titel</h2>
 </div>
 ```
 
-**Classes used throughout:**
+**Verwendete Klassen:**
 - `bg-bg-primary`, `bg-bg-secondary`
 - `text-white`, `text-white/70`
 - `border-white/10`
-- Grid layouts: `grid grid-cols-4 gap-2`
+- Grid-Layouts: `grid grid-cols-4 gap-2`
 - Flex: `flex items-center justify-between`
 
-### Component Styles (styles/components/)
+### Komponenten-Styles (styles/components/)
 
 ```css
 /* button.css */
@@ -838,13 +838,13 @@ Uses Tailwind v4 with `@tailwindcss/vite` plugin:
 
 ---
 
-## 10. Creating a New Module - Step by Step
+## 10. Neues Modul erstellen - Schritt für Schritt
 
-### Step 1: Create Module Structure
+### Schritt 1: Modul-Struktur erstellen
 
 ```
 ui/src/modules/mymodule/
-├── MyModuleApp.vue           # Entry point
+├── MyModuleApp.vue           # Einstiegspunkt
 ├── pages/
 │   ├── MyPage.vue
 │   └── index.ts
@@ -859,7 +859,7 @@ ui/src/modules/mymodule/
     └── mymodule.ts
 ```
 
-### Step 2: Create Type Definitions (types/mymodule.ts)
+### Schritt 2: Typ-Definitionen erstellen (types/mymodule.ts)
 
 ```typescript
 export interface MyResource {
@@ -871,7 +871,7 @@ export interface MyResource {
 }
 ```
 
-### Step 3: Create Service Layer (services/mymodule.service.ts)
+### Schritt 3: Service-Schicht erstellen (services/mymodule.service.ts)
 
 ```typescript
 import api from "@/services/api/client";
@@ -894,7 +894,7 @@ export const mymoduleService = {
 };
 ```
 
-### Step 4: Create Navigation Composable (composables/useMyModuleNav.ts)
+### Schritt 4: Navigations-Composable erstellen (composables/useMyModuleNav.ts)
 
 ```typescript
 import { ref } from "vue";
@@ -930,16 +930,16 @@ export function useMyModuleNav() {
 }
 ```
 
-### Step 5: Create Pages
+### Schritt 5: Seiten erstellen
 
 ```vue
 <!-- pages/ResourceListPage.vue -->
 <template>
   <div class="h-full flex flex-col gap-4 p-4">
-    <h1 class="text-2xl font-semibold text-white">Resources</h1>
-    
+    <h1 class="text-2xl font-semibold text-white">Ressourcen</h1>
+
     <button class="kit-btn-primary" @click="openCreate">
-      + New Resource
+      + Neue Ressource
     </button>
 
     <div class="grid grid-cols-4 gap-2">
@@ -980,7 +980,7 @@ function openCreate() {
 </script>
 ```
 
-### Step 6: Create Module Entry Point (MyModuleApp.vue)
+### Schritt 6: Modul-Einstiegspunkt erstellen (MyModuleApp.vue)
 
 ```vue
 <script setup lang="ts">
@@ -1001,7 +1001,7 @@ const { view, activeResourceId, goList, goDetail, goCreate } = useMyModuleNav();
 </template>
 ```
 
-### Step 7: Register Module (layouts/app-manager/appRegistry.ts)
+### Schritt 7: Modul registrieren (layouts/app-manager/appRegistry.ts)
 
 ```typescript
 import MyModuleApp from "@/modules/mymodule/MyModuleApp.vue";
@@ -1016,7 +1016,7 @@ export const apps = [
   },
   {
     id: "mymodule",
-    title: "My Module",
+    title: "Mein Modul",
     icons: markRaw(icons.Package),
     component: markRaw(MyModuleApp),
     window: { width: 900, height: 600 }
@@ -1024,19 +1024,19 @@ export const apps = [
 ];
 ```
 
-### Step 8: Add Dock Item (layouts/components/Dock.vue)
+### Schritt 8: Dock-Item hinzufügen (layouts/components/Dock.vue)
 
 ```typescript
 const dockItems = [
   { id: "crm", label: "CRM", icon: markRaw(Users) },
-  { id: "mymodule", label: "Module", icon: markRaw(Package) }, // Add here
+  { id: "mymodule", label: "Modul", icon: markRaw(Package) }, // Hier hinzufügen
   { id: "projects", label: "Projects", icon: markRaw(Briefcase) },
 ];
 ```
 
-### Step 9 (Optional): Add Route (router/index.ts)
+### Schritt 9 (Optional): Route hinzufügen (router/index.ts)
 
-For landing page or standalone route:
+Für Landing-Page oder eigenständige Route:
 
 ```typescript
 {
@@ -1054,11 +1054,11 @@ For landing page or standalone route:
 
 ---
 
-## 11. Common Patterns & Best Practices
+## 11. Häufige Muster & Best Practices
 
-### Pattern: Service + Composable
+### Muster: Service + Composable
 
-**Service handles HTTP:**
+**Service handhabt HTTP:**
 ```typescript
 // crm.service.ts
 async getCustomers(): Promise<Customer[]> {
@@ -1067,7 +1067,7 @@ async getCustomers(): Promise<Customer[]> {
 }
 ```
 
-**Composable handles state + error:**
+**Composable handhabt Zustand + Fehler:**
 ```typescript
 // useCrmStats.ts
 export function useCrmStats() {
@@ -1090,7 +1090,7 @@ export function useCrmStats() {
 }
 ```
 
-**Component uses composable:**
+**Komponente verwendet Composable:**
 ```vue
 <script setup>
 const { stats, loading, error, fetchStats } = useCrmStats();
@@ -1098,26 +1098,26 @@ onMounted(fetchStats);
 </script>
 
 <template>
-  <div v-if="loading">Loading...</div>
+  <div v-if="loading">Lädt...</div>
   <div v-else-if="error" class="text-red">{{ error }}</div>
   <div v-else>{{ stats }}</div>
 </template>
 ```
 
-### Pattern: Module Navigation
+### Muster: Modul-Navigation
 
-**Module entry uses local state, not router:**
+**Modul-Eintrag verwendet lokalen Zustand, nicht Router:**
 ```typescript
 const { view, activeId, goList, goDetail } = useModuleNav();
 ```
 
-**Parent component conditionally renders:**
+**Übergeordnete Komponente rendert bedingt:**
 ```vue
 <ListPage v-if="view === 'list'" @openDetail="goDetail" />
 <DetailPage v-if="view === 'detail'" :id="activeId" @back="goList" />
 ```
 
-**Events propagate up:**
+**Events propagieren nach oben:**
 ```typescript
 const emit = defineEmits<{
   (e: "openCustomer", id: string): void;
@@ -1125,9 +1125,9 @@ const emit = defineEmits<{
 }>();
 ```
 
-### Pattern: Reactive Forms
+### Muster: Reaktive Formulare
 
-**Simple v-model binding:**
+**Einfaches v-model Binding:**
 ```vue
 <input v-model="form.name" class="kit-input" />
 <input v-model="form.email" type="email" class="kit-input" />
@@ -1137,7 +1137,7 @@ const form = ref({ name: "", email: "" });
 </script>
 ```
 
-**Submit via service:**
+**Submit über Service:**
 ```typescript
 async function save() {
   loading.value = true;
@@ -1150,7 +1150,7 @@ async function save() {
 }
 ```
 
-### Pattern: Pagination
+### Muster: Pagination
 
 ```typescript
 const page = ref(1);
@@ -1170,17 +1170,17 @@ const pagedItems = computed(() => {
 });
 ```
 
-### Pattern: Modal/Form Modal
+### Muster: Modal/Formular-Modal
 
 ```vue
 <div v-if="showModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
   <div class="bg-bg-secondary rounded-xl p-6">
-    <h2>{{ isEdit ? "Edit" : "Create" }}</h2>
-    
+    <h2>{{ isEdit ? "Bearbeiten" : "Erstellen" }}</h2>
+
     <form @submit.prevent="save">
       <input v-model="form.name" />
-      <button type="submit">Save</button>
-      <button @click="close">Cancel</button>
+      <button type="submit">Speichern</button>
+      <button @click="close">Abbrechen</button>
     </form>
   </div>
 </div>
@@ -1188,16 +1188,16 @@ const pagedItems = computed(() => {
 
 ---
 
-## 12. Key Files to Modify When Adding a Module
+## 12. Wichtige Dateien zum Ändern beim Hinzufügen eines Moduls
 
-1. **layouts/app-manager/appRegistry.ts** - Register app
-2. **layouts/components/Dock.vue** - Add dock item
-3. **router/index.ts** (optional) - Add route
-4. Create module folder under `modules/`
+1. **layouts/app-manager/appRegistry.ts** - App registrieren
+2. **layouts/components/Dock.vue** - Dock-Item hinzufügen
+3. **router/index.ts** (optional) - Route hinzufügen
+4. Modul-Ordner unter `modules/` erstellen
 
 ---
 
-## 13. Environment Setup
+## 13. Umgebungs-Setup
 
 ### .env
 ```
@@ -1222,48 +1222,47 @@ export default defineConfig({
 
 ---
 
-## 14. Building & Running
+## 14. Build & Ausführung
 
 ```bash
-# Install dependencies
+# Dependencies installieren
 pnpm install
 
-# Development
+# Entwicklung
 pnpm run dev
 
 # Build
 pnpm run build
 
-# Preview
+# Vorschau
 pnpm run preview
 ```
 
 ---
 
-## 15. Technology Stack
+## 15. Technologie-Stack
 
 - **Vue 3** - Framework
-- **Vite** - Build tool (with rolldown-vite)
-- **TypeScript** - Type safety
+- **Vite** - Build-Tool (mit rolldown-vite)
+- **TypeScript** - Typ-Sicherheit
 - **Tailwind CSS 4** - Styling
-- **Vue Router 4** - Global routing
-- **Pinia 3** - State management (set up, minimally used)
-- **Axios** - HTTP client
+- **Vue Router 4** - Globales Routing
+- **Pinia 3** - State Management (eingerichtet, minimal genutzt)
+- **Axios** - HTTP-Client
 - **Lucide Vue Next** - Icons
 
 ---
 
-## Summary
+## Zusammenfassung
 
-The WorkmateOS frontend uses a **modular window-based architecture** where:
+Das WorkmateOS Frontend verwendet eine **modulare fensterbasierte Architektur**, bei der:
 
-1. **Modules are self-contained** with their own pages, components, services, types
-2. **Composables manage local state** (navigation, data fetching)
-3. **Services handle API calls** (no HTTP logic in components)
-4. **Types keep everything type-safe**
-5. **Window manager** allows floating windows with drag/resize
-6. **Design tokens + Tailwind** provide consistent styling
-7. **No complex routing** - modules use internal view switching
+1. **Module eigenständig sind** mit eigenen Pages, Components, Services, Types
+2. **Composables lokalen Zustand verwalten** (Navigation, Datenabruf)
+3. **Services API-Aufrufe handhaben** (keine HTTP-Logik in Komponenten)
+4. **Types alles typsicher halten**
+5. **Fenstermanager** schwebende Fenster mit Drag/Resize ermöglicht
+6. **Design-Tokens + Tailwind** konsistentes Styling bieten
+7. **Kein komplexes Routing** - Module verwenden interne Ansichtswechsel
 
-To add a new module: Create the folder structure → Define types → Create service → Create composables → Create pages → Create module entry point → Register in appRegistry → Add dock item.
-
+Um ein neues Modul hinzuzufügen: Ordnerstruktur erstellen → Typen definieren → Service erstellen → Composables erstellen → Seiten erstellen → Modul-Einstiegspunkt erstellen → In appRegistry registrieren → Dock-Item hinzufügen.

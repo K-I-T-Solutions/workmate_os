@@ -6,29 +6,29 @@ grand_parent: Wiki
 nav_order: 4
 ---
 
-# WorkmateOS Frontend Architecture - Visual Overview
+# WorkmateOS Frontend-Architektur - Visuelle Übersicht
 
-## Application Structure Hierarchy
+## Anwendungsstruktur-Hierarchie
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                          main.ts (Entry Point)                  │
-│                    Creates App + Pinia + Router                 │
+│                     main.ts (Entry Point)                       │
+│                   Erstellt App + Pinia + Router                 │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        App.vue (Root)                           │
-│                    Simple RouterView delegate                   │
+│                 Einfacher RouterView-Delegat                    │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                 Vue Router (router/index.ts)                    │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Route: "/" → redirect to "/under-construction"          │  │
+│  │ Route: "/" → umleiten zu "/under-construction"          │  │
 │  ├──────────────────────────────────────────────────────────┤  │
-│  │ Route: "/app" → AppLayout (Main Application)            │  │
+│  │ Route: "/app" → AppLayout (Hauptanwendung)              │  │
 │  │  Children:                                              │  │
 │  │    - /dashboard → DashboardPage                         │  │
 │  │    - /crm → CrmApp                                      │  │
@@ -41,46 +41,46 @@ nav_order: 4
                            ▼
         ┌──────────────────────────────────────┐
         │        AppLayout.vue                 │
-        │  (Main Container with 3 parts)       │
+        │  (Hauptcontainer mit 3 Teilen)       │
         └──────────────────────────────────────┘
                   │         │         │
         ┌─────────┴────┐    │    ┌────┴─────────┐
         ▼              ▼    ▼    ▼              ▼
     ┌────────┐   ┌───────────────┐   ┌────────┐
     │ Topbar │   │ WindowHost    │   │  Dock  │
-    │(Fixed) │   │(App Windows)  │   │(Fixed) │
+    │(Fixed) │   │(App-Fenster)  │   │(Fixed) │
     └────────┘   └───────────────┘   └────────┘
                         │
              ┌──────────┴──────────┐
              ▼                     ▼
         ┌──────────┐          ┌──────────┐
         │WindowFrame│          │WindowFrame│
-        │(CRM App) │          │(Projects)│
+        │(CRM-App) │          │(Projekte)│
         └──────────┘          └──────────┘
              │                     │
              ▼                     ▼
         ┌──────────┐          ┌──────────┐
         │ CrmApp   │          │ProjectsApp
-        │(Module)  │          │(Module)  │
+        │(Modul)   │          │(Modul)   │
         └──────────┘          └──────────┘
 ```
 
 ---
 
-## Module Internal Architecture (CRM Example)
+## Modulinterne Architektur (CRM-Beispiel)
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│              CrmApp.vue (Module Entry)                    │
+│              CrmApp.vue (Modul-Entry)                     │
 │  ┌─────────────────────────────────────────────────────┐ │
-│  │ Uses: useCrmNavigation()                            │ │
+│  │ Verwendet: useCrmNavigation()                       │ │
 │  │   - view: "dashboard" | "customers" | ...          │ │
 │  │   - activeCustomerId, activeContactId              │ │
-│  │   - Navigation functions: goCustomers, etc         │ │
+│  │   - Navigationsfunktionen: goCustomers, etc        │ │
 │  └─────────────────────────────────────────────────────┘ │
 │                                                           │
 │  ┌─────────────────────────────────────────────────────┐ │
-│  │ Conditional Rendering based on view state          │ │
+│  │ Bedingtes Rendering basierend auf view-State       │ │
 │  │                                                     │ │
 │  │ ┌────────────────────────────────────────────────┐ │ │
 │  │ │ <CrmDashboardPage v-if="view === 'dashboard"" │ │ │
@@ -101,7 +101,7 @@ nav_order: 4
         ┌────────────────┴────────────────┐
         ▼                                 ▼
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│     Pages Layer              │  │   Components Layer           │
+│     Pages-Layer              │  │   Components-Layer           │
 ├──────────────────────────────┤  ├──────────────────────────────┤
 │ - CrmDashboardPage.vue       │  │ - CustomerCard.vue           │
 │ - CustomersListPage.vue      │  │ - CustomerForm.vue           │
@@ -109,23 +109,23 @@ nav_order: 4
 │ - ContactsListPage.vue       │  │ - ContactForm.vue            │
 │ - ContactDetailPage.vue      │  │ - CrmKpiCustomers.vue        │
 │                              │  │ - CrmRecentActivity.vue      │
-│ (Emit events, no routing)   │  │ - CrmShortcuts.vue           │
+│ (Emit Events, kein Routing) │  │ - CrmShortcuts.vue           │
 └──────────────────────────────┘  └──────────────────────────────┘
         │                                 │
         └────────────────┬────────────────┘
                          ▼
         ┌────────────────────────────────┐
-        │   Services/Composables Layer   │
+        │   Services/Composables-Layer   │
         ├────────────────────────────────┤
-        │ • crmService (HTTP calls)      │
-        │ • useCrmNavigation (state)     │
-        │ • useCrmStats (fetch + state)  │
-        │ • useCrmActivity (fetch state) │
+        │ • crmService (HTTP-Aufrufe)    │
+        │ • useCrmNavigation (State)     │
+        │ • useCrmStats (fetch + State)  │
+        │ • useCrmActivity (fetch State) │
         └────────────────────────────────┘
                          │
                          ▼
         ┌────────────────────────────────┐
-        │     Types / Interfaces         │
+        │     Typen / Interfaces         │
         ├────────────────────────────────┤
         │ - Customer                     │
         │ - Contact                      │
@@ -135,16 +135,16 @@ nav_order: 4
                          │
                          ▼
         ┌────────────────────────────────┐
-        │    Shared API Client           │
+        │    Gemeinsamer API-Client      │
         │  (services/api/client.ts)      │
-        │  Axios instance with           │
-        │  interceptors                  │
+        │  Axios-Instanz mit             │
+        │  Interceptors                  │
         └────────────────────────────────┘
 ```
 
 ---
 
-## Window Manager System
+## Fensterverwaltungssystem
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -152,38 +152,38 @@ nav_order: 4
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │ State:                                                     │ │
-│  │  - windows: WindowApp[]    (Reactive array)               │ │
-│  │  - activeWindow: Ref<string|null>  (Currently focused)    │ │
-│  │  - zCounter: number        (For layering)                 │ │
+│  │  - windows: WindowApp[]    (Reaktives Array)              │ │
+│  │  - activeWindow: Ref<string|null>  (Aktuell fokussiert)   │ │
+│  │  - zCounter: number        (Für Layering)                 │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │ WindowApp Interface:                                       │ │
 │  │  {                                                         │ │
-│  │    id: string;              // Unique window instance     │ │
-│  │    appId: string;           // Reference to apps registry │ │
+│  │    id: string;              // Eindeutige Fensterinstanz  │ │
+│  │    appId: string;           // Referenz zur App-Registry  │ │
 │  │    title: string;                                         │ │
 │  │    component: Component;                                  │ │
 │  │    props?: Record<string, any>;                           │ │
-│  │    x, y, width, height: number;  // Position/Size        │ │
-│  │    z: number;               // Layer depth               │ │
+│  │    x, y, width, height: number;  // Position/Größe       │ │
+│  │    z: number;               // Layer-Tiefe               │ │
 │  │  }                                                         │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │ Methods:                                                   │ │
-│  │  • openWindow(appId)        → Opens/focuses app           │ │
-│  │  • closeWindow(id)          → Closes window               │ │
-│  │  • focusWindow(id)          → Brings to front             │ │
-│  │  • startDragFor(id, e)      → Initiates drag              │ │
-│  │  • startResizeFor(id, e)    → Initiates resize            │ │
+│  │ Methoden:                                                  │ │
+│  │  • openWindow(appId)        → Öffnet/fokussiert App       │ │
+│  │  • closeWindow(id)          → Schließt Fenster            │ │
+│  │  • focusWindow(id)          → Bringt in Vordergrund       │ │
+│  │  • startDragFor(id, e)      → Initiiert Drag              │ │
+│  │  • startResizeFor(id, e)    → Initiiert Resize            │ │
 │  └────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
                              │
                              ▼
             ┌────────────────────────────────┐
             │   appRegistry.ts               │
-            │  (Central App Registration)    │
+            │  (Zentrale App-Registrierung)  │
             ├────────────────────────────────┤
             │ const apps = [                 │
             │   {                            │
@@ -196,44 +196,45 @@ nav_order: 4
             │       height: 700              │
             │     }                          │
             │   },                           │
-            │   // More apps...              │
+            │   // Weitere Apps...           │
             │ ]                              │
             └────────────────────────────────┘
                              │
                              ▼
             ┌────────────────────────────────┐
             │   WindowHost.vue               │
-            │  (Renders all windows)         │
+            │  (Rendert alle Fenster)        │
             └────────────────────────────────┘
                              │
         ┌────────────────────┴────────────────┐
         ▼                                     ▼
 ┌─────────────────────┐              ┌─────────────────────┐
 │  WindowFrame.vue    │              │  WindowFrame.vue    │
-│  (CRM Instance)     │              │  (Project Instance) │
+│  (CRM-Instanz)      │              │  (Projekt-Instanz)  │
 │                     │              │                     │
-│ Titlebar (Draggable)│              │ Titlebar (Draggable)│
-│ Content Area        │              │ Content Area        │
-│ Resize Handle       │              │ Resize Handle       │
-│ Close Button        │              │ Close Button        │
+│ Titelleiste (Ziehbar)│             │ Titelleiste (Ziehbar)│
+│ Inhaltsbereich      │              │ Inhaltsbereich      │
+│ Größenänderungs-    │              │ Größenänderungs-    │
+│ Handle              │              │ Handle              │
+│ Schließen-Button    │              │ Schließen-Button    │
 └─────────────────────┘              └─────────────────────┘
         │                                     │
         ▼                                     ▼
 ┌─────────────────────┐              ┌─────────────────────┐
 │   CrmApp.vue        │              │  ProjectsApp.vue    │
-│   (Active)          │              │   (Background)      │
+│   (Aktiv)           │              │   (Hintergrund)     │
 └─────────────────────┘              └─────────────────────┘
 ```
 
 ---
 
-## Data Flow: Fetch Data Pattern
+## Datenfluss: Datenabruf-Muster
 
 ```
-Component (Page)
+Komponente (Page)
     │
     ├─ onMounted()
-    │   └─→ Call composable.fetchData()
+    │   └─→ Ruft composable.fetchData() auf
     │
     ▼
 Composable (useCrmStats, etc)
@@ -244,23 +245,23 @@ Composable (useCrmStats, etc)
     ▼
 Service (crmService)
     │
-    ├─ Calls api.get("/api/...")
+    ├─ Ruft api.get("/api/...") auf
     │
     ▼
-API Client (axios instance)
+API-Client (Axios-Instanz)
     │
-    ├─ Request Interceptor (add JWT token)
-    ├─ Makes HTTP request
-    ├─ Response Interceptor (handle errors)
-    │
-    ▼
-Backend API (e.g., FastAPI)
+    ├─ Request-Interceptor (JWT-Token hinzufügen)
+    ├─ HTTP-Request durchführen
+    ├─ Response-Interceptor (Fehler behandeln)
     │
     ▼
-API Client (returns response)
+Backend-API (z.B. FastAPI)
     │
     ▼
-Service (extracts data)
+API-Client (gibt Antwort zurück)
+    │
+    ▼
+Service (extrahiert Daten)
     │
     │ return data
     ▼
@@ -271,22 +272,22 @@ Composable
     ├─ error = null
     │
     ▼
-Component (Template)
+Komponente (Template)
     │
-    ├─ v-if="loading" → Show spinner
-    ├─ v-else-if="error" → Show error
-    ├─ v-else → Show data (stats.value)
+    ├─ v-if="loading" → Spinner anzeigen
+    ├─ v-else-if="error" → Fehler anzeigen
+    ├─ v-else → Daten anzeigen (stats.value)
     │
-    └─ UI Updates automatically (reactive)
+    └─ UI aktualisiert sich automatisch (reaktiv)
 ```
 
 ---
 
-## Styling Architecture
+## Styling-Architektur
 
 ```
 ┌─────────────────────────────────────────────────┐
-│           Design Tokens (tokens.css)            │
+│        Design Tokens (tokens.css)               │
 │  ┌──────────────────────────────────────────┐  │
 │  │ CSS Custom Properties:                   │  │
 │  │  --color-bg-primary: #232223             │  │
@@ -301,21 +302,21 @@ Component (Template)
         ┌─────────────┴──────────────┐
         ▼                            ▼
 ┌──────────────────┐        ┌──────────────────┐
-│  Tailwind CSS    │        │  Component CSS   │
+│  Tailwind CSS    │        │  Komponenten-CSS │
 │  (base.css)      │        │  (button.css)    │
 ├──────────────────┤        ├──────────────────┤
 │ @layer base      │        │ .kit-btn-primary │
 │ @layer components│        │ .kit-input       │
 │ @layer utilities │        │ .kit-label       │
 │                  │        │ ... etc ...      │
-│ Tailwind classes │        │                  │
+│ Tailwind-Klassen │        │                  │
 │ px-4, py-2, etc  │        │ Scoped in .vue   │
 └──────────────────┘        └──────────────────┘
         │                            │
         └─────────────┬──────────────┘
                       ▼
         ┌──────────────────────────┐
-        │   Component Styling      │
+        │   Komponenten-Styling    │
         │   (Template + <style>)   │
         │                          │
         │ <div class="px-4 py-2    │
@@ -329,10 +330,10 @@ Component (Template)
 
 ---
 
-## Data Types Organization
+## Datentypen-Organisation
 
 ```
-Module Root: src/modules/crm/
+Modul-Root: src/modules/crm/
 
 types/
 ├── customer.ts
@@ -355,11 +356,11 @@ services/
 
 composables/
 ├── useCrmNavigation.ts
-│   └─ Navigation state (view, activeId)
+│   └─ Navigations-State (view, activeId)
 ├── useCrmStats.ts
-│   └─ Data fetching + loading state
+│   └─ Datenabruf + Loading-State
 └── useCrmActivity.ts
-    └─ Activity management
+    └─ Activity-Management
 
 pages/
 ├── CustomersListPage.vue
@@ -383,7 +384,7 @@ components/
 
 ---
 
-## Component Communication Pattern
+## Komponentenkommunikations-Muster
 
 ```
 ┌─────────────────────────────┐
@@ -398,11 +399,11 @@ components/
         │
         ├─ Event: @openCustomer
         │           ↓
-        │  Calls: goCustomerDetail(id)
+        │  Ruft auf: goCustomerDetail(id)
         │           ↓
-        │  Updates: activeCustomerId = id
+        │  Aktualisiert: activeCustomerId = id
         │           ↓
-        │  Updates: view = "customer-detail"
+        │  Aktualisiert: view = "customer-detail"
         │
         ▼
 ┌─────────────────────────────┐
@@ -414,58 +415,57 @@ components/
 │   goCustomerDetail"         │
 └─────────────────────────────┘
         │
-        ├─ Props: none
-        │         (state passed via composable)
+        ├─ Props: keine
+        │         (State über Composable übergeben)
         ├─ Emits: openCustomer(id), openDashboard()
-        └─ State: search, page (local)
-                  customers (from service)
-                  loading (from composable)
+        └─ State: search, page (lokal)
+                  customers (vom Service)
+                  loading (vom Composable)
 
-Props Down → Events Up → Composables for Shared State
+Props nach unten → Events nach oben → Composables für gemeinsamen State
 ```
 
 ---
 
-## Adding a New Module: File Creation Checklist
+## Neues Modul hinzufügen: Dateierstellungs-Checkliste
 
 ```
-✓ Step 1: Create Directory Structure
+✓ Schritt 1: Verzeichnisstruktur erstellen
   └─ ui/src/modules/mymodule/
 
-✓ Step 2: Create Type Definitions
+✓ Schritt 2: Typdefinitionen erstellen
   └─ types/mymodule.ts
      export interface MyResource { ... }
 
-✓ Step 3: Create Service Layer
+✓ Schritt 3: Service-Layer erstellen
   └─ services/mymodule.service.ts
      export const mymoduleService = { ... }
 
-✓ Step 4: Create Navigation Composable
+✓ Schritt 4: Navigations-Composable erstellen
   └─ composables/useMyModuleNav.ts
      export function useMyModuleNav() { ... }
 
-✓ Step 5: Create Pages
+✓ Schritt 5: Pages erstellen
   └─ pages/MyPage.vue
      pages/index.ts
 
-✓ Step 6: Create Components
+✓ Schritt 6: Komponenten erstellen
   └─ components/MyComponent.vue
      components/index.ts
 
-✓ Step 7: Create Module Entry Point
+✓ Schritt 7: Modul-Entry-Point erstellen
   └─ MyModuleApp.vue
-     (Uses useMyModuleNav, conditionally renders pages)
+     (Verwendet useMyModuleNav, rendert Pages bedingt)
 
-✓ Step 8: Register Module
+✓ Schritt 8: Modul registrieren
   └─ layouts/app-manager/appRegistry.ts
-     Add to apps[] array
+     Zum apps[]-Array hinzufügen
 
-✓ Step 9: Add Dock Item
+✓ Schritt 9: Dock-Item hinzufügen
   └─ layouts/components/Dock.vue
-     Add to dockItems[] array
+     Zum dockItems[]-Array hinzufügen
 
-✓ Step 10 (Optional): Add Route
+✓ Schritt 10 (Optional): Route hinzufügen
   └─ router/index.ts
-     Add child route under /app
+     Child-Route unter /app hinzufügen
 ```
-
