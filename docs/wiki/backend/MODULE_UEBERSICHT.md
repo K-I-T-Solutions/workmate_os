@@ -1,3 +1,11 @@
+---
+layout: default
+title: Module Übersicht
+parent: Backend
+grand_parent: Wiki
+nav_order: 2
+---
+
 # 📦 Backend Module Übersicht - WorkmateOS
 
 **Vollständige Dokumentation aller Backend-Module**

@@ -1,3 +1,10 @@
+---
+layout: default
+title: System Overview
+parent: Architecture
+nav_order: 1
+---
+
 # 🏗️ WorkmateOS - System-Architektur
 
 **Digitaler Workbuddy für moderne Unternehmen**

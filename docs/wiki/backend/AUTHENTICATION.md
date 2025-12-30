@@ -1,3 +1,11 @@
+---
+layout: default
+title: Authentication & SSO
+parent: Backend
+grand_parent: Wiki
+nav_order: 1
+---
+
 # 🔐 Authentication & SSO - WorkmateOS
 
 **Dokumentations-Status:** ✅ Vollständig

@@ -1,3 +1,10 @@
+---
+layout: default
+title: Zitadel Setup
+parent: Setup
+nav_order: 1
+---
+
 # Zitadel Rollen-Konfiguration für Workmate OS
 
 ## Übersicht

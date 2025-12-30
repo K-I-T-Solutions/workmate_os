@@ -1,3 +1,10 @@
+---
+layout: default
+title: Phase 2 Complete
+parent: Roadmap
+nav_order: 4
+---
+
 # 🧩 WorkmateOS — Phase 2 (Backoffice & CRM) — **Final Complete Documentation**
 
 **Stand:** 20. November 2025

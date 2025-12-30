@@ -10,7 +10,8 @@ baseurl: "/workmate_os"
 url: "https://k-i-t-solutions.github.io"
 
 # Logo & Branding
-logo: "/assets/workmate_white_transparent.png"
+logo: "/workmate_os/assets/workmate_white_transparent.png"
+favicon_ico: "/workmate_os/assets/workmate_favicon.ico"
 
 # Color Scheme
 color_scheme: workmate_dark

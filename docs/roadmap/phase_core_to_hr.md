@@ -1,6 +1,13 @@
+---
+layout: default
+title: Phase Core to HR
+parent: Roadmap
+nav_order: 1
+---
+
 # 🧭 Workmate OS – Phaseplan: Core → HR
 
-> Ziel: Erweiterung des bestehenden Core-Systems um das **HR-Modul**,  
+> Ziel: Erweiterung des bestehenden Core-Systems um das **HR-Modul**,
 > inklusive Datenmodell, API-Struktur, UI-Komponenten und Dokumentation.
 
 ---

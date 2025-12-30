@@ -1,3 +1,11 @@
+---
+layout: default
+title: Admin Panel
+parent: Backend
+grand_parent: Wiki
+nav_order: 3
+---
+
 # 🛠️ Admin Panel Dokumentation
 
 **System-Administration & Verwaltung**
