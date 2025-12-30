@@ -11,7 +11,8 @@ Diese Dokumentation beschreibt die Backend-Architektur, Module und APIs von Work
 | Dokument | Status | Beschreibung |
 |----------|--------|--------------|
 | **[Authentication & SSO](./AUTHENTICATION.md)** | ✅ Vollständig | Zitadel SSO, OAuth2, Role Mapping, Permissions |
-| **[Module Übersicht](./MODULE_UEBERSICHT.md)** | ⏳ TODO | Alle Backend-Module (CRM, Projects, etc.) |
+| **[Admin Panel](./ADMIN_PANEL.md)** | ✅ Vollständig | System-Administration, User/Department/Role Management |
+| **[Module Übersicht](./MODULE_UEBERSICHT.md)** | ✅ Vollständig | Alle Backend-Module (CRM, Projects, Invoices, etc.) |
 | **[API Reference](./API_REFERENCE.md)** | ⏳ TODO | Alle REST Endpoints mit Beispielen |
 | **[Datenbank Schema](./DATABASE.md)** | ⏳ TODO | Datenbank-Modelle, Migrations, Best Practices |
 
@@ -82,22 +83,22 @@ WorkmateOS nutzt **Zitadel** als Identity Provider mit OAuth2/OIDC.
 
 | Modul | Beschreibung | Dokumentation |
 |-------|--------------|---------------|
-| **Employees** | Mitarbeiter, Abteilungen, Rollen | [entities.md](../core/entities.md) |
-| **Documents** | Dokumenten-Upload & Management | ⏳ TODO |
-| **Reminders** | Erinnerungen & Benachrichtigungen | ⏳ TODO |
-| **Dashboards** | Dashboard-Konfiguration | ⏳ TODO |
-| **System** | Infrastruktur-Services | ⏳ TODO |
+| **Employees** | Mitarbeiter, Abteilungen, Rollen | [ADMIN_PANEL.md](./ADMIN_PANEL.md) / [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#employees-module) |
+| **Documents** | Dokumenten-Upload & Management | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#documents-module) |
+| **Reminders** | Erinnerungen & Benachrichtigungen | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#reminders-module) |
+| **Dashboards** | Dashboard-Konfiguration | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#dashboards-module) |
+| **System** | Infrastruktur-Services | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#system-module) |
 
 ### Backoffice-Module
 
 | Modul | Beschreibung | Dokumentation |
 |-------|--------------|---------------|
-| **CRM** | Kunden & Kontakte | ⏳ TODO |
-| **Projects** | Projekt-Management | ⏳ TODO |
-| **Invoices** | Rechnungserstellung | [FINANCE docs](../../FINANCE_DOCUMENTATION_INDEX.md) |
-| **Finance** | Ausgaben-Management | [FINANCE docs](../../FINANCE_DOCUMENTATION_INDEX.md) |
-| **Time Tracking** | Zeiterfassung | ⏳ TODO |
-| **Chat** | Messaging-System | ⏳ TODO |
+| **CRM** | Kunden & Kontakte | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#crm-module) |
+| **Projects** | Projekt-Management | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#projects-module) |
+| **Invoices** | Rechnungserstellung | [Finance DE](../finance/de/) / [Finance EN](../finance/en/) |
+| **Finance** | Ausgaben-Management | [Finance DE](../finance/de/) / [Finance EN](../finance/en/) |
+| **Time Tracking** | Zeiterfassung | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#time-tracking-module) |
+| **Chat** | Messaging-System | [MODULE_UEBERSICHT.md](./MODULE_UEBERSICHT.md#chat-module) |
 
 ---
 
@@ -276,10 +277,10 @@ Diese Dokumentation lebt! Wenn du etwas hinzufügst:
 
 ## 🔗 Links
 
-- [Frontend-Dokumentation](../README_FRONTEND.md)
+- [Frontend-Dokumentation](../frontend/README.md)
 - [Core-System Docs](../core/README.md)
-- [Finance-Dokumentation](../../FINANCE_DOCUMENTATION_INDEX.md)
-- [Architecture Blueprint](../../architecture_blueprint.md)
+- [Finance-Dokumentation](../finance/README.md)
+- [Architecture Blueprint](../../architecture/system_overview.md)
 
 ---
 
