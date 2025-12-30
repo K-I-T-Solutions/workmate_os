@@ -1,3 +1,11 @@
+---
+layout: default
+title: API Endpoints
+parent: Core
+grand_parent: Wiki
+nav_order: 1
+---
+
 # 🧩 Core API Endpoints (Entwurf)
 
 | Endpoint | Methode | Beschreibung |

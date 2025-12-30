@@ -1,3 +1,11 @@
+---
+layout: default
+title: Analyse
+parent: Finance DE
+grand_parent: Finance
+nav_order: 1
+---
+
 # WorkmateOS Finanz- & Rechnungsfunktionalität - Umfassende Übersicht
 
 **Letzte Aktualisierung:** 23. Dezember 2025

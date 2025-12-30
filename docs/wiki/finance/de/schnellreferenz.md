@@ -1,3 +1,11 @@
+---
+layout: default
+title: Schnellreferenz
+parent: Finance DE
+grand_parent: Finance
+nav_order: 3
+---
+
 # WorkmateOS Finanz- & Rechnungserstellung - Schnellreferenz
 
 ## Aktueller Implementierungsstatus

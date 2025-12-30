@@ -1,3 +1,10 @@
+---
+layout: default
+title: Production Deployment
+parent: Daily Reports
+nav_order: 2
+---
+
 # Tagesbericht: 24. Dezember 2024
 
 ## 🚀 Production Deployment - Workmate OS v1.0.0

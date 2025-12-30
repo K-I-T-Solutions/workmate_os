@@ -1,3 +1,11 @@
+---
+layout: default
+title: Finance
+parent: Wiki
+nav_order: 3
+has_children: true
+---
+
 # 💰 Finance-Dokumentation
 
 **Rechnungswesen & Finanzverwaltung**

@@ -1,3 +1,12 @@
+---
+layout: default
+title: Finance EN
+parent: Finance
+grand_parent: Wiki
+nav_order: 2
+has_children: true
+---
+
 # Finance & Invoicing Module - Documentation Index
 
 This directory contains comprehensive documentation of the WorkmateOS Finance and Invoicing functionality.

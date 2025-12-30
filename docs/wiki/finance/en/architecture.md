@@ -1,3 +1,11 @@
+---
+layout: default
+title: Architecture
+parent: Finance EN
+grand_parent: Finance
+nav_order: 2
+---
+
 # Finance & Invoicing Module - Code Architecture
 
 ## Module Structure

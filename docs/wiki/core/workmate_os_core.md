@@ -1,3 +1,11 @@
+---
+layout: default
+title: Core Documentation
+parent: Core
+grand_parent: Wiki
+nav_order: 5
+---
+
 # Untitled Diagram documentation
 ## Summary
 

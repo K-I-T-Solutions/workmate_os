@@ -1,3 +1,11 @@
+---
+layout: default
+title: Visual Guide
+parent: Frontend
+grand_parent: Wiki
+nav_order: 4
+---
+
 # WorkmateOS Frontend Architecture - Visual Overview
 
 ## Application Structure Hierarchy

@@ -1,3 +1,11 @@
+---
+layout: default
+title: Frontend
+parent: Wiki
+nav_order: 4
+has_children: true
+---
+
 # WorkmateOS Frontend Documentation
 
 Welcome to the WorkmateOS frontend documentation. This directory contains comprehensive guides for understanding and developing the Vue 3 + TypeScript frontend application.

@@ -1,3 +1,11 @@
+---
+layout: default
+title: Architektur
+parent: Finance DE
+grand_parent: Finance
+nav_order: 2
+---
+
 # Finanz- & Rechnungsmodul - Code-Architektur
 
 ## Modulstruktur

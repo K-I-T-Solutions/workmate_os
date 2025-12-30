@@ -1,3 +1,12 @@
+---
+layout: default
+title: Finance DE
+parent: Finance
+grand_parent: Wiki
+nav_order: 1
+has_children: true
+---
+
 # Finanz- & Rechnungsmodul - Dokumentations-Index
 
 Dieses Verzeichnis enthält die umfassende Dokumentation der WorkmateOS Finanz- und Rechnungsfunktionalität.

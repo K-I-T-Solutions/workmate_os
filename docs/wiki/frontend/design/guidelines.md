@@ -1,9 +1,17 @@
+---
+layout: default
+title: Design Guidelines
+parent: Frontend
+grand_parent: Wiki
+nav_order: 5
+---
+
 # 🎨 K.I.T. Solutions – Design Guideline (WorkmateOS)
 
-**Projekt:** WorkmateOS  
-**Version:** 1.0  
-**Designsystem:** K.I.T. Core UI  
-**Autor:** Joshua Phu Kuhrau  
+**Projekt:** WorkmateOS
+**Version:** 1.0
+**Designsystem:** K.I.T. Core UI
+**Autor:** Joshua Phu Kuhrau
 **Letzte Aktualisierung:** 02.11.2025
 
 ---

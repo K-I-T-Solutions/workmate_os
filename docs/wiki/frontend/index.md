@@ -1,3 +1,11 @@
+---
+layout: default
+title: Index
+parent: Frontend
+grand_parent: Wiki
+nav_order: 2
+---
+
 # Frontend Documentation Index
 
 This document serves as an index to all frontend documentation for WorkmateOS.

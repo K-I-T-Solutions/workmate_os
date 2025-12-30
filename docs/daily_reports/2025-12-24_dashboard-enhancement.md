@@ -1,3 +1,10 @@
+---
+layout: default
+title: Dashboard Enhancement
+parent: Daily Reports
+nav_order: 3
+---
+
 # Tagesbericht: 24. Dezember 2025
 
 ## 🎯 Dashboard Bug-Fix & Enhancement - Workmate OS v1.0.0

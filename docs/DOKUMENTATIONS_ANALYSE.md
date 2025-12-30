@@ -1,3 +1,9 @@
+---
+layout: default
+title: Dokumentations-Analyse
+nav_order: 7
+---
+
 # 📚 WorkmateOS Dokumentations-Analyse
 ## Eine Bestandsaufnahme zum Jahresende 2025
 

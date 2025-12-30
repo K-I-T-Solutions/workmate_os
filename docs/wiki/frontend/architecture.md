@@ -1,3 +1,11 @@
+---
+layout: default
+title: Architecture
+parent: Frontend
+grand_parent: Wiki
+nav_order: 1
+---
+
 # WorkmateOS Frontend/UI Architecture Guide
 
 ## Overview

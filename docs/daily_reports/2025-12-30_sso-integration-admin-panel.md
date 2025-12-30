@@ -1,3 +1,10 @@
+---
+layout: default
+title: SSO Integration & Admin Panel
+parent: Daily Reports
+nav_order: 4
+---
+
 # Daily Report - 30. Dezember 2025
 
 ## Zusammenfassung

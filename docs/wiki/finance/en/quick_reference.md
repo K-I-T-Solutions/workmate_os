@@ -1,3 +1,11 @@
+---
+layout: default
+title: Quick Reference
+parent: Finance EN
+grand_parent: Finance
+nav_order: 3
+---
+
 # WorkmateOS Finance & Invoicing - Quick Reference
 
 ## Current Implementation Status

@@ -1,3 +1,11 @@
+---
+layout: default
+title: Analysis
+parent: Finance EN
+grand_parent: Finance
+nav_order: 1
+---
+
 # WorkmateOS Finance & Invoice/Billing Functionality - Comprehensive Overview
 
 **Last Updated:** December 22, 2025

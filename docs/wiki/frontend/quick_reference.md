@@ -1,3 +1,11 @@
+---
+layout: default
+title: Quick Reference
+parent: Frontend
+grand_parent: Wiki
+nav_order: 3
+---
+
 # WorkmateOS Frontend - Quick Reference Guide
 
 ## File Locations Quick Lookup
