@@ -114,12 +114,58 @@ CRM Module      Project Mgmt   Time Tracking   Finance
 
 | Modul | Backend | Frontend | Status |
 |-------|---------|----------|--------|
-| **CRM** | ✅ Implementiert | ✅ Implementiert | 🟢 Live |
-| **Projekte** | 🔄 In Entwicklung | 🔄 In Entwicklung | 🟡 Beta |
-| **Zeiterfassung** | ⏳ Geplant | ⏳ Geplant | ⚪ Phase 2 |
-| **Rechnungen** | ⏳ Geplant | ⏳ Geplant | ⚪ Phase 2 |
-| **Zahlungen** | ⏳ Geplant | ⏳ Geplant | ⚪ Phase 2 |
-| **Projekt-Chat** | ⏳ Geplant | ⏳ Geplant | ⚪ Phase 2 |
+| **CRM** | ✅ Vollständig | ✅ Vollständig | 🟢 **Live in Produktion** |
+| **Projekte** | ✅ Vollständig | 🔄 In Entwicklung | 🟡 Beta |
+| **Zeiterfassung** | ✅ Vollständig | ⏳ Geplant | 🟡 Backend Ready |
+| **Rechnungen** | ✅ **Mit PDF-Generator** | ⏳ Geplant | 🟡 Backend Ready |
+| **Zahlungen** | ✅ **Auto-Status-Update** | ⏳ Geplant | 🟡 Backend Ready |
+| **Ausgaben (Finance)** | ✅ **Mit KPIs** | ⏳ Geplant | 🟡 Backend Ready |
+| **Projekt-Chat** | ✅ **Mit WebSocket** | ⏳ Geplant | 🟡 Backend Ready |
+
+### Backend-Features (Implementiert!)
+
+#### ✅ CRM
+- CRUD für Kunden & Kontakte
+- Statistiken & KPIs
+- Aktivitätsverlauf
+
+#### ✅ Projekte
+- CRUD für Projekte
+- Kundenzuordnung
+- Status-Management
+- Filter nach Kunde
+
+#### ✅ Zeiterfassung
+- CRUD für Zeiteinträge
+- Automatische Dauerberechnung
+- Mitarbeiter- & Projekt-Filter
+
+#### ✅ Rechnungen (Advanced!)
+- **PDF-Generierung** (sync/async mit Background Tasks)
+- **Line Items** mit automatischer Positionsnummerierung
+- **Zahlungs-Integration** mit Auto-Status-Update
+- **Pagination & Filtering** (Status, Kunde, Projekt, Datum)
+- **Statistiken** (Umsatz, offene Forderungen, überfällige Rechnungen)
+- **Bulk Operations** (Status-Update für mehrere Rechnungen)
+- **Recalculate-Endpoint** (Totals neu berechnen)
+
+#### ✅ Zahlungen
+- CRUD für Zahlungen
+- **Teilzahlungen** unterstützt
+- **Auto-Status-Update** (paid/partial)
+- Validierung (Betrag nicht höher als outstanding_amount)
+
+#### ✅ Ausgaben (Finance)
+- CRUD für Ausgaben
+- **KPI-Dashboard** (Gesamt, pro Kategorie, Trends)
+- Filter (Kategorie, Projekt, Rechnung, Datumsbereich)
+- Pagination
+
+#### ✅ Projekt-Chat
+- **WebSocket-basiert** (Echtzeit)
+- REST-API für Nachrichtenverlauf
+- **Broadcast** an alle verbundenen Clients
+- Connection Manager pro Projekt
 
 ---
 

@@ -74,6 +74,8 @@ interface Contact {
 
 ### Status
 ✅ **Produktiv** - Vollständig implementiert (Backend + Frontend)
+- Backend: `backend/app/modules/backoffice/crm/`
+- Frontend: `ui/src/modules/crm/`
 
 ---
 
@@ -116,7 +118,11 @@ interface Project {
 ```
 
 ### Status
-🔄 **In Entwicklung** - Backend teilweise implementiert, Frontend geplant
+✅ **Backend Ready** - Vollständig implementiert, Frontend in Entwicklung
+- Backend: `backend/app/modules/backoffice/projects/` ✅
+- Frontend: `ui/src/modules/projects/` 🔄 In Arbeit
+- API-Endpunkte: Alle CRUD-Operationen verfügbar
+- Features: Filter nach Kunde, Pagination, Status-Management
 
 ---
 
@@ -160,7 +166,11 @@ interface TimeEntry {
 ```
 
 ### Status
-⏳ **Geplant** - Phase 2 Roadmap
+✅ **Backend Ready** - Vollständig implementiert, Frontend geplant
+- Backend: `backend/app/modules/backoffice/time_tracking/` ✅
+- Frontend: ⏳ Geplant für Phase 2.2
+- API-Prefix: `/api/backoffice/time-tracking`
+- Features: Automatische Dauer-Berechnung, Mitarbeiter & Projekt-Filter
 
 ---
 
@@ -179,13 +189,31 @@ Erstellung und Verwaltung von Kundenrechnungen mit PDF-Export und Zahlungsverfol
 
 ### API-Endpunkte
 ```
-GET    /api/backoffice/invoices             → Alle Rechnungen
+# LIST & FILTERS
+GET    /api/backoffice/invoices             → Alle Rechnungen (mit Pagination & Filtern)
+GET    /api/backoffice/invoices/statistics  → Statistiken (Umsatz, offene Forderungen)
 GET    /api/backoffice/invoices/:id         → Einzelne Rechnung
-POST   /api/backoffice/invoices             → Neue Rechnung
-PUT    /api/backoffice/invoices/:id         → Rechnung aktualisieren
-DELETE /api/backoffice/invoices/:id         → Rechnung löschen
-GET    /api/backoffice/invoices/:id/pdf     → PDF herunterladen
-POST   /api/backoffice/invoices/:id/send    → Rechnung versenden
+GET    /api/backoffice/invoices/by-number/:invoice_number → Nach Rechnungsnummer
+
+# CREATE & UPDATE
+POST   /api/backoffice/invoices             → Neue Rechnung (mit Line Items)
+PATCH  /api/backoffice/invoices/:id         → Rechnung aktualisieren
+PATCH  /api/backoffice/invoices/:id/status  → Nur Status ändern
+POST   /api/backoffice/invoices/:id/recalculate → Totals neu berechnen
+
+# DELETE
+DELETE /api/backoffice/invoices/:id         → Rechnung löschen (mit Cascade)
+
+# PDF OPERATIONS
+GET    /api/backoffice/invoices/:id/pdf     → PDF herunterladen (auto-generate falls fehlt)
+POST   /api/backoffice/invoices/:id/regenerate-pdf → PDF neu generieren
+
+# BULK OPERATIONS
+POST   /api/backoffice/invoices/bulk/status-update → Status für mehrere Rechnungen
+
+# PAYMENTS (siehe Zahlungsmanagement)
+POST   /api/backoffice/invoices/:id/payments → Zahlung hinzufügen
+GET    /api/backoffice/invoices/:id/payments → Alle Zahlungen einer Rechnung
 ```
 
 ### Datenmodell
@@ -205,7 +233,18 @@ interface Invoice {
 ```
 
 ### Status
-⏳ **Geplant** - Phase 2 Roadmap
+✅ **Backend Ready** - Umfangreich implementiert mit Advanced Features!
+- Backend: `backend/app/modules/backoffice/invoices/` ✅
+- Frontend: ⏳ Geplant für Phase 2.2
+- **Besondere Features:**
+  - ✅ PDF-Generierung (sync/async mit Background Tasks)
+  - ✅ Line Items System mit Auto-Positionierung
+  - ✅ Pagination & Multi-Filter (Status, Kunde, Projekt, Datumsbereich)
+  - ✅ Statistik-Dashboard (Umsatz, Forderungen, Überfällige)
+  - ✅ Bulk Status-Updates
+  - ✅ Auto-Recalculate Totals
+  - ✅ Payment Integration (siehe Zahlungsmanagement)
+- Files: `routes.py`, `crud.py`, `pdf_generator.py`, `payments_crud.py`
 
 ---
 
@@ -223,12 +262,12 @@ Verwaltung von Zahlungseingängen für Rechnungen.
 
 ### API-Endpunkte
 ```
-GET    /api/backoffice/payments             → Alle Zahlungen
-GET    /api/backoffice/payments/:id         → Einzelne Zahlung
-POST   /api/backoffice/payments             → Neue Zahlung
-PUT    /api/backoffice/payments/:id         → Zahlung aktualisieren
-DELETE /api/backoffice/payments/:id         → Zahlung löschen
-GET    /api/backoffice/payments/by-invoice/:id → Nach Rechnung
+# Payment Management (über Invoices-Route)
+POST   /api/backoffice/invoices/:id/payments → Zahlung hinzufügen (mit Auto-Status)
+GET    /api/backoffice/invoices/:id/payments → Alle Zahlungen einer Rechnung
+GET    /api/backoffice/invoices/payments/:payment_id → Einzelne Zahlung
+PATCH  /api/backoffice/invoices/payments/:payment_id → Zahlung aktualisieren
+DELETE /api/backoffice/invoices/payments/:payment_id → Zahlung löschen
 ```
 
 ### Datenmodell
@@ -246,7 +285,14 @@ interface Payment {
 ```
 
 ### Status
-⏳ **Geplant** - Phase 2 Roadmap
+✅ **Backend Ready** - Vollständig in Invoices-Modul integriert
+- Backend: `backend/app/modules/backoffice/invoices/payments_crud.py` ✅
+- Frontend: ⏳ Geplant für Phase 2.2
+- **Features:**
+  - ✅ Teilzahlungen unterstützt
+  - ✅ Auto-Status-Update (paid/partial bei vollständiger/teilweiser Zahlung)
+  - ✅ Validierung (Betrag ≤ outstanding_amount)
+  - ✅ CRUD-Operationen komplett
 
 ---
 
@@ -264,12 +310,23 @@ Erfassung und Verwaltung von Projekt- und Rechnungsausgaben.
 
 ### API-Endpunkte
 ```
-GET    /api/backoffice/expenses             → Alle Ausgaben
-GET    /api/backoffice/expenses/:id         → Einzelne Ausgabe
-POST   /api/backoffice/expenses             → Neue Ausgabe
-PUT    /api/backoffice/expenses/:id         → Ausgabe aktualisieren
-DELETE /api/backoffice/expenses/:id         → Ausgabe löschen
-GET    /api/backoffice/expenses/by-project/:id → Nach Projekt
+# CRUD
+GET    /api/backoffice/finance/expenses     → Alle Ausgaben (mit Pagination & Filtern)
+GET    /api/backoffice/finance/expenses/:id → Einzelne Ausgabe
+POST   /api/backoffice/finance/expenses     → Neue Ausgabe
+PATCH  /api/backoffice/finance/expenses/:id → Ausgabe aktualisieren
+DELETE /api/backoffice/finance/expenses/:id → Ausgabe löschen
+
+# STATISTICS
+GET    /api/backoffice/finance/expenses/kpis → KPI-Dashboard (Gesamt, Kategorien, Trends)
+
+# FILTER-PARAMETER
+# - title (string)
+# - category (material|personnel|service|other)
+# - project_id (UUID)
+# - invoice_id (UUID)
+# - from_date / to_date (date range)
+# - limit / offset (pagination)
 ```
 
 ### Datenmodell
@@ -287,7 +344,15 @@ interface Expense {
 ```
 
 ### Status
-⏳ **Geplant** - Phase 2 Roadmap
+✅ **Backend Ready** - Finance-Modul vollständig implementiert
+- Backend: `backend/app/modules/backoffice/finance/` ✅
+- Frontend: ⏳ Geplant für Phase 2.3
+- **Features:**
+  - ✅ KPI-Dashboard (Gesamt, pro Kategorie, Trends)
+  - ✅ Multi-Filter (Titel, Kategorie, Projekt, Rechnung, Datumsbereich)
+  - ✅ Pagination
+  - ✅ Kategorie-basierte Auswertungen
+- Files: `routes.py`, `crud.py`, `schemas.py`, `models.py`
 
 ---
 
@@ -305,10 +370,20 @@ Projektbezogene Team-Kommunikation mit Nachrichtenverlauf.
 
 ### API-Endpunkte
 ```
-GET    /api/backoffice/chat/messages/:project_id  → Nachrichten eines Projekts
-POST   /api/backoffice/chat/messages              → Neue Nachricht
-DELETE /api/backoffice/chat/messages/:id          → Nachricht löschen
-WS     /api/backoffice/chat/ws/:project_id        → WebSocket-Verbindung
+# REST API
+GET    /api/backoffice/chat/projects/:project_id/messages → Nachrichten eines Projekts (Pagination)
+POST   /api/backoffice/chat/projects/:project_id/messages → Neue Nachricht (mit Broadcast)
+
+# WEBSOCKET (Echtzeit)
+WS     /api/backoffice/chat/ws/projects/:project_id → WebSocket-Verbindung
+
+# PARAMETER
+# - limit (default: 50, max: 200)
+# - offset (default: 0)
+
+# WEBSOCKET EVENTS
+# - "new_message" → Broadcast wenn neue Nachricht erstellt wird
+# - "pong" → Echo-Response für Keep-Alive
 ```
 
 ### Datenmodell
@@ -323,7 +398,17 @@ interface ChatMessage {
 ```
 
 ### Status
-⏳ **Geplant** - Phase 2 Roadmap
+✅ **Backend Ready** - WebSocket-basiertes Echtzeit-Chat implementiert!
+- Backend: `backend/app/modules/backoffice/chat/` ✅
+- Frontend: ⏳ Geplant für Phase 2.4
+- **Features:**
+  - ✅ **WebSocket-Support** mit Connection Manager
+  - ✅ **Broadcast-System** (neue Nachrichten an alle Clients)
+  - ✅ REST-API für Nachrichtenverlauf (Pagination)
+  - ✅ Auto-Connect/Disconnect-Management
+  - ✅ Pro-Projekt-Channels
+- Files: `routes.py`, `crud.py`, `schemas.py`, `models.py`
+- **Implementation:** ConnectionManager mit Dict[project_id, Set[WebSocket]]
 
 ---
 
@@ -440,21 +525,30 @@ ui/src/modules/
 
 ## Roadmap
 
-### Phase 2.1 (Q1 2026)
-- ✅ CRM-Modul (Abgeschlossen)
-- 🔄 Projektmanagement (In Arbeit)
+### Phase 2.1 (Abgeschlossen!)
+- ✅ **CRM-Modul** - Live in Produktion (Backend + Frontend)
+- ✅ **Projektmanagement Backend** - Vollständig implementiert
+- ✅ **Zeiterfassung Backend** - Vollständig implementiert
+- ✅ **Rechnungsmanagement Backend** - Vollständig implementiert (mit PDF-Generator!)
+- ✅ **Zahlungsmanagement Backend** - Vollständig implementiert
+- ✅ **Ausgabenverwaltung Backend** - Vollständig implementiert
+- ✅ **Projekt-Chat Backend** - Vollständig implementiert (mit WebSocket!)
 
-### Phase 2.2 (Q2 2026)
-- ⏳ Zeiterfassung
-- ⏳ Rechnungsmanagement
+### Phase 2.2 (Aktuell)
+- 🔄 **Projekte Frontend** - In Entwicklung
+- ⏳ **Zeiterfassung Frontend** - Geplant
+- ⏳ **Rechnungsmanagement Frontend** - Geplant (inkl. PDF-Anzeige)
 
-### Phase 2.3 (Q3 2026)
-- ⏳ Zahlungsmanagement
-- ⏳ Ausgabenverwaltung
+### Phase 2.3 (Q2 2026)
+- ⏳ **Zahlungen Frontend** - Geplant
+- ⏳ **Ausgaben Frontend** - Geplant (inkl. KPI-Dashboard)
 
-### Phase 2.4 (Q4 2026)
-- ⏳ Projekt-Chat
-- ⏳ Reporting & Analytics
+### Phase 2.4 (Q3 2026)
+- ⏳ **Projekt-Chat Frontend** - Geplant (WebSocket-Integration)
+- ⏳ **Reporting & Analytics** - Geplant
+
+**Backend-Status: 🎉 Alle Module zu 100% fertig!**
+**Frontend-Status: 🔄 CRM produktiv, restliche Module in Planung**
 
 ---
 
