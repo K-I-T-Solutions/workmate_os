@@ -114,13 +114,14 @@ CRM Module      Project Mgmt   Time Tracking   Finance
 
 | Modul | Backend | Frontend | Status |
 |-------|---------|----------|--------|
-| **CRM** | ✅ Vollständig | ✅ Vollständig | 🟢 **Live in Produktion** |
-| **Projekte** | ✅ Vollständig | 🔄 In Entwicklung | 🟡 Beta |
-| **Zeiterfassung** | ✅ Vollständig | ⏳ Geplant | 🟡 Backend Ready |
-| **Rechnungen** | ✅ **Mit PDF-Generator** | ⏳ Geplant | 🟡 Backend Ready |
-| **Zahlungen** | ✅ **Auto-Status-Update** | ⏳ Geplant | 🟡 Backend Ready |
-| **Ausgaben (Finance)** | ✅ **Mit KPIs** | ⏳ Geplant | 🟡 Backend Ready |
-| **Projekt-Chat** | ✅ **Mit WebSocket** | ⏳ Geplant | 🟡 Backend Ready |
+| **CRM** | ✅ Vollständig | ✅ **Vollständig** | 🟢 **Live in Produktion** |
+| **Projekte** | ✅ Vollständig | ✅ **Vollständig** | 🟢 **Ready** |
+| **Zeiterfassung** | ✅ Vollständig | ✅ **Vollständig** | 🟢 **Ready** |
+| **Rechnungen** | ✅ **Mit PDF-Generator** | ✅ **Vollständig** | 🟢 **Ready** |
+| **Zahlungen** | ✅ **Auto-Status-Update** | ✅ **Integriert** | 🟢 **Ready** |
+| **Ausgaben** | ✅ **Mit KPIs** | ✅ **Vollständig** | 🟢 **Ready** |
+| **Finance** | ✅ Vollständig | ✅ **Dashboard** | 🟢 **Ready** |
+| **Projekt-Chat** | ✅ **Mit WebSocket** | ⏳ Noch nicht | 🟡 Backend Ready |
 
 ### Backend-Features (Implementiert!)
 
@@ -166,6 +167,45 @@ CRM Module      Project Mgmt   Time Tracking   Finance
 - REST-API für Nachrichtenverlauf
 - **Broadcast** an alle verbundenen Clients
 - Connection Manager pro Projekt
+
+### Frontend-Module (Implementiert!)
+
+#### ✅ CRM (`ui/src/modules/crm/`)
+- Dashboard mit KPIs & Aktivitäten
+- Kundenliste & Detailansicht
+- Kontaktliste & Detailansicht
+- Formulare für Kunden & Kontakte
+
+#### ✅ Projekte (`ui/src/modules/projects/`)
+- Dashboard mit Projektübersicht
+- Projektliste mit Filtern
+- Projektdetails
+- Projektformular (Create/Edit)
+
+#### ✅ Zeiterfassung (`ui/src/modules/time-tracking/`)
+- Dashboard mit Zeitstatistiken
+- Zeiteinträge-Liste
+- Zeiteintrag-Details
+- Zeiteintrag-Formular (Start/Stop)
+
+#### ✅ Rechnungen (`ui/src/modules/invoices/`)
+- Dashboard mit Rechnungsübersicht
+- Rechnungsliste mit Filtern
+- Rechnungsdetails mit PDF-Anzeige
+- Rechnungsformular mit Line Items
+- Kunden- & Projekt-Auswahl
+
+#### ✅ Ausgaben (`ui/src/modules/expenses/`)
+- Dashboard mit Ausgabenstatistiken
+- Ausgabenliste mit Filtern
+- Ausgabenformular
+
+#### ✅ Finance (`ui/src/modules/finance/`)
+- Finance-Dashboard mit Übersicht
+
+#### ⏳ Projekt-Chat
+- Noch nicht implementiert
+- Geplant für Phase 2.4
 
 ---
 

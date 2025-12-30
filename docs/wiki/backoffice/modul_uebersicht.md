@@ -118,9 +118,13 @@ interface Project {
 ```
 
 ### Status
-✅ **Backend Ready** - Vollständig implementiert, Frontend in Entwicklung
+✅ **Vollständig** - Backend + Frontend implementiert
 - Backend: `backend/app/modules/backoffice/projects/` ✅
-- Frontend: `ui/src/modules/projects/` 🔄 In Arbeit
+- Frontend: `ui/src/modules/projects/` ✅
+  - ProjectsDashboardPage.vue
+  - ProjectsListPage.vue
+  - ProjectDetailPage.vue
+  - ProjectFormPage.vue
 - API-Endpunkte: Alle CRUD-Operationen verfügbar
 - Features: Filter nach Kunde, Pagination, Status-Management
 
@@ -166,9 +170,13 @@ interface TimeEntry {
 ```
 
 ### Status
-✅ **Backend Ready** - Vollständig implementiert, Frontend geplant
+✅ **Vollständig** - Backend + Frontend implementiert
 - Backend: `backend/app/modules/backoffice/time_tracking/` ✅
-- Frontend: ⏳ Geplant für Phase 2.2
+- Frontend: `ui/src/modules/time-tracking/` ✅
+  - TimeTrackingDashboard.vue
+  - TimeEntriesListPage.vue
+  - TimeEntryDetailPage.vue
+  - TimeEntryFormPage.vue (mit Start/Stop Timer)
 - API-Prefix: `/api/backoffice/time-tracking`
 - Features: Automatische Dauer-Berechnung, Mitarbeiter & Projekt-Filter
 
@@ -233,10 +241,16 @@ interface Invoice {
 ```
 
 ### Status
-✅ **Backend Ready** - Umfangreich implementiert mit Advanced Features!
+✅ **Vollständig** - Backend + Frontend mit Advanced Features!
 - Backend: `backend/app/modules/backoffice/invoices/` ✅
-- Frontend: ⏳ Geplant für Phase 2.2
-- **Besondere Features:**
+- Frontend: `ui/src/modules/invoices/` ✅
+  - InvoicesDashboardPage.vue
+  - InvoicesListPage.vue (mit Filtern)
+  - InvoiceDetailPage.vue (mit PDF-Anzeige)
+  - InvoiceFormPage.vue (mit Line Items)
+  - CustomerSelect.vue
+  - ProjectSelect.vue
+- **Backend Features:**
   - ✅ PDF-Generierung (sync/async mit Background Tasks)
   - ✅ Line Items System mit Auto-Positionierung
   - ✅ Pagination & Multi-Filter (Status, Kunde, Projekt, Datumsbereich)
@@ -285,9 +299,11 @@ interface Payment {
 ```
 
 ### Status
-✅ **Backend Ready** - Vollständig in Invoices-Modul integriert
+✅ **Vollständig** - In Invoices-Modul integriert (Backend + Frontend)
 - Backend: `backend/app/modules/backoffice/invoices/payments_crud.py` ✅
-- Frontend: ⏳ Geplant für Phase 2.2
+- Frontend: In `ui/src/modules/invoices/` integriert ✅
+  - Zahlungen werden in InvoiceDetailPage.vue angezeigt
+  - Zahlungsformular in Invoice-Modul
 - **Features:**
   - ✅ Teilzahlungen unterstützt
   - ✅ Auto-Status-Update (paid/partial bei vollständiger/teilweiser Zahlung)
@@ -344,10 +360,16 @@ interface Expense {
 ```
 
 ### Status
-✅ **Backend Ready** - Finance-Modul vollständig implementiert
+✅ **Vollständig** - Backend + Frontend implementiert
 - Backend: `backend/app/modules/backoffice/finance/` ✅
-- Frontend: ⏳ Geplant für Phase 2.3
-- **Features:**
+- Frontend: `ui/src/modules/expenses/` + `ui/src/modules/finance/` ✅
+  - **Expenses-Modul:**
+    - ExpensesDashboardPage.vue
+    - ExpensesListPage.vue (mit Filtern)
+    - ExpenseFormPage.vue
+  - **Finance-Modul:**
+    - FinanceDashboardPage.vue (Übersicht)
+- **Backend Features:**
   - ✅ KPI-Dashboard (Gesamt, pro Kategorie, Trends)
   - ✅ Multi-Filter (Titel, Kategorie, Projekt, Rechnung, Datumsbereich)
   - ✅ Pagination
@@ -525,30 +547,29 @@ ui/src/modules/
 
 ## Roadmap
 
-### Phase 2.1 (Abgeschlossen!)
-- ✅ **CRM-Modul** - Live in Produktion (Backend + Frontend)
-- ✅ **Projektmanagement Backend** - Vollständig implementiert
-- ✅ **Zeiterfassung Backend** - Vollständig implementiert
-- ✅ **Rechnungsmanagement Backend** - Vollständig implementiert (mit PDF-Generator!)
-- ✅ **Zahlungsmanagement Backend** - Vollständig implementiert
-- ✅ **Ausgabenverwaltung Backend** - Vollständig implementiert
-- ✅ **Projekt-Chat Backend** - Vollständig implementiert (mit WebSocket!)
+### Phase 2.1 (✅ KOMPLETT ABGESCHLOSSEN!)
+- ✅ **CRM** - Live in Produktion (Backend + Frontend)
+- ✅ **Projekte** - Vollständig implementiert (Backend + Frontend)
+- ✅ **Zeiterfassung** - Vollständig implementiert (Backend + Frontend)
+- ✅ **Rechnungen** - Vollständig implementiert (Backend + Frontend mit PDF!)
+- ✅ **Zahlungen** - Vollständig implementiert (in Invoices integriert)
+- ✅ **Ausgaben/Finance** - Vollständig implementiert (Backend + Frontend)
+- ✅ **Projekt-Chat Backend** - Vollständig implementiert (WebSocket!)
 
 ### Phase 2.2 (Aktuell)
-- 🔄 **Projekte Frontend** - In Entwicklung
-- ⏳ **Zeiterfassung Frontend** - Geplant
-- ⏳ **Rechnungsmanagement Frontend** - Geplant (inkl. PDF-Anzeige)
-
-### Phase 2.3 (Q2 2026)
-- ⏳ **Zahlungen Frontend** - Geplant
-- ⏳ **Ausgaben Frontend** - Geplant (inkl. KPI-Dashboard)
-
-### Phase 2.4 (Q3 2026)
-- ⏳ **Projekt-Chat Frontend** - Geplant (WebSocket-Integration)
+- 🔄 **Projekt-Chat Frontend** - Nächste Priorität (WebSocket-Integration)
 - ⏳ **Reporting & Analytics** - Geplant
 
-**Backend-Status: 🎉 Alle Module zu 100% fertig!**
-**Frontend-Status: 🔄 CRM produktiv, restliche Module in Planung**
+### Phase 2.3 (Q2 2026)
+- ⏳ **Advanced Features & Optimierungen**
+- ⏳ **Mobile-Optimierung**
+
+### Phase 2.4 (Q3 2026)
+- ⏳ **AI-Features & Automatisierung**
+- ⏳ **Advanced Reporting**
+
+**🎉 Status: Backend & Frontend zu 100% fertig (außer Chat-Frontend)!**
+**Nur noch fehlt: Projekt-Chat Frontend (alle anderen Module sind ready)**
 
 ---
 
