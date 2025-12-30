@@ -1,3 +1,10 @@
+---
+layout: default
+title: Architecture
+nav_order: 2
+has_children: true
+---
+
 # 🏗️ Architektur-Dokumentation
 
 **System-Architektur und Design-Entscheidungen**

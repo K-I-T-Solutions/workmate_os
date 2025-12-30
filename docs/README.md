@@ -1,3 +1,11 @@
+---
+layout: default
+title: Home
+nav_order: 1
+description: "Zentrale Dokumentation für das WorkmateOS Projekt"
+permalink: /
+---
+
 # 📚 WorkmateOS Dokumentation
 
 **Zentrale Dokumentation für das WorkmateOS Projekt**

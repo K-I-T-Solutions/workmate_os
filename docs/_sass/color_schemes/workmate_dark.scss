@@ -1,0 +1,68 @@
+// WorkmateOS Dark Theme for Just the Docs
+// K.I.T Solutions Branding Colors
+
+// Brand Colors
+$kit-primary: #5469d4;
+$kit-secondary: #00d4aa;
+$kit-accent: #7c3aed;
+
+// Dark Background Palette
+$body-background-color: #0f0f23;
+$sidebar-color: #1a1a2e;
+$code-background-color: #1e1e1e;
+$table-background-color: #252545;
+
+// Text Colors
+$body-text-color: #e5e7eb;
+$body-heading-color: #f9fafb;
+$nav-child-link-color: #9ca3af;
+$link-color: $kit-primary;
+$btn-primary-color: $kit-primary;
+
+// Border Colors
+$border-color: rgba(255, 255, 255, 0.1);
+$nav-border-color: rgba(255, 255, 255, 0.05);
+
+// Feedback Colors
+$feedback-color: $kit-secondary;
+$label-green: #10b981;
+$label-yellow: #f59e0b;
+$label-red: #ef4444;
+$label-blue: $kit-primary;
+$label-purple: $kit-accent;
+
+// Code Highlighting
+$code-linenumber-color: #6b7280;
+
+// Search
+$search-background-color: #252545;
+$search-result-preview-color: #9ca3af;
+
+// Buttons
+$btn-primary-color: $kit-primary;
+
+// Callout Colors
+$yellow-000: #fef3c7;
+$yellow-100: #fde68a;
+$yellow-200: #fcd34d;
+$yellow-300: $label-yellow;
+
+$green-000: #d1fae5;
+$green-100: #a7f3d0;
+$green-200: #6ee7b7;
+$green-300: $label-green;
+
+$red-000: #fee2e2;
+$red-100: #fecaca;
+$red-200: #fca5a5;
+$red-300: $label-red;
+
+$blue-000: #dbeafe;
+$blue-100: #bfdbfe;
+$blue-200: #93c5fd;
+$blue-300: $label-blue;
+
+$purple-000: #e9d5ff;
+$purple-100: #d8b4fe;
+$purple-200: #c084fc;
+$purple-300: $label-purple;

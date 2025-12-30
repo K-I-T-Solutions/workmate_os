@@ -1,0 +1,288 @@
+// Custom Styles for WorkmateOS Documentation
+// K.I.T Solutions Branding
+
+// Import K.I.T Brand Colors
+@import "./color_schemes/workmate_dark";
+
+// Custom Logo Styling
+.site-logo {
+  max-height: 48px;
+  width: auto;
+}
+
+// Enhanced Navigation
+.side-bar {
+  background: $sidebar-color;
+  border-right: 1px solid $border-color;
+}
+
+.nav-list-link {
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba($kit-primary, 0.1);
+    border-left: 3px solid $kit-primary;
+  }
+}
+
+// Better Code Blocks
+pre.highlight {
+  background: $code-background-color !important;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  padding: 1rem;
+
+  code {
+    background: transparent;
+  }
+}
+
+// Inline Code
+code {
+  background: rgba($kit-primary, 0.1);
+  color: $kit-secondary;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+// Tables
+table {
+  background: $table-background-color;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  overflow: hidden;
+
+  th {
+    background: rgba($kit-primary, 0.2);
+    color: $body-heading-color;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.5px;
+  }
+
+  tr {
+    border-bottom: 1px solid $border-color;
+
+    &:hover {
+      background: rgba($kit-primary, 0.05);
+    }
+  }
+
+  td {
+    padding: 0.75rem 1rem;
+  }
+}
+
+// Mermaid Diagrams
+.mermaid {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+// Headings with anchors
+h1, h2, h3, h4, h5, h6 {
+  .anchor-heading {
+    color: $kit-primary;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  &:hover .anchor-heading {
+    opacity: 1;
+  }
+}
+
+// Callouts Enhancement
+.highlight {
+  padding: 1rem;
+  border-left: 4px solid;
+  border-radius: 4px;
+  margin: 1.5rem 0;
+
+  &.highlight-yellow {
+    background: rgba($yellow-300, 0.1);
+    border-color: $yellow-300;
+  }
+
+  &.highlight-green {
+    background: rgba($green-300, 0.1);
+    border-color: $green-300;
+  }
+
+  &.highlight-red {
+    background: rgba($red-300, 0.1);
+    border-color: $red-300;
+  }
+
+  &.highlight-blue {
+    background: rgba($blue-300, 0.1);
+    border-color: $blue-300;
+  }
+
+  &.highlight-purple {
+    background: rgba($purple-300, 0.1);
+    border-color: $purple-300;
+  }
+}
+
+// Search Enhancement
+.search-input {
+  background: $search-background-color !important;
+  border: 1px solid $border-color !important;
+  color: $body-text-color !important;
+  border-radius: 8px !important;
+
+  &:focus {
+    border-color: $kit-primary !important;
+    box-shadow: 0 0 0 3px rgba($kit-primary, 0.1) !important;
+  }
+}
+
+.search-results {
+  background: $sidebar-color;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+// Buttons
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &.btn-primary {
+    background: $kit-primary;
+
+    &:hover {
+      background: lighten($kit-primary, 10%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+// Labels/Badges
+.label {
+  border-radius: 12px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85em;
+  font-weight: 500;
+
+  &.label-green {
+    background: $label-green;
+    color: white;
+  }
+
+  &.label-yellow {
+    background: $label-yellow;
+    color: white;
+  }
+
+  &.label-red {
+    background: $label-red;
+    color: white;
+  }
+
+  &.label-blue {
+    background: $label-blue;
+    color: white;
+  }
+
+  &.label-purple {
+    background: $label-purple;
+    color: white;
+  }
+}
+
+// Footer
+.site-footer {
+  background: $sidebar-color;
+  border-top: 1px solid $border-color;
+  padding: 2rem 0;
+
+  a {
+    color: $kit-primary;
+
+    &:hover {
+      color: $kit-secondary;
+    }
+  }
+}
+
+// Breadcrumbs
+.breadcrumb-nav {
+  a {
+    color: $nav-child-link-color;
+
+    &:hover {
+      color: $kit-primary;
+    }
+  }
+}
+
+// Back to Top Button
+.top-link {
+  background: $kit-primary;
+  color: white;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: $kit-secondary;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// Responsive Improvements
+@media (max-width: 768px) {
+  .side-bar {
+    border-right: none;
+    border-bottom: 1px solid $border-color;
+  }
+
+  .main-content {
+    padding: 1rem;
+  }
+
+  pre.highlight {
+    font-size: 0.85em;
+  }
+}
+
+// Print Styles
+@media print {
+  .side-bar,
+  .site-footer,
+  .top-link,
+  .search-input {
+    display: none !important;
+  }
+
+  .main-content {
+    max-width: 100% !important;
+  }
+}
+
+// Smooth Scrolling
+html {
+  scroll-behavior: smooth;
+}
+
+// Selection Color
+::selection {
+  background: rgba($kit-primary, 0.3);
+  color: $body-heading-color;
+}

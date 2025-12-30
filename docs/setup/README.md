@@ -1,3 +1,10 @@
+---
+layout: default
+title: Setup
+nav_order: 3
+has_children: true
+---
+
 # ⚙️ Setup & Konfiguration
 
 **Installation und Konfiguration von WorkmateOS**

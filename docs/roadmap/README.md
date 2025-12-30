@@ -1,3 +1,10 @@
+---
+layout: default
+title: Roadmap
+nav_order: 5
+has_children: true
+---
+
 # 🗺️ Roadmap & Planung
 
 **Projekt-Roadmap und Phasen-Übersicht**
