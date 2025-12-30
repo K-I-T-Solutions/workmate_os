@@ -1,0 +1,50 @@
+# GitHub Pages Configuration for WorkmateOS Documentation
+
+# Theme
+theme: jekyll-theme-cayman
+# Alternatives: minimal, slate, architect, midnight, time-machine
+
+# Site Settings
+title: "WorkmateOS Documentation"
+description: "Comprehensive documentation for WorkmateOS - Your digital workbuddy"
+
+# Navigation
+show_downloads: false
+google_analytics: # Optional: Add your GA tracking ID
+
+# Plugins
+plugins:
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-readme-index
+  - jekyll-titles-from-headings
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Relative links
+relative_links:
+  enabled: true
+  collections: true
+
+# Optional front matter
+optional_front_matter:
+  remove_originals: true
+
+# Titles from headings
+titles_from_headings:
+  enabled: true
+  strip_title: true
+  collections: true
+
+# Exclude from processing
+exclude:
+  - "*.py"
+  - "*.pyc"
+  - ".git"
+  - ".gitignore"
+  - "venv/"
+  - "node_modules/"
