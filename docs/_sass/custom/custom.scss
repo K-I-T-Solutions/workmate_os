@@ -1,95 +1,187 @@
 // Custom Styles for WorkmateOS Documentation
-// K.I.T Solutions Branding
+// Based on K.I.T Solutions Design Guidelines
+// Author: K.I.T Solutions Team
+// Last Update: 2025-12-30
+
+// ============================================
+// Google Fonts Import (K.I.T Typography)
+// ============================================
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 // Import K.I.T Brand Colors
 @import "./color_schemes/workmate_dark";
 
+// ============================================
+// K.I.T Design Tokens (from guidelines.md)
+// ============================================
+
+// Spacing Scale
+$space-xs: 4px;
+$space-sm: 8px;
+$space-md: 16px;
+$space-lg: 24px;
+$space-xl: 32px;
+
+// Border Radius
+$radius-sm: 8px;
+$radius-md: 12px;
+$radius-lg: 16px;
+
+// Shadows
+$shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.2);
+$shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.3);
+$shadow-large: 0 8px 16px rgba(0, 0, 0, 0.4);
+
+// Transitions (K.I.T Standard)
+$transition-standard: 100ms ease-in-out;
+$transition-medium: 200ms ease-in-out;
+
+// ============================================
+// Typography (K.I.T Fonts)
+// ============================================
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px; // body size from guidelines
+  line-height: 1.6;
+  color: $color-text-primary;
+}
+
+// ============================================
 // Custom Logo Styling
+// ============================================
+
 .site-logo {
   max-height: 48px;
   width: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-// Enhanced Navigation
+// ============================================
+// Enhanced Navigation (K.I.T Style)
+// ============================================
+
 .side-bar {
   background: $sidebar-color;
   border-right: 1px solid $border-color;
+  backdrop-filter: blur(8px);
 }
 
 .nav-list-link {
-  transition: all 0.2s ease;
+  transition: all $transition-medium;
+  border-left: 3px solid transparent;
+  padding-left: $space-md;
 
   &:hover {
+    background: $color-panel-glass;
+    border-left: 3px solid $kit-primary;
+    transform: translateX(2px);
+  }
+
+  &.active {
     background: rgba($kit-primary, 0.1);
     border-left: 3px solid $kit-primary;
+    font-weight: 600;
   }
 }
 
-// Better Code Blocks
+// ============================================
+// Code Blocks (K.I.T Style)
+// ============================================
+
 pre.highlight {
   background: $code-background-color !important;
-  border: 1px solid $border-color;
-  border-radius: 8px;
-  padding: 1rem;
+  border: 1px solid $color-border-light;
+  border-radius: $radius-sm;
+  padding: $space-md;
+  box-shadow: $shadow-soft;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 14px;
+  line-height: 1.6;
 
   code {
     background: transparent;
+    font-family: inherit;
   }
 }
 
 // Inline Code
 code {
   background: rgba($kit-primary, 0.1);
-  color: $kit-secondary;
+  color: $kit-primary;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.9em;
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid $color-border-accent;
 }
 
-// Tables
+// ============================================
+// Tables (K.I.T Style)
+// ============================================
+
 table {
   background: $table-background-color;
-  border: 1px solid $border-color;
-  border-radius: 8px;
+  border: 1px solid $color-border-light;
+  border-radius: $radius-sm;
   overflow: hidden;
+  box-shadow: $shadow-soft;
 
   th {
-    background: rgba($kit-primary, 0.2);
+    background: rgba($kit-primary, 0.15);
     color: $body-heading-color;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.85em;
+    font-size: 14px; // label size from guidelines
     letter-spacing: 0.5px;
+    padding: $space-md;
   }
 
   tr {
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid $color-border-light;
+    transition: background $transition-standard;
 
     &:hover {
-      background: rgba($kit-primary, 0.05);
+      background: $color-panel-glass;
+    }
+
+    &:last-child {
+      border-bottom: none;
     }
   }
 
   td {
-    padding: 0.75rem 1rem;
+    padding: $space-sm $space-md;
+    font-size: 16px; // body size from guidelines
   }
 }
 
-// Mermaid Diagrams
+// ============================================
+// Mermaid Diagrams (White Background)
+// ============================================
+
 .mermaid {
   background: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin: 20px 0;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: $space-lg;
+  border-radius: $radius-md;
+  margin: $space-lg 0;
+  box-shadow: $shadow-soft;
+  border: 1px solid $color-border-light;
 }
 
-// Headings with anchors
+// ============================================
+// Headings with Anchors (K.I.T Orange)
+// ============================================
+
 h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-weight: 600; // SemiBold from guidelines
+
   .anchor-heading {
     color: $kit-primary;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity $transition-medium;
   }
 
   &:hover .anchor-heading {
@@ -97,100 +189,137 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+// Typography Sizes (from guidelines)
+h1 { font-size: 24px; } // display
+h2 { font-size: 20px; }
+h3 { font-size: 18px; } // heading
+h4 { font-size: 16px; } // body
+
+// ============================================
 // Callouts Enhancement
+// ============================================
+
 .highlight {
-  padding: 1rem;
+  padding: $space-md;
   border-left: 4px solid;
-  border-radius: 4px;
-  margin: 1.5rem 0;
+  border-radius: $radius-sm;
+  margin: $space-md 0;
+  box-shadow: $shadow-soft;
 
   &.highlight-yellow {
-    background: rgba($yellow-300, 0.1);
-    border-color: $yellow-300;
+    background: rgba($color-warning, 0.1);
+    border-color: $color-warning;
   }
 
   &.highlight-green {
-    background: rgba($green-300, 0.1);
-    border-color: $green-300;
+    background: rgba($color-success, 0.1);
+    border-color: $color-success;
   }
 
   &.highlight-red {
-    background: rgba($red-300, 0.1);
-    border-color: $red-300;
+    background: rgba($color-error, 0.1);
+    border-color: $color-error;
   }
 
   &.highlight-blue {
-    background: rgba($blue-300, 0.1);
-    border-color: $blue-300;
+    background: rgba($color-info, 0.1);
+    border-color: $color-info;
   }
 
   &.highlight-purple {
-    background: rgba($purple-300, 0.1);
-    border-color: $purple-300;
+    background: rgba($label-purple, 0.1);
+    border-color: $label-purple;
   }
 }
 
-// Search Enhancement
+// ============================================
+// Search Enhancement (K.I.T Style)
+// ============================================
+
 .search-input {
   background: $search-background-color !important;
-  border: 1px solid $border-color !important;
+  border: 1px solid $color-border-light !important;
   color: $body-text-color !important;
-  border-radius: 8px !important;
+  border-radius: $radius-sm !important;
+  transition: all $transition-medium !important;
 
   &:focus {
     border-color: $kit-primary !important;
-    box-shadow: 0 0 0 3px rgba($kit-primary, 0.1) !important;
+    box-shadow: 0 0 0 3px rgba($kit-primary, 0.2) !important;
   }
 }
 
 .search-results {
   background: $sidebar-color;
-  border: 1px solid $border-color;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  border: 1px solid $color-border-light;
+  border-radius: $radius-sm;
+  box-shadow: $shadow-large;
+  backdrop-filter: blur(12px);
 }
 
-// Buttons
+// ============================================
+// Buttons (K.I.T Orange Accent)
+// ============================================
+
 .btn {
-  border-radius: 6px;
+  border-radius: $radius-sm;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: all $transition-medium;
+  padding: $space-sm $space-md;
+  font-size: 14px; // label size
 
   &.btn-primary {
     background: $kit-primary;
+    color: white;
+    box-shadow: $shadow-soft;
 
     &:hover {
-      background: lighten($kit-primary, 10%);
+      background: $kit-primary-hover;
       transform: translateY(-1px);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      box-shadow: $shadow-medium;
     }
+
+    &:active {
+      background: $kit-primary-active;
+      transform: translateY(0);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.4; // from guidelines
+    cursor: not-allowed;
   }
 }
 
-// Labels/Badges
+// ============================================
+// Labels/Badges (Status Indicators)
+// ============================================
+
 .label {
-  border-radius: 12px;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.85em;
-  font-weight: 500;
+  border-radius: $radius-md;
+  padding: $space-xs $space-sm;
+  font-size: 12px; // caption from guidelines
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 
   &.label-green {
-    background: $label-green;
+    background: $color-success;
     color: white;
   }
 
   &.label-yellow {
-    background: $label-yellow;
+    background: $color-warning;
     color: white;
   }
 
   &.label-red {
-    background: $label-red;
+    background: $color-error;
     color: white;
   }
 
   &.label-blue {
-    background: $label-blue;
+    background: $color-info;
     color: white;
   }
 
@@ -200,25 +329,33 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-// Footer
+// ============================================
+// Footer (K.I.T Style)
+// ============================================
+
 .site-footer {
   background: $sidebar-color;
-  border-top: 1px solid $border-color;
-  padding: 2rem 0;
+  border-top: 1px solid $color-border-light;
+  padding: $space-xl 0;
 
   a {
     color: $kit-primary;
+    transition: color $transition-standard;
 
     &:hover {
-      color: $kit-secondary;
+      color: $kit-primary-hover;
     }
   }
 }
 
+// ============================================
 // Breadcrumbs
+// ============================================
+
 .breadcrumb-nav {
   a {
     color: $nav-child-link-color;
+    transition: color $transition-standard;
 
     &:hover {
       color: $kit-primary;
@@ -226,7 +363,10 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+// ============================================
 // Back to Top Button
+// ============================================
+
 .top-link {
   background: $kit-primary;
   color: white;
@@ -236,33 +376,79 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+  box-shadow: $shadow-medium;
+  transition: all $transition-medium;
 
   &:hover {
-    background: $kit-secondary;
+    background: $kit-primary-hover;
     transform: translateY(-2px);
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: $shadow-large;
+  }
+
+  &:active {
+    background: $kit-primary-active;
+    transform: translateY(0);
   }
 }
 
+// ============================================
+// Links (K.I.T Orange)
+// ============================================
+
+a {
+  color: $kit-primary;
+  transition: color $transition-standard;
+
+  &:hover {
+    color: $kit-primary-hover;
+    text-decoration: underline;
+  }
+}
+
+// ============================================
+// Glass Panel Effect (from guidelines)
+// ============================================
+
+.panel-glass {
+  background: $color-panel-glass;
+  backdrop-filter: blur(8px);
+  border: 1px solid $color-border-light;
+  border-radius: $radius-md;
+  padding: $space-lg;
+}
+
+// ============================================
 // Responsive Improvements
+// ============================================
+
 @media (max-width: 768px) {
   .side-bar {
     border-right: none;
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid $color-border-light;
   }
 
   .main-content {
-    padding: 1rem;
+    padding: $space-md;
   }
 
   pre.highlight {
-    font-size: 0.85em;
+    font-size: 12px;
+    padding: $space-sm;
+  }
+
+  table {
+    font-size: 14px;
+
+    th, td {
+      padding: $space-sm;
+    }
   }
 }
 
+// ============================================
 // Print Styles
+// ============================================
+
 @media print {
   .side-bar,
   .site-footer,
@@ -274,15 +460,40 @@ h1, h2, h3, h4, h5, h6 {
   .main-content {
     max-width: 100% !important;
   }
+
+  a {
+    color: $color-text-primary !important;
+    text-decoration: none !important;
+  }
 }
 
+// ============================================
 // Smooth Scrolling
+// ============================================
+
 html {
   scroll-behavior: smooth;
 }
 
-// Selection Color
+// ============================================
+// Selection Color (K.I.T Orange)
+// ============================================
+
 ::selection {
   background: rgba($kit-primary, 0.3);
   color: $body-heading-color;
+}
+
+::-moz-selection {
+  background: rgba($kit-primary, 0.3);
+  color: $body-heading-color;
+}
+
+// ============================================
+// Focus Outline (K.I.T Orange)
+// ============================================
+
+*:focus-visible {
+  outline: 2px solid $kit-primary;
+  outline-offset: 2px;
 }

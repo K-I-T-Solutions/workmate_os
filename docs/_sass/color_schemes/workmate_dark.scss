@@ -1,68 +1,116 @@
 // WorkmateOS Dark Theme for Just the Docs
-// K.I.T Solutions Branding Colors
+// Based on K.I.T Solutions Design Guidelines
+// Author: K.I.T Solutions Team
+// Last Update: 2025-12-30
 
-// Brand Colors
-$kit-primary: #5469d4;
-$kit-secondary: #00d4aa;
-$kit-accent: #7c3aed;
+// ============================================
+// K.I.T Brand Colors (from guidelines.md)
+// ============================================
 
-// Dark Background Palette
-$body-background-color: #0f0f23;
-$sidebar-color: #1a1a2e;
-$code-background-color: #1e1e1e;
-$table-background-color: #252545;
+// Primary Accent - K.I.T Orange
+$kit-primary: #ff9100;
+$kit-primary-hover: #ff9e1a;
+$kit-primary-active: #e68200;
+
+// Background Colors
+$color-bg-primary: #232223;
+$color-bg-secondary: #1a1a1a;
+$color-bg-tertiary: #2a2a2a;
+
+// Glass/Panel Effects
+$color-panel-glass: rgba(255, 255, 255, 0.05);
+$color-panel-overlay: rgba(255, 255, 255, 0.03);
 
 // Text Colors
-$body-text-color: #e5e7eb;
-$body-heading-color: #f9fafb;
-$nav-child-link-color: #9ca3af;
-$link-color: $kit-primary;
-$btn-primary-color: $kit-primary;
+$color-text-primary: #ffffff;
+$color-text-secondary: rgba(255, 255, 255, 0.7);
+$color-text-tertiary: rgba(255, 255, 255, 0.5);
+$color-text-disabled: rgba(255, 255, 255, 0.4);
 
-// Border Colors
-$border-color: rgba(255, 255, 255, 0.1);
-$nav-border-color: rgba(255, 255, 255, 0.05);
+// Border & Lines
+$color-border-light: rgba(255, 255, 255, 0.1);
+$color-border-medium: rgba(255, 255, 255, 0.15);
+$color-border-accent: rgba(255, 145, 0, 0.3);
 
 // Feedback Colors
-$feedback-color: $kit-secondary;
-$label-green: #10b981;
-$label-yellow: #f59e0b;
-$label-red: #ef4444;
-$label-blue: $kit-primary;
-$label-purple: $kit-accent;
+$color-success: #10b981;
+$color-warning: #f59e0b;
+$color-error: #ef4444;
+$color-info: #3b82f6;
+
+// ============================================
+// Just the Docs Theme Variables
+// ============================================
+
+// Base Colors
+$body-background-color: $color-bg-primary;
+$sidebar-color: $color-bg-secondary;
+$search-background-color: $color-bg-tertiary;
+$table-background-color: $color-bg-tertiary;
+$code-background-color: #1e1e1e;
+$feedback-color: $kit-primary;
+
+// Text Colors
+$body-text-color: $color-text-primary;
+$body-heading-color: $color-text-primary;
+$search-result-preview-color: $color-text-secondary;
+$nav-child-link-color: $color-text-secondary;
+$breadcrumb-nav-color: $color-text-tertiary;
+
+// Link Colors
+$link-color: $kit-primary;
+$btn-primary-color: $kit-primary;
+$base-button-color: $color-border-light;
+
+// Border Colors
+$border-color: $color-border-light;
+$nav-border-color: $color-border-light;
+$table-border-color: $color-border-light;
+
+// Label Colors (Status Badges)
+$label-green: $color-success;
+$label-yellow: $color-warning;
+$label-red: $color-error;
+$label-blue: $color-info;
+$label-purple: #a855f7;
+
+// Focus States
+$focus-color: $kit-primary;
 
 // Code Highlighting
-$code-linenumber-color: #6b7280;
+$code-linenumber-color: $color-text-tertiary;
 
-// Search
-$search-background-color: #252545;
-$search-result-preview-color: #9ca3af;
+// ============================================
+// Callout Colors (Just the Docs specific)
+// ============================================
 
-// Buttons
-$btn-primary-color: $kit-primary;
-
-// Callout Colors
 $yellow-000: #fef3c7;
 $yellow-100: #fde68a;
 $yellow-200: #fcd34d;
-$yellow-300: $label-yellow;
+$yellow-300: $color-warning;
 
 $green-000: #d1fae5;
 $green-100: #a7f3d0;
 $green-200: #6ee7b7;
-$green-300: $label-green;
+$green-300: $color-success;
 
 $red-000: #fee2e2;
 $red-100: #fecaca;
 $red-200: #fca5a5;
-$red-300: $label-red;
+$red-300: $color-error;
 
 $blue-000: #dbeafe;
 $blue-100: #bfdbfe;
 $blue-200: #93c5fd;
-$blue-300: $label-blue;
+$blue-300: $color-info;
 
 $purple-000: #e9d5ff;
 $purple-100: #d8b4fe;
 $purple-200: #c084fc;
-$purple-300: $label-purple;
+$purple-300: #a855f7;
+
+// ============================================
+// K.I.T Orange Gradient (for special elements)
+// ============================================
+
+$kit-gradient: linear-gradient(135deg, #ff9100 0%, #ff9e1a 100%);
