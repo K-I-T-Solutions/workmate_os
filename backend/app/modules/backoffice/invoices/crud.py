@@ -402,7 +402,7 @@ def create_invoice(
 
     except HTTPException:
         db.rollback()
-        raise
+        raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(e)}")
@@ -551,6 +551,9 @@ def update_invoice(
 
         return invoice
 
+    except HTTPException:
+        db.rollback()
+        raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update invoice: {str(e)}")
@@ -663,6 +666,9 @@ def delete_invoice(db: Session, invoice_id: uuid.UUID, hard_delete: bool = False
 
         return True
 
+    except HTTPException:
+        db.rollback()
+        raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete invoice: {str(e)}")

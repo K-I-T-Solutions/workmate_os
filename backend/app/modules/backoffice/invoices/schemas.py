@@ -191,10 +191,25 @@ class InvoiceCreate(InvoiceBase):
 
 
 class InvoiceUpdate(BaseModel):
-    """Schema für Invoice Update (Partial)."""
+    """
+    Schema für Invoice Update (Partial).
+
+    Alle Felder sind optional. Die Compliance-Validierung entscheidet,
+    welche Felder je nach Invoice-Status geändert werden dürfen.
+    """
+    # Financial fields (immutable after sent)
+    customer_id: Optional[uuid.UUID] = None
+    project_id: Optional[uuid.UUID] = None
+    issued_date: Optional[date] = None
+    due_date: Optional[date] = None
+    document_type: Optional[str] = None
+
+    # Always editable
     status: Optional[str] = None
     notes: Optional[str] = Field(None, max_length=5000)
     terms: Optional[str] = Field(None, max_length=5000)
+
+    # Line items (immutable after sent)
     line_items: Optional[List[InvoiceLineItemCreate]] = None
 
 
