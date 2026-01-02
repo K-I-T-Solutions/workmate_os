@@ -447,6 +447,40 @@ def delete_invoice(
     return None
 
 
+@router.post("/{invoice_id}/restore", response_model=schemas.InvoiceResponse)
+def restore_invoice(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
+):
+    """
+    Stellt eine gelöschte Invoice wieder her (Restore).
+
+    **Hinweis:**
+    - Nur soft-deleted Invoices können wiederhergestellt werden
+    - Hard-deleted Invoices sind permanent gelöscht
+    - Audit Log wird erstellt
+
+    **Use Case:**
+    - Versehentlich gelöschte Rechnung wiederherstellen
+    - Stornierung rückgängig machen
+    """
+    invoice = crud.restore_invoice(
+        db,
+        invoice_id,
+        user_id=ctx.user_id,
+        ip_address=ctx.ip_address
+    )
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found or not deleted"
+        )
+
+    return invoice
+
+
 # ============================================================================
 # PDF OPERATIONS
 # ============================================================================
@@ -839,5 +873,70 @@ def delete_payment(
             detail=f"Payment {payment_id} not found"
         )
     return None
+
+
+# ============================================================================
+# RETENTION POLICY (GoBD § 147 AO)
+# ============================================================================
+
+@router.get("/retention/report")
+def get_retention_report_endpoint(
+    db: Session = Depends(get_db)
+):
+    """
+    Retention Policy Report.
+
+    Zeigt Statistiken über soft-deleted Invoices und Retention Status.
+
+    **GoBD Compliance:**
+    - § 147 AO: 10 Jahre Aufbewahrungspflicht
+    - § 257 HGB: 10 Jahre für Handelsbriefe
+    - Frist beginnt mit Schluss des Kalenderjahrs
+
+    **Returns:**
+    - Retention-Deadline
+    - Anzahl soft-deleted Invoices
+    - Anzahl eligible für Hard-Delete
+    - Liste aller eligible Invoices
+    """
+    from app.modules.backoffice.invoices.retention import get_retention_report
+
+    report = get_retention_report(db)
+    return report
+
+
+@router.post("/retention/cleanup")
+def execute_retention_cleanup_endpoint(
+    dry_run: bool = Query(default=True, description="Nur simulieren (kein echtes Löschen)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Führt Retention Policy Cleanup aus.
+
+    Löscht alle Invoices die älter als 10 Jahre sind (Hard-Delete).
+
+    **WARNUNG:**
+    Dies ist IRREVERSIBEL! Invoices werden permanent gelöscht.
+
+    **Parameter:**
+    - dry_run=true: Simulation (kein echtes Löschen) - EMPFOHLEN zum Testen!
+    - dry_run=false: Echtes Löschen (VORSICHT!)
+
+    **GoBD Compliance:**
+    - § 147 AO: Nach 10 Jahren dürfen Invoices gelöscht werden
+    - Audit Log wird erstellt vor Löschung
+
+    **Returns:**
+    - Statistiken über gelöschte Invoices
+    """
+    from app.modules.backoffice.invoices.retention import hard_delete_expired_invoices
+
+    stats = hard_delete_expired_invoices(db, dry_run=dry_run)
+
+    return {
+        "success": stats["failed"] == 0,
+        "stats": stats,
+        "warning": "DRY RUN - Keine echten Änderungen" if dry_run else "ECHTES LÖSCHEN durchgeführt!"
+    }
 
 

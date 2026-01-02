@@ -810,6 +810,80 @@ def delete_invoice(
         raise HTTPException(status_code=500, detail=f"Failed to delete invoice: {str(e)}")
 
 
+def restore_invoice(
+    db: Session,
+    invoice_id: uuid.UUID,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> Optional[models.Invoice]:
+    """
+    Stellt eine soft-deleted Invoice wieder her.
+
+    Setzt deleted_at = NULL und erstellt Audit Log Eintrag.
+
+    Args:
+        db: Database Session
+        invoice_id: UUID der Invoice
+        user_id: Optional Benutzer-ID für Audit
+        ip_address: Optional IP-Adresse für Audit
+
+    Returns:
+        Wiederhergestellte Invoice oder None
+
+    Raises:
+        HTTPException 404: Wenn Invoice nicht existiert oder nicht gelöscht
+    """
+    # Hole gelöschte Invoice (include_deleted=True)
+    invoice = get_invoice(db, invoice_id, include_deleted=True)
+
+    if not invoice:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Invoice {invoice_id} not found"
+        )
+
+    if not invoice.deleted_at:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invoice {invoice_id} is not deleted and cannot be restored"
+        )
+
+    try:
+        # Restore: Set deleted_at = NULL
+        invoice.deleted_at = None
+        db.commit()
+        db.refresh(invoice)
+
+        # AUDIT LOG
+        try:
+            from app.modules.backoffice.invoices.audit import log_audit_event
+            log_audit_event(
+                db=db,
+                invoice_id=invoice.id,
+                event_type="invoice_restored",
+                user_id=user_id,
+                ip_address=ip_address,
+                changes={
+                    "action": "restore",
+                    "invoice_number": invoice.invoice_number,
+                    "restored_at": datetime.utcnow().isoformat(),
+                },
+                reason="Invoice wurde wiederhergestellt"
+            )
+            db.commit()
+        except Exception as audit_error:
+            print(f"⚠️ Audit logging failed: {audit_error}")
+
+        return invoice
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to restore invoice: {str(e)}")
+
+
 # ============================================================================
 # AUDIT LOGS
 # ============================================================================
