@@ -13,17 +13,20 @@ CHANGES:
 - ✅ Recalculate endpoint
 """
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 import uuid
 import os
+from io import BytesIO
 
 from app.core.settings.database import get_db
 from app.modules.backoffice.invoices import crud, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices import payments_crud
+from app.core.storage.factory import get_storage
+from app.core.settings.config import settings
 
 
 router = APIRouter(prefix="/backoffice/invoices", tags=["Backoffice Invoices"])
@@ -182,17 +185,25 @@ def create_invoice(
 
 
 def _generate_pdf_background(invoice_id: uuid.UUID, db: Session):
-    """Background Task für PDF-Generierung."""
+    """Background Task für PDF-Generierung mit Storage-Backend."""
     try:
         invoice = crud.get_invoice(db, invoice_id)
         if invoice and not invoice.pdf_path:
-            pdf_dir = "/root/workmate_os_uploads/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+            storage = get_storage()
 
-            generate_invoice_pdf(invoice, pdf_path)
-            invoice.pdf_path = pdf_path
-            db.commit()
+            # PDF-Dateiname und remote path
+            pdf_filename = f"{invoice.invoice_number}.pdf"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/{pdf_filename}"
+
+            # PDF als Bytes generieren
+            pdf_content = generate_invoice_pdf(invoice, output_path=None)
+
+            if pdf_content:
+                # PDF zu Storage hochladen
+                storage.upload(remote_path, pdf_content)
+                invoice.pdf_path = remote_path
+                db.commit()
 
     except Exception as e:
         print(f"❌ Background PDF generation failed: {e}")
@@ -215,11 +226,14 @@ def update_invoice(
     - status
     - notes
     - terms
+    - line_items (ersetzt ALLE Positionen!)
 
     **Nicht änderbar:**
     - invoice_number (einmalig)
     - customer_id (nach Erstellung fixiert)
     - totals (automatisch berechnet)
+
+    **Wichtig:** Wenn line_items übergeben werden, werden alle existierenden Positionen gelöscht und durch die neuen ersetzt!
     """
     invoice = crud.update_invoice(db, invoice_id, data)
     if not invoice:
@@ -305,7 +319,7 @@ def delete_invoice(
 # PDF OPERATIONS
 # ============================================================================
 
-@router.get("/{invoice_id}/pdf", response_class=FileResponse)
+@router.get("/{invoice_id}/pdf")
 def download_invoice_pdf(
     invoice_id: uuid.UUID,
     db: Session = Depends(get_db)
@@ -322,15 +336,25 @@ def download_invoice_pdf(
             detail=f"Invoice {invoice_id} not found"
         )
 
-    # PDF generieren falls nicht vorhanden
-    if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
-        try:
-            pdf_dir = "/root/workmate_os_uploads/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+    storage = get_storage()
 
-            generate_invoice_pdf(invoice, pdf_path)
-            invoice.pdf_path = pdf_path
+    # PDF generieren falls nicht vorhanden
+    if not invoice.pdf_path or not storage.exists(invoice.pdf_path):
+        try:
+            # PDF-Dateiname und remote path
+            pdf_filename = f"{invoice.invoice_number}.pdf"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/{pdf_filename}"
+
+            # PDF als Bytes generieren
+            pdf_content = generate_invoice_pdf(invoice, output_path=None)
+
+            if not pdf_content:
+                raise ValueError("PDF generation returned no content")
+
+            # PDF zu Storage hochladen
+            storage.upload(remote_path, pdf_content)
+            invoice.pdf_path = remote_path
             db.commit()
 
         except Exception as e:
@@ -339,11 +363,22 @@ def download_invoice_pdf(
                 detail=f"Failed to generate PDF: {str(e)}"
             )
 
-    return FileResponse(
-        path=invoice.pdf_path,
-        filename=os.path.basename(invoice.pdf_path),
-        media_type="application/pdf"
-    )
+    # PDF aus Storage herunterladen
+    try:
+        pdf_content = storage.download(invoice.pdf_path)
+        filename = f"{invoice.invoice_number}.pdf"
+
+        return StreamingResponse(
+            BytesIO(pdf_content),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download PDF: {str(e)}"
+        )
 
 
 @router.post("/{invoice_id}/regenerate-pdf", response_model=schemas.InvoiceResponse)
@@ -362,17 +397,26 @@ def regenerate_pdf(
         )
 
     try:
-        pdf_dir = "/root/workmate_os_uploads/invoices"
-        os.makedirs(pdf_dir, exist_ok=True)
-        pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+        storage = get_storage()
 
-        # Altes PDF löschen
-        if invoice.pdf_path and os.path.exists(invoice.pdf_path):
-            os.remove(invoice.pdf_path)
+        # Altes PDF aus Storage löschen
+        if invoice.pdf_path and storage.exists(invoice.pdf_path):
+            storage.delete(invoice.pdf_path)
+
+        # PDF-Dateiname und remote path
+        pdf_filename = f"{invoice.invoice_number}.pdf"
+        storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+        remote_path = f"{storage_path}/{pdf_filename}"
 
         # Neues PDF generieren
-        generate_invoice_pdf(invoice, pdf_path)
-        invoice.pdf_path = pdf_path
+        pdf_content = generate_invoice_pdf(invoice, output_path=None)
+
+        if not pdf_content:
+            raise ValueError("PDF generation returned no content")
+
+        # PDF zu Storage hochladen
+        storage.upload(remote_path, pdf_content)
+        invoice.pdf_path = remote_path
         db.commit()
         db.refresh(invoice)
 

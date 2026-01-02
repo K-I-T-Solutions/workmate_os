@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # File Storage
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/uploads")
     ASSETS_DIR: str = os.getenv("ASSETS_DIR", "/app/assets")
+
+    # Storage Backend Configuration
+    STORAGE_BACKEND: str = os.getenv("STORAGE_BACKEND", "nextcloud")  # "local" or "nextcloud" or "s3"
+    INVOICE_STORAGE_PATH: str = os.getenv("INVOICE_STORAGE_PATH", "workmate/invoices")
+
     # Nextcloud
     NEXTCLOUD_URL: str = os.getenv("NEXTCLOUD_URL", "https://cloud.kit-it-koblenz.de/remote.php/dav/files/workmate-storage")
     NEXTCLOUD_USER: str = os.getenv("NEXTCLOUD_USER","workmate-storage")

@@ -4,3 +4,4 @@
 
 export { default as CustomerSelect } from './CustomerSelect.vue';
 export { default as ProjectSelect } from './ProjectSelect.vue';
+export { default as ProductSelect } from './ProductSelect.vue';

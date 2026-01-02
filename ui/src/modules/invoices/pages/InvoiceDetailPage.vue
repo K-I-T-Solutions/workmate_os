@@ -408,37 +408,52 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       <!-- Line Items -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Positionen</h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="border-b border-white/10">
-              <tr class="text-left text-white/60">
-                <th class="pb-2">#</th>
-                <th class="pb-2">Beschreibung</th>
-                <th class="pb-2 text-right">Menge</th>
-                <th class="pb-2">Einheit</th>
-                <th class="pb-2 text-right">Einzelpreis</th>
-                <th class="pb-2 text-right">Rabatt</th>
-                <th class="pb-2 text-right">MwSt.</th>
-                <th class="pb-2 text-right">Gesamt</th>
-              </tr>
-            </thead>
-            <tbody class="text-white">
-              <tr
-                v-for="item in invoice.line_items"
-                :key="item.id"
-                class="border-b border-white/5"
-              >
-                <td class="py-3">{{ item.position }}</td>
-                <td class="py-3">{{ item.description }}</td>
-                <td class="py-3 text-right">{{ item.quantity }}</td>
-                <td class="py-3">{{ item.unit }}</td>
-                <td class="py-3 text-right">{{ formatCurrency(item.unit_price) }}</td>
-                <td class="py-3 text-right">{{ item.discount_percent }}%</td>
-                <td class="py-3 text-right">{{ item.tax_rate }}%</td>
-                <td class="py-3 text-right font-medium">{{ formatCurrency(item.total || 0) }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="space-y-3">
+          <div
+            v-for="item in invoice.line_items"
+            :key="item.id"
+            class="rounded-lg border border-white/5 bg-white/5 p-4 hover:bg-white/10 transition"
+          >
+            <!-- Position Header -->
+            <div class="flex items-start justify-between gap-4 mb-3">
+              <div class="flex items-start gap-3 flex-1 min-w-0">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
+                  <span class="text-blue-200 text-sm font-bold">{{ item.position }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-white font-medium text-sm leading-relaxed">{{ item.description }}</p>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="text-white font-bold text-lg">{{ formatCurrency(item.total || 0) }}</div>
+                <div class="text-white/40 text-xs">Gesamt</div>
+              </div>
+            </div>
+
+            <!-- Position Details -->
+            <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm pt-3 border-t border-white/5">
+              <div>
+                <span class="text-white/40">Menge:</span>
+                <span class="text-white ml-2 font-medium">{{ item.quantity }} {{ item.unit }}</span>
+              </div>
+              <div>
+                <span class="text-white/40">Einzelpreis:</span>
+                <span class="text-white ml-2">{{ formatCurrency(item.unit_price) }}</span>
+              </div>
+              <div v-if="item.discount_percent > 0">
+                <span class="text-white/40">Rabatt:</span>
+                <span class="text-orange-300 ml-2 font-medium">{{ item.discount_percent }}%</span>
+              </div>
+              <div>
+                <span class="text-white/40">MwSt.:</span>
+                <span class="text-white ml-2">{{ item.tax_rate }}%</span>
+              </div>
+              <div v-if="item.discount_percent > 0">
+                <span class="text-white/40">Zwischensumme:</span>
+                <span class="text-white ml-2">{{ formatCurrency(item.subtotal_after_discount || 0) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

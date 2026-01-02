@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useInvoices } from '../composables/useInvoices';
-import { CustomerSelect, ProjectSelect } from '../components';
+import { CustomerSelect, ProjectSelect, ProductSelect } from '../components';
 import type { InvoiceCreateRequest, InvoiceLineItem } from '../types';
+import type { Product } from '../types/product';
 import {
   ChevronLeft,
   Save,
@@ -38,9 +39,10 @@ const formData = ref({
   generate_pdf: true,
 });
 
-const lineItems = ref<Omit<InvoiceLineItem, 'id' | 'subtotal' | 'discount_amount' | 'subtotal_after_discount' | 'tax_amount' | 'total'>[]>([
+const lineItems = ref<(Omit<InvoiceLineItem, 'id' | 'subtotal' | 'discount_amount' | 'subtotal_after_discount' | 'tax_amount' | 'total'> & { product_id?: string })[]>([
   {
     position: 1,
+    product_id: '',
     description: '',
     quantity: 1,
     unit: 'Stück',
@@ -109,6 +111,7 @@ onMounted(async () => {
       if (currentInvoice.value.line_items && currentInvoice.value.line_items.length > 0) {
         lineItems.value = currentInvoice.value.line_items.map((item) => ({
           position: item.position,
+          product_id: '',
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
@@ -135,6 +138,7 @@ onMounted(async () => {
 function addLineItem() {
   lineItems.value.push({
     position: lineItems.value.length + 1,
+    product_id: '',
     description: '',
     quantity: 1,
     unit: 'Stück',
@@ -142,6 +146,21 @@ function addLineItem() {
     tax_rate: 19,
     discount_percent: 0,
   });
+}
+
+function handleProductSelected(index: number, product: Product | null) {
+  if (!product) {
+    return;
+  }
+
+  const item = lineItems.value[index];
+  if (item) {
+    // Verwende die ausführliche Beschreibung, falls vorhanden
+    item.description = product.description || product.short_description || product.name;
+    item.unit_price = product.unit_price;
+    item.unit = product.unit;
+    item.tax_rate = product.default_tax_rate;
+  }
 }
 
 function removeLineItem(index: number) {
@@ -189,6 +208,9 @@ async function handleSubmit() {
   saving.value = true;
 
   try {
+    // Filter out product_id from line items (Backend doesn't expect it)
+    const cleanedLineItems = lineItems.value.map(({ product_id, ...item }) => item);
+
     const payload: InvoiceCreateRequest = {
       customer_id: formData.value.customer_id,
       project_id: formData.value.project_id || null,
@@ -197,7 +219,7 @@ async function handleSubmit() {
       due_date: formData.value.due_date || null,
       notes: formData.value.notes || null,
       terms: formData.value.terms || null,
-      line_items: lineItems.value,
+      line_items: cleanedLineItems,
       generate_pdf: formData.value.generate_pdf,
     };
 
@@ -205,15 +227,25 @@ async function handleSubmit() {
 
     if (isEditMode.value && props.invoiceId) {
       // Update existing invoice
+      console.log('🔄 Updating invoice...', props.invoiceId);
       invoice = await updateInvoice(props.invoiceId, payload);
+      console.log('✅ Invoice updated:', invoice);
     } else {
       // Create new invoice
+      console.log('➕ Creating invoice...');
       invoice = await createInvoice(payload);
+      console.log('✅ Invoice created:', invoice);
     }
 
     if (invoice) {
+      console.log('📤 Emitting saved event with ID:', invoice.id);
       emit('saved', invoice.id);
+    } else {
+      console.error('❌ No invoice returned!');
     }
+  } catch (error) {
+    console.error('❌ Error in handleSubmit:', error);
+    throw error;
   } finally {
     saving.value = false;
   }
@@ -355,6 +387,14 @@ function formatCurrency(value: number): string {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+              <!-- Product Selection -->
+              <div class="sm:col-span-2 lg:col-span-6">
+                <ProductSelect
+                  v-model="item.product_id"
+                  @product-selected="(product) => handleProductSelected(index, product)"
+                />
+              </div>
+
               <!-- Description -->
               <div class="sm:col-span-2 lg:col-span-3">
                 <label class="kit-label">Beschreibung *</label>

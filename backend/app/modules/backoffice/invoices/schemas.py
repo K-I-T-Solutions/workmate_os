@@ -195,6 +195,7 @@ class InvoiceUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = Field(None, max_length=5000)
     terms: Optional[str] = Field(None, max_length=5000)
+    line_items: Optional[List[InvoiceLineItemCreate]] = None
 
 
 class InvoiceStatusUpdate(BaseModel):

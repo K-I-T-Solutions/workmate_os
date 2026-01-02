@@ -20,6 +20,7 @@ from datetime import date, datetime
 from typing import Optional, List
 import uuid
 import os
+import hashlib
 
 from fastapi import HTTPException
 
@@ -28,6 +29,8 @@ from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.documents.models import Document
 from app.modules.backoffice.crm.models import Customer
 from app.modules.backoffice.projects.models import Project
+from app.core.storage.factory import get_storage
+from app.core.settings.config import settings
 
 
 # ============================================================================
@@ -76,17 +79,17 @@ def _get_prefix_for_doc_type(doc_type: str) -> str:
     """
     Liefert Präfix für Nummernformat je Dokumenttyp.
 
-    Format (deine Wahl 1:A):
+    Format:
       RE-2025-0001 (invoice)
       AN-2025-0001 (quote)
       GS-2025-0001 (credit_note)
-      ST-2025-0001 (cancellation)
+      AB-2025-0001 (order_confirmation)
     """
     mapping = {
         "invoice": "RE",
         "quote": "AN",
         "credit_note": "GS",
-        "cancellation": "ST",
+        "order_confirmation": "AB",  # Auftragsbestätigung
     }
     return mapping.get(doc_type, "RE")  # Fallback: RE
 
@@ -300,12 +303,15 @@ def create_invoice(
         raw_number = (data.invoice_number or "").strip() if data.invoice_number is not None else ""
         auto_mode = raw_number == "" or raw_number.upper() == "AUTO"
 
+        # Dokumenttyp aus data oder Default "invoice"
+        doc_type = data.document_type if hasattr(data, 'document_type') and data.document_type else "invoice"
+
         if auto_mode:
-            # automatische Nummernvergabe
+            # automatische Nummernvergabe mit korrektem Dokumenttyp
             invoice_number = _generate_invoice_number(
                 db=db,
                 issued_date=data.issued_date,
-                doc_type=_get_doc_type_for_invoice(),
+                doc_type=doc_type,
             )
         else:
             # manuelle Nummer -> Einzigartigkeit prüfen
@@ -367,49 +373,57 @@ def create_invoice(
         raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(e)}")
 
 
+def _calculate_checksum(content: bytes) -> str:
+    """Calculate SHA256 checksum of file content."""
+    return hashlib.sha256(content).hexdigest()
+
+
 def _generate_and_save_pdf(db: Session, invoice: models.Invoice) -> str:
     """
-    Generiert PDF und registriert Dokument.
+    Generiert PDF und lädt es zu Storage hoch (Nextcloud/S3/Local).
 
-    Dateiname (deine Wahl 6):
-      KIT-RE-001.pdf
+    Dateiname: {invoice_number}.pdf (z.B. RE-2025-0001.pdf)
+    Remote Path: workmate/invoices/{invoice_number}.pdf
 
-    Umsetzung:
-    - aus invoice.invoice_number z.B. 'RE-2025-0001'
-    - extrahieren wir '0001'
-    - daraus 'KIT-RE-0001.pdf'
+    Returns:
+        Remote path in storage
     """
-    # PDF Directory
-    pdf_dir = "/root/workmate_os_uploads/invoices"
-    os.makedirs(pdf_dir, exist_ok=True)
+    storage = get_storage()
 
-    # Laufende Nummer aus Rechnungsnummer extrahieren
-    seq_str = _extract_seq_from_invoice_number(invoice.invoice_number)
+    # PDF-Dateiname: direkt die Rechnungsnummer verwenden
+    pdf_filename = f"{invoice.invoice_number}.pdf"
 
-    # Standard für Rechnungen → KIT-RE-<SEQ>.pdf
-    # (Wenn du später Angebote hier drüber laufen lässt, kannst du z.B. KIT-AN- etc. machen)
-    pdf_filename = f"KIT-RE-{seq_str}.pdf"
-    pdf_path = os.path.join(pdf_dir, pdf_filename)
+    # Remote path in storage (configurable via INVOICE_STORAGE_PATH)
+    storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+    remote_path = f"{storage_path}/{pdf_filename}"
 
-    # PDF generieren
-    generate_invoice_pdf(invoice, pdf_path)
+    # PDF als Bytes generieren
+    pdf_content = generate_invoice_pdf(invoice, output_path=None)
 
-    # Dokument registrieren
-    if os.path.exists(pdf_path):
-        doc = Document(
-            id=uuid.uuid4(),
-            title=f"Rechnung {invoice.invoice_number}",
-            file_path=pdf_path,
-            type="pdf",
-            category="Rechnungen",
-            owner_id=None,
-            linked_module="invoices",
-            checksum=None,
-            is_confidential=False,
-        )
-        db.add(doc)
+    if not pdf_content:
+        raise ValueError("PDF generation returned no content")
 
-    return pdf_path
+    # Checksum berechnen
+    checksum = _calculate_checksum(pdf_content)
+
+    # PDF zu Storage hochladen
+    storage.upload(remote_path, pdf_content)
+
+    # Dokument in Documents-Tabelle registrieren
+    doc = Document(
+        id=uuid.uuid4(),
+        title=f"Rechnung {invoice.invoice_number}",
+        file_path=remote_path,  # Remote path, NOT local filesystem path
+        type="pdf",
+        category="Rechnungen",
+        owner_id=None,  # TODO: Assign proper owner (invoice creator or customer contact)
+        linked_module="invoices",
+        checksum=checksum,
+        is_confidential=False,
+    )
+    db.add(doc)
+
+    return remote_path
 
 
 # ============================================================================
@@ -428,11 +442,64 @@ def update_invoice(
 
     try:
         update_data = data.model_dump(exclude_unset=True)
+
+        # Handle line_items separately
+        new_line_items = update_data.pop("line_items", None)
+
+        # Update regular fields
         for key, value in update_data.items():
             setattr(invoice, key, value)
 
+        # Update line items if provided
+        if new_line_items is not None:
+            # Delete existing line items
+            db.query(models.InvoiceLineItem).filter(
+                models.InvoiceLineItem.invoice_id == invoice_id
+            ).delete()
+
+            # Create new line items
+            for idx, item_data in enumerate(new_line_items, start=1):
+                # Extract only the fields that the model expects
+                line_item = models.InvoiceLineItem(
+                    invoice_id=invoice_id,
+                    position=idx,
+                    description=item_data.get('description', ''),
+                    quantity=item_data.get('quantity', 1),
+                    unit=item_data.get('unit', 'Stück'),
+                    unit_price=item_data.get('unit_price', 0),
+                    tax_rate=item_data.get('tax_rate', 19),
+                    discount_percent=item_data.get('discount_percent', 0),
+                )
+                db.add(line_item)
+
+            # Recalculate totals
+            db.flush()  # Flush to get line_items populated
+            db.refresh(invoice)
+
+            subtotal = sum(item.subtotal_after_discount for item in invoice.line_items)
+            tax_amount = sum(item.tax_amount for item in invoice.line_items)
+            total = subtotal + tax_amount
+
+            invoice.subtotal = subtotal
+            invoice.tax_amount = tax_amount
+            invoice.total = total
+
         db.commit()
         db.refresh(invoice)
+
+        # Regenerate PDF if line_items were updated
+        if new_line_items is not None:
+            try:
+                # Reload invoice with full relations for PDF generation
+                invoice = get_invoice(db, invoice_id)
+                pdf_path = _generate_and_save_pdf(db, invoice)
+                invoice.pdf_path = pdf_path
+                db.commit()
+                db.refresh(invoice)
+            except Exception as pdf_error:
+                # PDF generation error should not fail the update
+                print(f"Warning: PDF generation failed: {pdf_error}")
+
         return invoice
 
     except Exception as e:
@@ -480,17 +547,20 @@ def recalculate_invoice_totals(
 # ============================================================================
 
 def delete_invoice(db: Session, invoice_id: uuid.UUID) -> bool:
-    """Löscht Invoice inkl. Line Items (CASCADE)."""
+    """Löscht Invoice inkl. Line Items (CASCADE) und PDF aus Storage."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return False
 
     try:
-        if invoice.pdf_path and os.path.exists(invoice.pdf_path):
+        # Delete PDF from storage if exists
+        if invoice.pdf_path:
             try:
-                os.remove(invoice.pdf_path)
+                storage = get_storage()
+                if storage.exists(invoice.pdf_path):
+                    storage.delete(invoice.pdf_path)
             except Exception as e:
-                print(f"⚠️ Failed to delete PDF: {e}")
+                print(f"⚠️ Failed to delete PDF from storage: {e}")
 
         db.delete(invoice)
         db.commit()
