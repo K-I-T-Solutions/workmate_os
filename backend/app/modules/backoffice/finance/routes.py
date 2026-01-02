@@ -46,6 +46,11 @@ from .crud import (
     reconcile_transaction,
     unreconcile_transaction,
 )
+from .reconciliation import (
+    auto_reconcile_transaction,
+    auto_reconcile_all_unmatched,
+    get_reconciliation_suggestions,
+)
 
 router = APIRouter(
     prefix="/backoffice/finance",
@@ -478,3 +483,149 @@ def unreconcile_transaction_endpoint(
 
     unreconciled = unreconcile_transaction(db, transaction)
     return unreconciled
+
+
+# ============================================================================
+# BANKING - AUTOMATIC RECONCILIATION
+# ============================================================================
+
+@router.post(
+    "/bank-transactions/{transaction_id}/auto-reconcile",
+    response_model=BankTransactionRead,
+)
+def auto_reconcile_single_transaction_endpoint(
+    transaction_id: uuid.UUID,
+    db: Session = Depends(get_db),
+) -> BankTransactionRead:
+    """
+    Versucht eine einzelne Transaktion automatisch abzugleichen.
+
+    **Algorithmus:**
+    1. Suche nach Rechnungsnummer im Verwendungszweck
+    2. Vergleiche Betrag (mit ±1 EUR Toleranz)
+    3. Berechne Confidence Score
+    4. Auto-Match wenn Confidence > 90%
+
+    **Automatisch:**
+    - Erstellt Payment wenn noch keins existiert
+    - Setzt reconciliation_status = 'matched'
+    - Füllt matched_payment_id
+    """
+    transaction = get_bank_transaction(db, transaction_id)
+    if not transaction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transaction not found",
+        )
+
+    success = auto_reconcile_transaction(db, transaction)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No matching invoice found with sufficient confidence (>90%)",
+        )
+
+    # Refresh to get updated data
+    db.refresh(transaction)
+    return transaction
+
+
+@router.post(
+    "/bank-transactions/auto-reconcile-all",
+)
+def auto_reconcile_all_transactions_endpoint(
+    account_id: Optional[uuid.UUID] = Query(default=None, description="Optional: Nur für bestimmtes Konto"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Gleicht alle unmatched Transaktionen automatisch ab.
+
+    **Filter:**
+    - account_id: Optional - nur für bestimmtes Bankkonto
+
+    **Returns:**
+    ```json
+    {
+        "total": 10,
+        "matched": 7,
+        "failed": 3,
+        "details": [
+            {
+                "transaction_id": "...",
+                "amount": 1234.56,
+                "status": "matched"
+            },
+            {
+                "transaction_id": "...",
+                "amount": 999.99,
+                "status": "failed",
+                "reason": "low_confidence_75%"
+            }
+        ]
+    }
+    ```
+    """
+    # Validate account exists if provided
+    if account_id:
+        account = get_bank_account(db, account_id)
+        if not account:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Bank account not found",
+            )
+
+    stats = auto_reconcile_all_unmatched(db, str(account_id) if account_id else None)
+    return stats
+
+
+@router.get(
+    "/bank-transactions/{transaction_id}/suggestions",
+)
+def get_reconciliation_suggestions_endpoint(
+    transaction_id: uuid.UUID,
+    limit: int = Query(5, ge=1, le=20, description="Anzahl der Vorschläge"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Gibt Reconciliation-Vorschläge für manuelle Überprüfung.
+
+    **Nutzen:**
+    - Für UI: Liste von möglichen Matches mit Confidence
+    - User kann besten Match manuell auswählen
+
+    **Returns:**
+    ```json
+    {
+        "transaction_id": "...",
+        "suggestions": [
+            {
+                "invoice_id": "...",
+                "invoice_number": "RE-2026-0001",
+                "invoice_total": 1234.56,
+                "invoice_status": "sent",
+                "payment_id": "...",
+                "payment_amount": 1234.56,
+                "confidence": 0.95,
+                "confidence_percent": "95%",
+                "auto_match": true
+            }
+        ]
+    }
+    ```
+    """
+    transaction = get_bank_transaction(db, transaction_id)
+    if not transaction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transaction not found",
+        )
+
+    suggestions = get_reconciliation_suggestions(db, transaction, limit)
+
+    return {
+        "transaction_id": str(transaction_id),
+        "transaction_amount": float(transaction.amount),
+        "transaction_purpose": transaction.purpose,
+        "suggestions": suggestions,
+    }
