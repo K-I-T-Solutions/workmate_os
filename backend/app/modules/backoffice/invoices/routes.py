@@ -152,6 +152,70 @@ def list_audit_logs(
 
 
 # ============================================================================
+
+# ============================================================================
+# GoBD EXPORT
+# ============================================================================
+
+@router.get("/gobd-export", response_class=StreamingResponse)
+def export_gobd_data(
+    from_date: Optional[date] = Query(None, description="Start-Datum (YYYY-MM-DD)"),
+    to_date: Optional[date] = Query(None, description="End-Datum (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """
+    GoBD-konformer Export aller Daten als ZIP-Archiv.
+    
+    **Inhalt:**
+    - invoices.csv (alle Rechnungen inkl. gelöschte)
+    - invoice_line_items.csv
+    - payments.csv
+    - audit_logs.csv
+    - metadata.json
+    - README.txt
+    
+    **GoBD-Konformität:**
+    - ✓ Vollständigkeit (inkl. gelöschter Einträge)
+    - ✓ Nachvollziehbarkeit (Audit Trail)
+    - ✓ Unveränderbarkeit (Zeitstempel)
+    - ✓ Maschinenlesbarkeit (CSV-Format)
+    
+    **Filter:**
+    - `from_date`: Nur Daten ab diesem Datum
+    - `to_date`: Nur Daten bis zu diesem Datum
+    
+    **Verwendung:**
+    Für Betriebsprüfungen gemäß § 147 Abs. 6 AO (Datenzugriff).
+    """
+    from app.modules.backoffice.invoices.gobd_export import generate_gobd_export
+    from datetime import datetime
+    
+    # Convert date to datetime for filtering
+    from_datetime = datetime.combine(from_date, datetime.min.time()) if from_date else None
+    to_datetime = datetime.combine(to_date, datetime.max.time()) if to_date else None
+    
+    # Generate export
+    zip_buffer = generate_gobd_export(db, from_datetime, to_datetime)
+    
+    # Generate filename
+    date_suffix = ""
+    if from_date and to_date:
+        date_suffix = f"_{from_date.isoformat()}_to_{to_date.isoformat()}"
+    elif from_date:
+        date_suffix = f"_from_{from_date.isoformat()}"
+    elif to_date:
+        date_suffix = f"_until_{to_date.isoformat()}"
+    
+    filename = f"gobd_export{date_suffix}_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.zip"
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
 # SINGLE INVOICE
 # ============================================================================
 
@@ -616,3 +680,5 @@ def delete_payment(
             detail=f"Payment {payment_id} not found"
         )
     return None
+
+
