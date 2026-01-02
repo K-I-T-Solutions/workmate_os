@@ -27,6 +27,11 @@ from .schemas import (
     ReconcileRequest,
     CsvImportRequest,
     CsvImportResponse,
+    FinTsSyncRequest,
+    FinTsSyncResponse,
+    FinTsAccountSyncResponse,
+    FinTsBalanceRequest,
+    FinTsBalanceResponse,
 )
 from .crud import (
     create_expense,
@@ -768,4 +773,201 @@ async def import_csv_transactions_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Fehler beim CSV-Import: {str(e)}",
+        )
+
+
+# ============================================================================
+# BANKING - FINTS/HBCI INTEGRATION
+# ============================================================================
+
+@router.post(
+    "/fints/sync-transactions",
+    response_model=FinTsSyncResponse,
+)
+def sync_fints_transactions_endpoint(
+    payload: FinTsSyncRequest,
+    db: Session = Depends(get_db),
+) -> FinTsSyncResponse:
+    """
+    Importiert Transaktionen direkt von Bank via FinTS/HBCI.
+
+    **Unterstützt:**
+    - Alle deutschen Banken mit FinTS 3.0+ Support
+    - PIN/TAN-Verfahren
+    - PSD2-konform
+
+    **Sicherheit:**
+    - Credentials werden NICHT in DB gespeichert
+    - PIN nur temporär im Memory
+    - HTTPS erforderlich
+
+    **Anforderungen:**
+    - Online-Banking aktiviert
+    - FinTS/HBCI freigeschaltet
+    - PIN/TAN verfügbar
+
+    **Zeitraum:**
+    - Default: Letzte 90 Tage
+    - Max: Abhängig von Bank (meist 90-180 Tage)
+
+    **Features:**
+    - Automatische Duplikat-Erkennung
+    - Automatische Reconciliation
+    - Balance-Update
+
+    Returns:
+        FinTsSyncResponse mit Import-Statistiken
+    """
+    from .fints_integration import sync_fints_transactions
+
+    # Validate account
+    account = get_bank_account(db, payload.account_id)
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bank account not found",
+        )
+
+    if not account.iban:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bank account has no IBAN",
+        )
+
+    try:
+        stats = sync_fints_transactions(
+            db=db,
+            account_id=str(payload.account_id),
+            blz=payload.credentials.blz,
+            login=payload.credentials.login,
+            pin=payload.credentials.pin,
+            sepa_account_iban=account.iban,
+            from_date=payload.from_date,
+            to_date=payload.to_date,
+            skip_duplicates=payload.skip_duplicates,
+            auto_reconcile=payload.auto_reconcile,
+        )
+
+        return FinTsSyncResponse(
+            success=len(stats["errors"]) == 0,
+            total=stats["total"],
+            imported=stats["imported"],
+            skipped=stats["skipped"],
+            reconciled=stats["reconciled"],
+            errors=stats["errors"],
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"FinTS Sync Fehler: {str(e)}",
+        )
+
+
+@router.post(
+    "/fints/sync-accounts",
+    response_model=FinTsAccountSyncResponse,
+)
+def sync_fints_accounts_endpoint(
+    blz: str = Query(..., min_length=8, max_length=8, description="Bankleitzahl"),
+    login: str = Query(..., description="Online-Banking Login"),
+    pin: str = Query(..., description="PIN"),
+    create_missing: bool = Query(True, description="Fehlende Konten erstellen"),
+    db: Session = Depends(get_db),
+) -> FinTsAccountSyncResponse:
+    """
+    Synchronisiert Bankkonten via FinTS.
+
+    Ruft alle verfügbaren SEPA-Konten ab und erstellt fehlende
+    BankAccount-Einträge automatisch.
+
+    **Use Case:**
+    - Initiales Setup: Alle Konten importieren
+    - Regelmäßige Sync: Neue Konten erkennen
+
+    **Hinweis:**
+    Credentials werden als Query-Parameter übergeben (nicht in DB gespeichert).
+    In Produktion: HTTPS erforderlich!
+
+    Returns:
+        Statistiken über gefundene/erstellte Konten
+    """
+    from .fints_integration import sync_fints_accounts
+
+    try:
+        stats = sync_fints_accounts(
+            db=db,
+            blz=blz,
+            login=login,
+            pin=pin,
+            create_missing=create_missing,
+        )
+
+        return FinTsAccountSyncResponse(
+            success=len(stats["errors"]) == 0,
+            total_accounts=stats["total_accounts"],
+            existing=stats["existing"],
+            created=stats["created"],
+            errors=stats["errors"],
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"FinTS Account Sync Fehler: {str(e)}",
+        )
+
+
+@router.post(
+    "/fints/check-balance",
+    response_model=FinTsBalanceResponse,
+)
+def check_fints_balance_endpoint(
+    payload: FinTsBalanceRequest,
+    db: Session = Depends(get_db),
+) -> FinTsBalanceResponse:
+    """
+    Prüft aktuellen Kontostand via FinTS.
+
+    **Use Case:**
+    - Balance-Verifikation gegen FinTS
+    - Abgleich mit gespeichertem Balance
+
+    **Hinweis:**
+    Viele Banken erlauben max. 1-2 Balance-Abfragen pro Minute.
+
+    Returns:
+        Aktueller Kontostand
+    """
+    from .fints_integration import get_fints_balance
+
+    try:
+        balance = get_fints_balance(
+            blz=payload.credentials.blz,
+            login=payload.credentials.login,
+            pin=payload.credentials.pin,
+            sepa_account_iban=payload.iban,
+        )
+
+        if balance is None:
+            return FinTsBalanceResponse(
+                success=False,
+                balance=None,
+                iban=payload.iban,
+                error="Kontostand konnte nicht abgerufen werden",
+            )
+
+        return FinTsBalanceResponse(
+            success=True,
+            balance=balance,
+            iban=payload.iban,
+            error=None,
+        )
+
+    except Exception as e:
+        return FinTsBalanceResponse(
+            success=False,
+            balance=None,
+            iban=payload.iban,
+            error=str(e),
         )

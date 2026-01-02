@@ -354,3 +354,91 @@ class CsvImportResponse(BaseModel):
     skipped: int
     reconciled: int
     errors: list[str]
+
+
+# ============================================================================
+# FINTS/HBCI SCHEMAS
+# ============================================================================
+
+class FinTsCredentials(BaseModel):
+    """FinTS-Zugangsdaten (NIE in DB speichern!)."""
+    blz: str = Field(
+        min_length=8,
+        max_length=8,
+        description="Bankleitzahl (8-stellig)"
+    )
+    login: str = Field(
+        min_length=1,
+        max_length=50,
+        description="Online-Banking Benutzerkennung"
+    )
+    pin: str = Field(
+        min_length=4,
+        max_length=20,
+        description="PIN für Online-Banking"
+    )
+    endpoint: Optional[str] = Field(
+        default=None,
+        description="Optional: FinTS-Server-URL (automatisch ermittelt wenn leer)"
+    )
+
+
+class FinTsSyncRequest(BaseModel):
+    """Request für FinTS Transaction Sync."""
+    account_id: uuid.UUID = Field(
+        description="Bank Account ID (muss mit IBAN übereinstimmen)"
+    )
+    credentials: FinTsCredentials
+    from_date: Optional[date] = Field(
+        default=None,
+        description="Startdatum (default: vor 90 Tagen)"
+    )
+    to_date: Optional[date] = Field(
+        default=None,
+        description="Enddatum (default: heute)"
+    )
+    skip_duplicates: bool = Field(
+        default=True,
+        description="Duplikate überspringen"
+    )
+    auto_reconcile: bool = Field(
+        default=True,
+        description="Automatische Reconciliation"
+    )
+
+
+class FinTsSyncResponse(BaseModel):
+    """Response nach FinTS Sync."""
+    success: bool
+    total: int
+    imported: int
+    skipped: int
+    reconciled: int
+    errors: list[str]
+
+
+class FinTsAccountSyncResponse(BaseModel):
+    """Response nach FinTS Account Sync."""
+    success: bool
+    total_accounts: int
+    existing: int
+    created: int
+    errors: list[str]
+
+
+class FinTsBalanceRequest(BaseModel):
+    """Request für FinTS Balance Check."""
+    credentials: FinTsCredentials
+    iban: str = Field(
+        min_length=15,
+        max_length=34,
+        description="IBAN des Kontos"
+    )
+
+
+class FinTsBalanceResponse(BaseModel):
+    """Response mit Kontostand."""
+    success: bool
+    balance: Optional[Decimal] = None
+    iban: str
+    error: Optional[str] = None
