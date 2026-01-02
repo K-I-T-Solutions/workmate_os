@@ -240,6 +240,32 @@ export const invoicesService = {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   },
+
+  // ============================================
+  // Audit Logs (GoBD Compliance)
+  // ============================================
+
+  /**
+   * Audit Logs mit Filtern abrufen
+   * GET /api/backoffice/invoices/audit-logs
+   */
+  async getAuditLogs(params?: {
+    entity_type?: string
+    entity_id?: string
+    action?: string
+    skip?: number
+    limit?: number
+  }): Promise<{
+    items: any[]
+    total: number
+    skip: number
+    limit: number
+  }> {
+    const response = await apiClient.get(`${BASE_PATH}/audit-logs`, {
+      params,
+    });
+    return response.data;
+  },
 };
 
 export default invoicesService;

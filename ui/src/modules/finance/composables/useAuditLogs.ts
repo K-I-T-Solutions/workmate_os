@@ -3,8 +3,7 @@
  */
 import { ref, computed } from 'vue'
 import type { AuditLog, AuditLogListResponse, AuditLogFilters } from '../types/audit'
-
-const API_BASE = '/api/backoffice/invoices'
+import { invoicesService } from '@/modules/invoices/services/invoices.service'
 
 export function useAuditLogs() {
   const auditLogs = ref<AuditLog[]>([])
@@ -20,20 +19,7 @@ export function useAuditLogs() {
     error.value = null
 
     try {
-      const params = new URLSearchParams()
-      if (filters.entity_type) params.append('entity_type', filters.entity_type)
-      if (filters.entity_id) params.append('entity_id', filters.entity_id)
-      if (filters.action) params.append('action', filters.action)
-      if (filters.skip !== undefined) params.append('skip', filters.skip.toString())
-      if (filters.limit !== undefined) params.append('limit', filters.limit.toString())
-
-      const response = await fetch(`${API_BASE}/audit-logs?${params}`)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch audit logs: ${response.statusText}`)
-      }
-
-      const data: AuditLogListResponse = await response.json()
+      const data = await invoicesService.getAuditLogs(filters)
       auditLogs.value = data.items
       total.value = data.total
     } catch (err) {
