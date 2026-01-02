@@ -124,31 +124,58 @@ def _generate_next_number(
 
     - Legt bei Bedarf einen neuen Eintrag an (startet bei 1)
     - Verwendet SELECT ... FOR UPDATE für concurrency safety
+    - Retry-Logic bei Race Conditions
     """
-    # Row mit FOR UPDATE sperren (Postgres)
-    seq_row = (
-        db.query(models.NumberSequence)
-        .filter(
-            models.NumberSequence.doc_type == doc_type,
-            models.NumberSequence.year == year,
-        )
-        .with_for_update()
-        .first()
-    )
+    from sqlalchemy.exc import IntegrityError
+    import time
 
-    if not seq_row:
-        seq_row = models.NumberSequence(
-            doc_type=doc_type,
-            year=year,
-            current_number=1,
-        )
-        db.add(seq_row)
-        db.flush()
-        return 1
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Row mit FOR UPDATE sperren (Postgres)
+            # NOWAIT=False: Wartet auf Lock-Release statt sofort zu failen
+            seq_row = (
+                db.query(models.NumberSequence)
+                .filter(
+                    models.NumberSequence.doc_type == doc_type,
+                    models.NumberSequence.year == year,
+                )
+                .with_for_update(nowait=False)
+                .first()
+            )
 
-    seq_row.current_number += 1
-    db.flush()
-    return seq_row.current_number
+            if not seq_row:
+                # Row existiert nicht → erstellen
+                # Kann zu IntegrityError führen wenn andere Transaction parallel erstellt
+                seq_row = models.NumberSequence(
+                    doc_type=doc_type,
+                    year=year,
+                    current_number=1,
+                )
+                db.add(seq_row)
+                db.flush()
+                return 1
+
+            # Row existiert → Nummer inkrementieren
+            seq_row.current_number += 1
+            db.flush()
+            return seq_row.current_number
+
+        except IntegrityError:
+            # Race Condition: Andere Transaction hat gerade Row erstellt
+            # Rollback und retry mit FOR UPDATE
+            db.rollback()
+            if attempt < max_retries - 1:
+                time.sleep(0.01 * (attempt + 1))  # Exponential backoff
+                continue
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to generate invoice number after multiple retries"
+                )
+
+    # Should never reach here
+    raise HTTPException(status_code=500, detail="Unexpected error generating invoice number")
 
 
 def _generate_invoice_number(
