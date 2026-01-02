@@ -14,11 +14,11 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Entity Type Filter -->
         <div>
-          <label class="block text-sm font-medium text-white/70 mb-2">Entitätstyp</label>
+          <label class="kit-label">Entitätstyp</label>
           <select
             v-model="filters.entity_type"
             @change="applyFilters"
-            class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
+            class="kit-input"
           >
             <option value="">Alle</option>
             <option value="Invoice">Rechnungen</option>
@@ -29,11 +29,11 @@
 
         <!-- Action Filter -->
         <div>
-          <label class="block text-sm font-medium text-white/70 mb-2">Aktion</label>
+          <label class="kit-label">Aktion</label>
           <select
             v-model="filters.action"
             @change="applyFilters"
-            class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
+            class="kit-input"
           >
             <option value="">Alle</option>
             <option value="create">Erstellt</option>
@@ -45,13 +45,13 @@
 
         <!-- Entity ID Filter -->
         <div>
-          <label class="block text-sm font-medium text-white/70 mb-2">Entitäts-ID</label>
+          <label class="kit-label">Entitäts-ID</label>
           <input
             v-model="filters.entity_id"
             @input="applyFiltersDebounced"
             type="text"
             placeholder="UUID filtern..."
-            class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/40 focus:border-blue-500 focus:outline-none"
+            class="kit-input"
           />
         </div>
       </div>
