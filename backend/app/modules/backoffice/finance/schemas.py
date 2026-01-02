@@ -319,3 +319,38 @@ class ReconcileRequest(BaseModel):
         default=None,
         description="Notizen zum Abgleich"
     )
+
+
+# ============================================================================
+# CSV IMPORT SCHEMAS
+# ============================================================================
+
+class CsvImportRequest(BaseModel):
+    """Request für CSV-Import."""
+    account_id: uuid.UUID = Field(
+        description="Ziel-Bankkonto für Import"
+    )
+    delimiter: str = Field(
+        default=",",
+        max_length=1,
+        description="CSV-Trennzeichen (default: ,)"
+    )
+    skip_duplicates: bool = Field(
+        default=True,
+        description="Duplikate überspringen (basierend auf reference)"
+    )
+    auto_reconcile: bool = Field(
+        default=True,
+        description="Automatische Reconciliation nach Import"
+    )
+
+
+class CsvImportResponse(BaseModel):
+    """Response nach CSV-Import."""
+    success: bool
+    bank_format: Optional[str] = None
+    total: int
+    imported: int
+    skipped: int
+    reconciled: int
+    errors: list[str]

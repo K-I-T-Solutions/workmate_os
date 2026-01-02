@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
@@ -25,6 +25,8 @@ from .schemas import (
     BankTransactionRead,
     BankTransactionListResponse,
     ReconcileRequest,
+    CsvImportRequest,
+    CsvImportResponse,
 )
 from .crud import (
     create_expense,
@@ -629,3 +631,141 @@ def get_reconciliation_suggestions_endpoint(
         "transaction_purpose": transaction.purpose,
         "suggestions": suggestions,
     }
+
+
+# ============================================================================
+# BANKING - CSV IMPORT
+# ============================================================================
+
+@router.post(
+    "/bank-transactions/import-csv",
+    response_model=CsvImportResponse,
+)
+async def import_csv_transactions_endpoint(
+    file: UploadFile = File(..., description="CSV-Datei mit Transaktionen"),
+    account_id: uuid.UUID = Query(..., description="Ziel-Bankkonto"),
+    delimiter: str = Query(",", max_length=1, description="CSV-Trennzeichen"),
+    skip_duplicates: bool = Query(True, description="Duplikate überspringen"),
+    auto_reconcile: bool = Query(True, description="Automatische Reconciliation"),
+    db: Session = Depends(get_db),
+) -> CsvImportResponse:
+    """
+    Importiert Banktransaktionen aus CSV-Datei.
+
+    **Unterstützte Bank-Formate:**
+    - N26
+    - Sparkasse
+    - Volksbank
+    - Deutsche Bank
+    - Commerzbank
+    - ING DiBa
+    - Generic (automatische Erkennung)
+
+    **CSV-Anforderungen:**
+    - Header-Zeile erforderlich
+    - Pflichtfelder: Datum, Betrag
+    - Optionale Felder: Empfänger, Verwendungszweck, Referenz, IBAN
+
+    **Features:**
+    - Automatische Format-Erkennung
+    - Duplikat-Erkennung (via reference)
+    - Automatische Reconciliation nach Import
+    - Balance-Update des Kontos
+
+    **Delimiter:**
+    - `,` (Komma) - Standard
+    - `;` (Semikolon) - Deutsch
+    - `\\t` (Tab)
+
+    **Returns:**
+    ```json
+    {
+        "success": true,
+        "bank_format": "n26",
+        "total": 100,
+        "imported": 95,
+        "skipped": 5,
+        "reconciled": 80,
+        "errors": []
+    }
+    ```
+    """
+    from .csv_import import parse_csv_file, import_transactions
+
+    # Validate account exists
+    account = get_bank_account(db, account_id)
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bank account not found",
+        )
+
+    # Validate file type
+    if not file.filename or not file.filename.endswith(('.csv', '.CSV')):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nur CSV-Dateien sind erlaubt",
+        )
+
+    try:
+        # Read file content
+        content = await file.read()
+
+        # Try different encodings
+        csv_content = None
+        for encoding in ["utf-8", "utf-8-sig", "latin-1", "cp1252"]:
+            try:
+                csv_content = content.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+
+        if csv_content is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Konnte CSV-Datei nicht dekodieren. Unterstützte Encodings: UTF-8, Latin-1, Windows-1252",
+            )
+
+        # Parse CSV
+        parse_result = parse_csv_file(
+            csv_content=csv_content,
+            account_id=str(account_id),
+            delimiter=delimiter,
+        )
+
+        if not parse_result["success"]:
+            return CsvImportResponse(
+                success=False,
+                bank_format=None,
+                total=0,
+                imported=0,
+                skipped=0,
+                reconciled=0,
+                errors=[parse_result.get("error", "Unknown error")],
+            )
+
+        # Import transactions
+        import_stats = import_transactions(
+            db=db,
+            transactions=parse_result["transactions"],
+            skip_duplicates=skip_duplicates,
+            auto_reconcile=auto_reconcile,
+        )
+
+        return CsvImportResponse(
+            success=True,
+            bank_format=parse_result.get("bank_format"),
+            total=import_stats["total"],
+            imported=import_stats["imported"],
+            skipped=import_stats["skipped"],
+            reconciled=import_stats["reconciled"],
+            errors=import_stats["errors"] + parse_result.get("errors", []),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Fehler beim CSV-Import: {str(e)}",
+        )
