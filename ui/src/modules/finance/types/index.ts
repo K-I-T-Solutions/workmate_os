@@ -1,5 +1,8 @@
 // Finance Module Types
 
+// Audit Logs (GoBD Compliance)
+export * from './audit';
+
 export interface InvoiceStatistics {
   total_count: number;
   total_revenue: number;
