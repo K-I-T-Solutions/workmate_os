@@ -789,6 +789,74 @@ def bulk_update_status(
     )
 
 
+@router.post("/{invoice_id}/validate-xrechnung")
+def validate_xrechnung_endpoint(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Validiert XRechnung-XML gegen EN16931 Standard.
+
+    **Prüfungen:**
+    1. XML Syntax (Well-Formed)
+    2. XML Struktur (Pflichtfelder)
+    3. Business Rules (Basic)
+
+    **Standards:**
+    - EN 16931: Europäische Norm
+    - XRechnung 3.0: Deutscher CIUS
+
+    **Returns:**
+    ```json
+    {
+        "valid": true,
+        "syntax_check": {...},
+        "structure_check": {...},
+        "errors": [],
+        "warnings": [],
+        "summary": "✅ XRechnung validation passed"
+    }
+    ```
+    """
+    from app.modules.backoffice.invoices.xrechnung_validator import validate_xrechnung
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found"
+        )
+
+    storage = get_storage()
+
+    # XRechnung XML generieren falls nicht vorhanden
+    if not invoice.xml_path or not storage.exists(invoice.xml_path):
+        from app.modules.backoffice.invoices.xrechnung_generator import generate_xrechnung_xml
+
+        xml_content = generate_xrechnung_xml(invoice)
+
+        # Speichern
+        filename = f"{invoice.invoice_number}_xrechnung.xml"
+        xml_path = f"invoices/xrechnung/{invoice.invoice_number}/{filename}"
+        storage.upload(xml_path, xml_content)
+
+        invoice.xml_path = xml_path
+        db.commit()
+    else:
+        # XML aus Storage laden
+        xml_content = storage.download(invoice.xml_path)
+
+    # Validierung durchführen
+    validation_result = validate_xrechnung(xml_content)
+
+    return {
+        "invoice_id": str(invoice_id),
+        "invoice_number": invoice.invoice_number,
+        "xml_path": invoice.xml_path,
+        **validation_result
+    }
+
+
 # ============================================================================
 # PAYMENT ENDPOINTS
 # ============================================================================
