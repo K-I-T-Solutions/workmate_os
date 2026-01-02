@@ -171,6 +171,14 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         Text,
         comment="Pfad zur generierten PDF-Rechnung"
     )
+    xml_path: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Pfad zur XRechnung-XML-Datei"
+    )
+    zugferd_path: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Pfad zum ZUGFeRD-PDF (Hybrid mit eingebetteter XML)"
+    )
     notes: Mapped[str | None] = mapped_column(
         Text,
         comment="Interne Notizen"

@@ -513,6 +513,165 @@ def download_invoice_pdf(
         )
 
 
+# ============================================================================
+# E-RECHNUNG (XRechnung/ZUGFeRD)
+# ============================================================================
+
+@router.get("/{invoice_id}/xrechnung")
+def download_xrechnung_xml(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    XRechnung-XML herunterladen (EN16931).
+
+    **E-Rechnung Pflicht:** Gemäß § 14 UStG ab 01.01.2025 für B2B.
+
+    **Format:** XML nach EN16931 Standard (XRechnung 3.0)
+
+    **Verwendung:**
+    - Öffentliche Auftraggeber (Pflicht)
+    - B2B-Rechnungen in Deutschland
+    - Automatisierte Rechnungsverarbeitung
+    """
+    from app.modules.backoffice.invoices.xrechnung_generator import generate_xrechnung_xml
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found"
+        )
+
+    storage = get_storage()
+
+    # XML generieren falls nicht vorhanden
+    if not invoice.xml_path or not storage.exists(invoice.xml_path):
+        try:
+            # XML generieren
+            xml_content = generate_xrechnung_xml(invoice)
+
+            # XML-Dateiname und remote path
+            xml_filename = f"{invoice.invoice_number}.xml"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/xml/{xml_filename}"
+
+            # XML zu Storage hochladen
+            storage.upload(remote_path, xml_content)
+            invoice.xml_path = remote_path
+            db.commit()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate XRechnung XML: {str(e)}"
+            )
+
+    # XML aus Storage herunterladen
+    try:
+        xml_content = storage.download(invoice.xml_path)
+        filename = f"{invoice.invoice_number}_xrechnung.xml"
+
+        return StreamingResponse(
+            BytesIO(xml_content),
+            media_type="application/xml",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download XRechnung XML: {str(e)}"
+        )
+
+
+@router.get("/{invoice_id}/zugferd")
+def download_zugferd_pdf(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    ZUGFeRD-PDF herunterladen (Hybrid-PDF mit eingebetteter XML).
+
+    **Format:** PDF/A-3 mit eingebetteter XRechnung-XML
+
+    **Vorteile:**
+    - Menschenlesbar (PDF) + Maschinenlesbar (XML)
+    - Kompatibel mit allen PDF-Readern
+    - Automatische Verarbeitung möglich
+    - GoBD-konform
+
+    **Standard:** ZUGFeRD 2.1 / Factur-X (EN16931 Profil)
+    """
+    from app.modules.backoffice.invoices.xrechnung_generator import generate_zugferd_pdf
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found"
+        )
+
+    storage = get_storage()
+
+    # ZUGFeRD-PDF generieren falls nicht vorhanden
+    if not invoice.zugferd_path or not storage.exists(invoice.zugferd_path):
+        try:
+            # Erst normales PDF generieren/laden
+            if not invoice.pdf_path or not storage.exists(invoice.pdf_path):
+                # PDF generieren
+                pdf_filename = f"{invoice.invoice_number}.pdf"
+                storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+                pdf_remote_path = f"{storage_path}/{pdf_filename}"
+
+                pdf_content = generate_invoice_pdf(invoice, output_path=None)
+                if not pdf_content:
+                    raise ValueError("PDF generation returned no content")
+
+                storage.upload(pdf_remote_path, pdf_content)
+                invoice.pdf_path = pdf_remote_path
+                db.commit()
+
+            # PDF laden
+            pdf_binary = storage.download(invoice.pdf_path)
+
+            # ZUGFeRD-PDF generieren (PDF mit eingebetteter XML)
+            zugferd_content = generate_zugferd_pdf(invoice, pdf_binary)
+
+            # ZUGFeRD-Dateiname und remote path
+            zugferd_filename = f"{invoice.invoice_number}_zugferd.pdf"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/zugferd/{zugferd_filename}"
+
+            # ZUGFeRD-PDF zu Storage hochladen
+            storage.upload(remote_path, zugferd_content)
+            invoice.zugferd_path = remote_path
+            db.commit()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate ZUGFeRD PDF: {str(e)}"
+            )
+
+    # ZUGFeRD-PDF aus Storage herunterladen
+    try:
+        zugferd_content = storage.download(invoice.zugferd_path)
+        filename = f"{invoice.invoice_number}_zugferd.pdf"
+
+        return StreamingResponse(
+            BytesIO(zugferd_content),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download ZUGFeRD PDF: {str(e)}"
+        )
+
+
 @router.post("/{invoice_id}/regenerate-pdf", response_model=schemas.InvoiceResponse)
 def regenerate_pdf(
     invoice_id: uuid.UUID,

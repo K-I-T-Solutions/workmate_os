@@ -244,6 +244,8 @@ class InvoiceResponse(InvoiceBase):
     created_at: datetime
     updated_at: datetime
     pdf_path: Optional[str] = None
+    xml_path: Optional[str] = None
+    zugferd_path: Optional[str] = None
 
     # Relations
     customer: CustomerBriefResponse
