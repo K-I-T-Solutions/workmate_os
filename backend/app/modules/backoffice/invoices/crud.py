@@ -340,6 +340,8 @@ def create_invoice(
     db: Session,
     data: schemas.InvoiceCreate,
     generate_pdf: bool = True,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> models.Invoice:
     """
     Erstellt neue Invoice mit Line Items.
@@ -410,7 +412,7 @@ def create_invoice(
 
         # 8. AUDIT LOG (GoBD Compliance)
         try:
-            log_invoice_creation(db, invoice)
+            log_invoice_creation(db, invoice, user_id=user_id, ip_address=ip_address)
             db.commit()
         except Exception as audit_error:
             print(f"⚠️ Audit logging failed: {audit_error}")
@@ -496,6 +498,8 @@ def update_invoice(
     db: Session,
     invoice_id: uuid.UUID,
     data: schemas.InvoiceUpdate,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> Optional[models.Invoice]:
     """Aktualisiert Invoice mit Compliance-Validierung (§238 HGB)."""
     invoice = get_invoice(db, invoice_id)
@@ -558,7 +562,7 @@ def update_invoice(
 
         # AUDIT LOG (GoBD Compliance)
         try:
-            log_invoice_update(db, invoice, old_invoice_data)
+            log_invoice_update(db, invoice, old_invoice_data, user_id=user_id, ip_address=ip_address)
             db.commit()
         except Exception as audit_error:
             print(f"⚠️ Audit logging failed: {audit_error}")
@@ -592,6 +596,8 @@ def _set_invoice_status_internal(
     new_status: str,
     validate_transition: bool = True,
     create_audit: bool = True,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> None:
     """
     Zentrale interne Funktion zum Setzen des Invoice-Status.
@@ -625,7 +631,7 @@ def _set_invoice_status_internal(
     # AUDIT LOG (GoBD Compliance)
     if create_audit:
         try:
-            log_invoice_status_change(db, invoice, old_status, new_status)
+            log_invoice_status_change(db, invoice, old_status, new_status, user_id=user_id, ip_address=ip_address)
         except Exception as audit_error:
             print(f"⚠️ Audit logging failed: {audit_error}")
 
@@ -634,6 +640,8 @@ def update_invoice_status(
     db: Session,
     invoice_id: uuid.UUID,
     new_status: str,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> Optional[models.Invoice]:
     """
     Aktualisiert den Status einer Invoice manuell (via API).
@@ -651,7 +659,9 @@ def update_invoice_status(
             invoice=invoice,
             new_status=new_status,
             validate_transition=True,  # Manuelle Updates müssen State Machine validieren
-            create_audit=True
+            create_audit=True,
+            user_id=user_id,
+            ip_address=ip_address
         )
 
         db.commit()
@@ -730,7 +740,13 @@ def recalculate_invoice_totals(
 # DELETE OPERATIONS
 # ============================================================================
 
-def delete_invoice(db: Session, invoice_id: uuid.UUID, hard_delete: bool = False) -> bool:
+def delete_invoice(
+    db: Session,
+    invoice_id: uuid.UUID,
+    hard_delete: bool = False,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> bool:
     """
     Soft-Delete einer Invoice (GoBD Compliance).
 
@@ -779,7 +795,7 @@ def delete_invoice(db: Session, invoice_id: uuid.UUID, hard_delete: bool = False
 
         # AUDIT LOG (GoBD Compliance)
         try:
-            log_invoice_deletion(db, invoice)
+            log_invoice_deletion(db, invoice, user_id=user_id, ip_address=ip_address)
             db.commit()
         except Exception as audit_error:
             print(f"⚠️ Audit logging failed: {audit_error}")

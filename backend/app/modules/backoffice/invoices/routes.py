@@ -25,6 +25,7 @@ from app.core.settings.database import get_db
 from app.modules.backoffice.invoices import crud, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices import payments_crud
+from app.modules.backoffice.invoices.dependencies import RequestContext
 from app.core.storage.factory import get_storage
 from app.core.settings.config import settings
 
@@ -197,7 +198,8 @@ def create_invoice(
     data: schemas.InvoiceCreate,
     background_tasks: BackgroundTasks,
     generate_pdf: bool = Query(True, description="PDF sofort generieren?"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Neue Invoice erstellen.
@@ -214,10 +216,22 @@ def create_invoice(
     try:
         if generate_pdf:
             # Synchrone PDF-Generierung
-            invoice = crud.create_invoice(db=db, data=data, generate_pdf=True)
+            invoice = crud.create_invoice(
+                db=db,
+                data=data,
+                generate_pdf=True,
+                user_id=ctx.user_id,
+                ip_address=ctx.ip_address
+            )
         else:
             # Asynchrone PDF-Generierung via Background Task
-            invoice = crud.create_invoice(db=db, data=data, generate_pdf=False)
+            invoice = crud.create_invoice(
+                db=db,
+                data=data,
+                generate_pdf=False,
+                user_id=ctx.user_id,
+                ip_address=ctx.ip_address
+            )
             background_tasks.add_task(
                 _generate_pdf_background,
                 invoice.id,
@@ -268,7 +282,8 @@ def _generate_pdf_background(invoice_id: uuid.UUID, db: Session):
 def update_invoice(
     invoice_id: uuid.UUID,
     data: schemas.InvoiceUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Invoice aktualisieren (Partial Update).
@@ -286,7 +301,7 @@ def update_invoice(
 
     **Wichtig:** Wenn line_items übergeben werden, werden alle existierenden Positionen gelöscht und durch die neuen ersetzt!
     """
-    invoice = crud.update_invoice(db, invoice_id, data)
+    invoice = crud.update_invoice(db, invoice_id, data, user_id=ctx.user_id, ip_address=ctx.ip_address)
     if not invoice:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -299,7 +314,8 @@ def update_invoice(
 def update_invoice_status(
     invoice_id: uuid.UUID,
     status_update: schemas.InvoiceStatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Nur Status ändern.
@@ -309,7 +325,7 @@ def update_invoice_status(
     - sent → paid / overdue / cancelled
     - partial → paid / overdue
     """
-    invoice = crud.update_invoice_status(db, invoice_id, status_update.status)
+    invoice = crud.update_invoice_status(db, invoice_id, status_update.status, user_id=ctx.user_id, ip_address=ctx.ip_address)
     if not invoice:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -347,7 +363,8 @@ def recalculate_totals(
 @router.delete("/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_invoice(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Invoice löschen.
@@ -357,7 +374,7 @@ def delete_invoice(
     - Payments werden mitgelöscht
     - PDF wird gelöscht (falls vorhanden)
     """
-    success = crud.delete_invoice(db, invoice_id)
+    success = crud.delete_invoice(db, invoice_id, user_id=ctx.user_id, ip_address=ctx.ip_address)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
