@@ -1,11 +1,11 @@
 ---
-title: "Daily Report: Invoices PDF-Generator & Frontend Verbesserungen"
-date: 2026-01-02
-author: Claude Code
-tags: [invoices, pdf, pagination, frontend, design]
+layout: default
+title: Invoices PDF-Generator & Frontend Verbesserungen
+parent: Daily Reports
+nav_order: 5
 ---
 
-# Daily Report - 02.01.2026
+# Daily Report - 02. Januar 2026
 
 ## Invoices Modul - PDF-Generator & Frontend Verbesserungen
 
