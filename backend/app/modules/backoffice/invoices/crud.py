@@ -559,36 +559,129 @@ def update_invoice(
         raise HTTPException(status_code=500, detail=f"Failed to update invoice: {str(e)}")
 
 
+def _set_invoice_status_internal(
+    db: Session,
+    invoice: models.Invoice,
+    new_status: str,
+    validate_transition: bool = True,
+    create_audit: bool = True,
+) -> None:
+    """
+    Zentrale interne Funktion zum Setzen des Invoice-Status.
+
+    Args:
+        db: Database Session
+        invoice: Invoice-Objekt
+        new_status: Neuer Status
+        validate_transition: State Machine Validierung durchführen (True für manuell, False für automatisch via Payments)
+        create_audit: Audit Log erstellen
+
+    Diese Funktion ist die EINZIGE Quelle der Wahrheit für Status-Änderungen.
+    """
+    valid_statuses = ["draft", "sent", "paid", "partial", "overdue", "cancelled"]
+    if new_status not in valid_statuses:
+        raise ValueError(f"Invalid status: {new_status}")
+
+    old_status = invoice.status
+
+    # Keine Änderung nötig
+    if old_status == new_status:
+        return
+
+    # STATE MACHINE VALIDATION (nur bei manuellen Updates)
+    if validate_transition:
+        validate_invoice_status_change(invoice, new_status)
+
+    # Status setzen
+    invoice.status = new_status
+
+    # AUDIT LOG (GoBD Compliance)
+    if create_audit:
+        try:
+            log_invoice_status_change(db, invoice, old_status, new_status)
+        except Exception as audit_error:
+            print(f"⚠️ Audit logging failed: {audit_error}")
+
+
 def update_invoice_status(
     db: Session,
     invoice_id: uuid.UUID,
     new_status: str,
 ) -> Optional[models.Invoice]:
-    """Aktualisiert nur den Status einer Invoice mit State Machine Validation."""
+    """
+    Aktualisiert den Status einer Invoice manuell (via API).
+
+    Verwendet State Machine Validierung und Audit Logging.
+    """
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
 
-    valid_statuses = ["draft", "sent", "paid", "partial", "overdue", "cancelled"]
-    if new_status not in valid_statuses:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}")
-
-    # STATE MACHINE VALIDATION (GoBD Compliance)
-    old_status = invoice.status
-    validate_invoice_status_change(invoice, new_status)
-
-    invoice.status = new_status
-    db.commit()
-    db.refresh(invoice)
-
-    # AUDIT LOG (GoBD Compliance)
     try:
-        log_invoice_status_change(db, invoice, old_status, new_status)
-        db.commit()
-    except Exception as audit_error:
-        print(f"⚠️ Audit logging failed: {audit_error}")
+        # Verwende zentrale Funktion mit State Machine Validierung
+        _set_invoice_status_internal(
+            db=db,
+            invoice=invoice,
+            new_status=new_status,
+            validate_transition=True,  # Manuelle Updates müssen State Machine validieren
+            create_audit=True
+        )
 
-    return invoice
+        db.commit()
+        db.refresh(invoice)
+        return invoice
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update status: {str(e)}")
+
+
+def update_invoice_status_from_payments(
+    db: Session,
+    invoice: models.Invoice,
+) -> None:
+    """
+    Aktualisiert Invoice-Status automatisch basierend auf Zahlungseingängen.
+
+    Logik:
+    - outstanding = 0 → PAID
+    - 0 < outstanding < total → PARTIAL
+    - outstanding = total → SENT (falls bereits gesendet)
+    - overdue falls due_date überschritten
+
+    KEINE State Machine Validierung (Payments können Status zurücksetzen).
+    """
+    from decimal import Decimal
+
+    # Cancelled bleibt cancelled
+    if invoice.status == "cancelled":
+        return
+
+    outstanding = invoice.outstanding_amount
+
+    # Neuen Status bestimmen basierend auf Zahlungen
+    if outstanding <= Decimal("0.00"):
+        new_status = "paid"
+    elif outstanding < invoice.total:
+        new_status = "partial"
+    elif invoice.is_overdue:
+        new_status = "overdue"
+    else:
+        # Status beibehalten (draft/sent)
+        return
+
+    # Verwende zentrale Funktion OHNE State Machine Validierung
+    # (Payments dürfen Status zurücksetzen, z.B. paid → partial bei Rückzahlung)
+    _set_invoice_status_internal(
+        db=db,
+        invoice=invoice,
+        new_status=new_status,
+        validate_transition=False,  # Automatische Updates ignorieren State Machine
+        create_audit=True
+    )
 
 
 def recalculate_invoice_totals(

@@ -248,16 +248,28 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
 
     def update_status_from_payments(self) -> None:
         """
-        Aktualisiert Status basierend auf Zahlungseingängen.
+        DEPRECATED: Use invoices_crud.update_invoice_status_from_payments() instead.
 
-        Logik:
+        Diese Methode wird nicht mehr verwendet. Status-Updates erfolgen jetzt
+        über die zentrale CRUD-Funktion für konsistentes Audit Logging und
+        State Machine Handling.
+
+        Old logic (for reference):
         - outstanding = 0 → PAID
         - 0 < outstanding < total → PARTIAL
         - outstanding = total → SENT (falls bereits gesendet)
         - overdue falls due_date überschritten
         """
+        import warnings
+        warnings.warn(
+            "update_status_from_payments() is deprecated. "
+            "Use invoices_crud.update_invoice_status_from_payments() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        # Legacy implementation (minimal, for backward compatibility)
         if self.status == InvoiceStatus.CANCELLED.value:
-            return  # Cancelled bleibt cancelled
+            return
 
         outstanding = self.outstanding_amount
 
@@ -267,7 +279,6 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
             self.status = InvoiceStatus.PARTIAL.value
         elif self.is_overdue:
             self.status = InvoiceStatus.OVERDUE.value
-        # Sonst status beibehalten (draft/sent)
 
     # ========================================================================
     # PROPERTIES
@@ -581,18 +592,20 @@ class Payment(Base, UUIDMixin, TimestampMixin):
 # EVENTS (Auto-Updates)
 # ============================================================================
 
-@event.listens_for(Payment, "after_insert")
-@event.listens_for(Payment, "after_update")
-@event.listens_for(Payment, "after_delete")
-def update_invoice_status_after_payment(mapper, connection, target):
-    """
-    Aktualisiert Invoice-Status automatisch nach Payment-Änderungen.
-
-    WICHTIG: Läuft im after_insert/update/delete Event!
-    """
-    # Target ist das Payment-Objekt
-    if target.invoice:
-        target.invoice.update_status_from_payments()
+# DEPRECATED: Event-Handler deaktiviert
+# Status-Updates werden jetzt explizit in payments_crud.py durchgeführt
+# über invoices_crud.update_invoice_status_from_payments()
+#
+# @event.listens_for(Payment, "after_insert")
+# @event.listens_for(Payment, "after_update")
+# @event.listens_for(Payment, "after_delete")
+# def update_invoice_status_after_payment(mapper, connection, target):
+#     """
+#     DEPRECATED: Aktualisiert Invoice-Status automatisch nach Payment-Änderungen.
+#     Status-Updates erfolgen jetzt über zentrale CRUD-Funktion.
+#     """
+#     if target.invoice:
+#         target.invoice.update_status_from_payments()
 
 # =====================================================================
 # Audit Trail
