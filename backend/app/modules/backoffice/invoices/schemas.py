@@ -13,7 +13,7 @@ CHANGES:
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, field_validator, computed_field, ConfigDict
 from enum import Enum
 import uuid
 
@@ -331,3 +331,30 @@ class InvoiceFilterParams(BaseModel):
     date_to: Optional[date] = None
     skip: int = Field(0, ge=0)
     limit: int = Field(100, ge=1, le=500)
+
+
+# ============================================================================
+# AUDIT LOGS
+# ============================================================================
+
+class AuditLogResponse(BaseModel):
+    """Audit Log Response für Compliance."""
+    id: uuid.UUID
+    entity_type: str = Field(description="Typ der Entität (Invoice, Payment, Expense)")
+    entity_id: uuid.UUID = Field(description="UUID der geänderten Entität")
+    action: str = Field(description="Art der Änderung (create, update, delete, status_change)")
+    old_values: Optional[dict] = Field(None, description="Alte Werte (JSON)")
+    new_values: Optional[dict] = Field(None, description="Neue Werte (JSON)")
+    user_id: Optional[str] = Field(None, description="User-ID")
+    timestamp: datetime = Field(description="Zeitstempel der Änderung")
+    ip_address: Optional[str] = Field(None, description="IP-Adresse")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AuditLogListResponse(BaseModel):
+    """Liste von Audit Logs mit Pagination."""
+    items: List[AuditLogResponse] = Field(description="Liste der Audit Log Einträge")
+    total: int = Field(description="Gesamtanzahl")
+    skip: int = Field(description="Pagination Offset")
+    limit: int = Field(description="Max Anzahl pro Page")

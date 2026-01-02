@@ -26,6 +26,18 @@ from fastapi import HTTPException
 
 from app.modules.backoffice.invoices import models, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
+from app.modules.backoffice.invoices.audit import (
+    log_invoice_creation,
+    log_invoice_update,
+    log_invoice_status_change,
+    log_invoice_deletion,
+    serialize_for_audit,
+)
+from app.modules.backoffice.invoices.compliance import (
+    validate_invoice_update,
+    validate_invoice_deletion,
+    validate_invoice_status_change,
+)
 from app.modules.documents.models import Document
 from app.modules.backoffice.crm.models import Customer
 from app.modules.backoffice.projects.models import Project
@@ -199,15 +211,23 @@ def get_invoices(
     project_id: Optional[uuid.UUID] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    include_deleted: bool = False,
 ) -> List[models.Invoice]:
     """
     Holt Invoices mit Pagination und Filtern.
+
+    Args:
+        include_deleted: If True, include soft-deleted invoices (default: False)
     """
     query = db.query(models.Invoice).options(
         selectinload(models.Invoice.customer),
         selectinload(models.Invoice.line_items),
         selectinload(models.Invoice.payments),
     )
+
+    # SOFT-DELETE FILTER (GoBD compliance)
+    if not include_deleted:
+        query = query.filter(models.Invoice.deleted_at.is_(None))
 
     # Filter anwenden
     if status:
@@ -247,11 +267,14 @@ def count_invoices(
     return query.scalar()
 
 
-def get_invoice(db: Session, invoice_id: uuid.UUID) -> Optional[models.Invoice]:
+def get_invoice(db: Session, invoice_id: uuid.UUID, include_deleted: bool = False) -> Optional[models.Invoice]:
     """
     Holt eine einzelne Invoice inkl. Relations.
+
+    Args:
+        include_deleted: If True, include soft-deleted invoices (default: False)
     """
-    return (
+    query = (
         db.query(models.Invoice)
         .options(
             selectinload(models.Invoice.customer),
@@ -260,8 +283,13 @@ def get_invoice(db: Session, invoice_id: uuid.UUID) -> Optional[models.Invoice]:
             selectinload(models.Invoice.payments),
         )
         .filter(models.Invoice.id == invoice_id)
-        .first()
     )
+
+    # SOFT-DELETE FILTER (GoBD compliance)
+    if not include_deleted:
+        query = query.filter(models.Invoice.deleted_at.is_(None))
+
+    return query.first()
 
 
 def get_invoice_by_number(db: Session, invoice_number: str) -> Optional[models.Invoice]:
@@ -353,7 +381,14 @@ def create_invoice(
         # 7. Invoice mit Relations neu laden
         invoice = get_invoice(db, invoice.id)
 
-        # 8. PDF generieren (optional)
+        # 8. AUDIT LOG (GoBD Compliance)
+        try:
+            log_invoice_creation(db, invoice)
+            db.commit()
+        except Exception as audit_error:
+            print(f"⚠️ Audit logging failed: {audit_error}")
+
+        # 9. PDF generieren (optional)
         if generate_pdf:
             try:
                 pdf_path = _generate_and_save_pdf(db, invoice)
@@ -435,13 +470,20 @@ def update_invoice(
     invoice_id: uuid.UUID,
     data: schemas.InvoiceUpdate,
 ) -> Optional[models.Invoice]:
-    """Aktualisiert Invoice."""
+    """Aktualisiert Invoice mit Compliance-Validierung (§238 HGB)."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
 
     try:
         update_data = data.model_dump(exclude_unset=True)
+
+        # IMMUTABILITY VALIDATION (GoBD/HGB Compliance)
+        update_fields = set(update_data.keys())
+        validate_invoice_update(invoice, update_fields)
+
+        # Capture old values for audit log
+        old_invoice_data = serialize_for_audit(invoice)
 
         # Handle line_items separately
         new_line_items = update_data.pop("line_items", None)
@@ -487,6 +529,13 @@ def update_invoice(
         db.commit()
         db.refresh(invoice)
 
+        # AUDIT LOG (GoBD Compliance)
+        try:
+            log_invoice_update(db, invoice, old_invoice_data)
+            db.commit()
+        except Exception as audit_error:
+            print(f"⚠️ Audit logging failed: {audit_error}")
+
         # Regenerate PDF if line_items were updated
         if new_line_items is not None:
             try:
@@ -512,7 +561,7 @@ def update_invoice_status(
     invoice_id: uuid.UUID,
     new_status: str,
 ) -> Optional[models.Invoice]:
-    """Aktualisiert nur den Status einer Invoice."""
+    """Aktualisiert nur den Status einer Invoice mit State Machine Validation."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
@@ -521,9 +570,21 @@ def update_invoice_status(
     if new_status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}")
 
+    # STATE MACHINE VALIDATION (GoBD Compliance)
+    old_status = invoice.status
+    validate_invoice_status_change(invoice, new_status)
+
     invoice.status = new_status
     db.commit()
     db.refresh(invoice)
+
+    # AUDIT LOG (GoBD Compliance)
+    try:
+        log_invoice_status_change(db, invoice, old_status, new_status)
+        db.commit()
+    except Exception as audit_error:
+        print(f"⚠️ Audit logging failed: {audit_error}")
+
     return invoice
 
 
@@ -546,29 +607,125 @@ def recalculate_invoice_totals(
 # DELETE OPERATIONS
 # ============================================================================
 
-def delete_invoice(db: Session, invoice_id: uuid.UUID) -> bool:
-    """Löscht Invoice inkl. Line Items (CASCADE) und PDF aus Storage."""
-    invoice = get_invoice(db, invoice_id)
+def delete_invoice(db: Session, invoice_id: uuid.UUID, hard_delete: bool = False) -> bool:
+    """
+    Soft-Delete einer Invoice (GoBD Compliance).
+
+    Markiert Invoice als gelöscht (deleted_at), löscht aber NICHT physisch.
+    Dies ermöglicht Audit-Trail und Wiederherstellung.
+
+    Args:
+        db: Database Session
+        invoice_id: UUID der Invoice
+        hard_delete: If True, perform physical deletion (admin only, not recommended)
+
+    Returns:
+        True bei Erfolg
+
+    Raises:
+        HTTPException 403: Wenn Invoice bezahlt ist (darf nicht gelöscht werden)
+        HTTPException 404: Wenn Invoice nicht existiert
+    """
+    invoice = get_invoice(db, invoice_id, include_deleted=False)
     if not invoice:
         return False
 
     try:
-        # Delete PDF from storage if exists
-        if invoice.pdf_path:
-            try:
-                storage = get_storage()
-                if storage.exists(invoice.pdf_path):
-                    storage.delete(invoice.pdf_path)
-            except Exception as e:
-                print(f"⚠️ Failed to delete PDF from storage: {e}")
+        # SOFT-DELETE VALIDATION (GoBD Compliance)
+        validate_invoice_deletion(invoice)
 
-        db.delete(invoice)
+        if hard_delete:
+            # HARD DELETE (nur für Admin-Zwecke, nicht empfohlen)
+            # Delete PDF from storage if exists
+            if invoice.pdf_path:
+                try:
+                    storage = get_storage()
+                    if storage.exists(invoice.pdf_path):
+                        storage.delete(invoice.pdf_path)
+                except Exception as e:
+                    print(f"⚠️ Failed to delete PDF from storage: {e}")
+
+            db.delete(invoice)
+            db.commit()
+            return True
+
+        # SOFT DELETE (empfohlen für GoBD)
+        invoice.deleted_at = datetime.utcnow()
         db.commit()
+        db.refresh(invoice)
+
+        # AUDIT LOG (GoBD Compliance)
+        try:
+            log_invoice_deletion(db, invoice)
+            db.commit()
+        except Exception as audit_error:
+            print(f"⚠️ Audit logging failed: {audit_error}")
+
         return True
 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete invoice: {str(e)}")
+
+
+# ============================================================================
+# AUDIT LOGS
+# ============================================================================
+
+def get_audit_logs(
+    db: Session,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[uuid.UUID] = None,
+    action: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> List[models.AuditLog]:
+    """
+    Holt Audit-Log-Einträge mit Filtern.
+
+    Args:
+        db: Database Session
+        entity_type: Filter nach Entitätstyp (Invoice, Payment, Expense)
+        entity_id: Filter nach Entitäts-ID
+        action: Filter nach Aktion (create, update, delete, status_change)
+        skip: Pagination offset
+        limit: Max Anzahl Ergebnisse
+
+    Returns:
+        Liste von AuditLog-Einträgen
+    """
+    query = db.query(models.AuditLog)
+
+    if entity_type:
+        query = query.filter(models.AuditLog.entity_type == entity_type)
+    if entity_id:
+        query = query.filter(models.AuditLog.entity_id == entity_id)
+    if action:
+        query = query.filter(models.AuditLog.action == action)
+
+    query = query.order_by(models.AuditLog.timestamp.desc())
+    query = query.offset(skip).limit(limit)
+
+    return query.all()
+
+
+def count_audit_logs(
+    db: Session,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[uuid.UUID] = None,
+    action: Optional[str] = None,
+) -> int:
+    """Zählt Audit-Log-Einträge mit optionalen Filtern."""
+    query = db.query(func.count(models.AuditLog.id))
+
+    if entity_type:
+        query = query.filter(models.AuditLog.entity_type == entity_type)
+    if entity_id:
+        query = query.filter(models.AuditLog.entity_id == entity_id)
+    if action:
+        query = query.filter(models.AuditLog.action == action)
+
+    return query.scalar()
 
 
 # ============================================================================

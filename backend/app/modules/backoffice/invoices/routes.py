@@ -548,3 +548,54 @@ def delete_payment(
             detail=f"Payment {payment_id} not found"
         )
     return None
+
+
+# ============================================================================
+# AUDIT LOGS (GoBD COMPLIANCE)
+# ============================================================================
+
+@router.get("/audit-logs", response_model=schemas.AuditLogListResponse)
+def list_audit_logs(
+    entity_type: Optional[str] = Query(None, description="Filter nach Entitätstyp (Invoice, Payment, Expense)"),
+    entity_id: Optional[uuid.UUID] = Query(None, description="Filter nach Entitäts-ID"),
+    action: Optional[str] = Query(None, description="Filter nach Aktion (create, update, delete, status_change)"),
+    skip: int = Query(0, ge=0, description="Offset für Pagination"),
+    limit: int = Query(100, ge=1, le=500, description="Max Anzahl Ergebnisse"),
+    db: Session = Depends(get_db)
+):
+    """
+    Liste aller Audit-Log-Einträge mit Pagination und Filtern.
+
+    **Compliance:** Erfüllt GoBD-Anforderungen für lückenlose Nachvollziehbarkeit.
+
+    **Filter-Optionen:**
+    - `entity_type`: Invoice, Payment, Expense
+    - `entity_id`: UUID der Entität
+    - `action`: create, update, delete, status_change
+
+    **Pagination:**
+    - `skip`: Offset (Standard: 0)
+    - `limit`: Max Anzahl (Standard: 100, Max: 500)
+    """
+    logs = crud.get_audit_logs(
+        db=db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action,
+        skip=skip,
+        limit=limit
+    )
+
+    total = crud.count_audit_logs(
+        db=db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action
+    )
+
+    return schemas.AuditLogListResponse(
+        items=logs,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
