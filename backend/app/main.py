@@ -27,6 +27,8 @@ from app.modules.backoffice.invoices.routes import router as invoices_router
 from app.modules.backoffice.products.routes import router as products_router
 from app.modules.backoffice.chat import routes as chat_routes
 from app.modules.backoffice.finance import routes as finance_routes
+from app.modules.admin.audit_routes import router as audit_router
+from app.modules.admin.settings_routes import router as settings_router
 
 
 # Logging aktivieren
@@ -124,6 +126,10 @@ app.include_router(products_router, prefix="/api", tags=["Backoffice Products"])
 app.include_router(invoices_router, prefix="/api", tags=["Backoffice Invoices"])
 app.include_router(chat_routes.router, prefix="/api", tags=["Backoffice Chat"])
 app.include_router(finance_routes.router, prefix="/api", tags=["Backoffice Finance"])
+
+# Admin Module
+app.include_router(audit_router, tags=["Admin"])
+app.include_router(settings_router, tags=["Admin"])
 
 # === Core Endpoints ===
 @app.get("/", tags=["Root"])

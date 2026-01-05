@@ -208,19 +208,16 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize.value));
 async function fetchLogs() {
   loading.value = true;
   try {
-    // TODO: Backend endpoint noch nicht vorhanden
-    // const skip = (page.value - 1) * pageSize.value;
-    // const response = await apiClient.get('/api/audit-logs', {
-    //   params: { ...filters.value, skip, limit: pageSize.value }
-    // });
-    // logs.value = response.data.logs;
-    // total.value = response.data.total;
-
-    // Temporary: Generate mock data
-    logs.value = generateMockLogs();
-    total.value = logs.value.length;
+    const skip = (page.value - 1) * pageSize.value;
+    const response = await apiClient.get('/api/audit-logs', {
+      params: { ...filters.value, skip, limit: pageSize.value }
+    });
+    logs.value = response.data.items || [];
+    total.value = response.data.total || 0;
   } catch (error) {
     console.error('Failed to fetch audit logs:', error);
+    logs.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
@@ -236,25 +233,6 @@ async function fetchUsers() {
   }
 }
 
-// Generate mock data (temporary)
-function generateMockLogs() {
-  const actions = ['create', 'update', 'delete', 'login', 'logout'];
-  const resources = ['employee', 'department', 'role', 'customer', 'invoice', 'project'];
-  const mockUsers = ['Joshua Phu', 'Jessica Schemel', 'Max Mustermann'];
-
-  return Array.from({ length: 25 }, (_, i) => ({
-    id: `log-${i}`,
-    timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-    user_name: mockUsers[Math.floor(Math.random() * mockUsers.length)],
-    user_email: 'user@example.com',
-    action: actions[Math.floor(Math.random() * actions.length)],
-    resource_type: resources[Math.floor(Math.random() * resources.length)],
-    resource_name: `Resource ${i + 1}`,
-    details: `Änderung an ${resources[Math.floor(Math.random() * resources.length)]}`,
-    ip_address: `192.168.1.${Math.floor(Math.random() * 255)}`,
-    changes: { field: 'value', old: 'old_value', new: 'new_value' }
-  }));
-}
 
 // Helpers
 function formatDateTime(isoString: string): string {

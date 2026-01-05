@@ -232,17 +232,11 @@ const saveSuccess = ref(false);
 // Load settings
 async function loadSettings() {
   try {
-    // TODO: Backend endpoint noch nicht vorhanden
-    // const response = await apiClient.get('/api/settings');
-    // settings.value = { ...settings.value, ...response.data };
-
-    // Temporary: Load from localStorage
-    const stored = localStorage.getItem('system_settings');
-    if (stored) {
-      settings.value = { ...settings.value, ...JSON.parse(stored) };
-    }
+    const response = await apiClient.get('/api/settings');
+    settings.value = { ...settings.value, ...response.data };
   } catch (error) {
     console.error('Failed to load settings:', error);
+    // Keep default values on error
   }
 }
 
@@ -252,11 +246,7 @@ async function saveSettings() {
   saveSuccess.value = false;
 
   try {
-    // TODO: Backend endpoint noch nicht vorhanden
-    // await apiClient.put('/api/settings', settings.value);
-
-    // Temporary: Save to localStorage
-    localStorage.setItem('system_settings', JSON.stringify(settings.value));
+    await apiClient.put('/api/settings', settings.value);
 
     saveSuccess.value = true;
     setTimeout(() => {
