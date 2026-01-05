@@ -9,7 +9,7 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from app.core.auth.permissions import require_permissions
 from app.modules.backoffice.invoices import schemas as invoice_schemas
 from app.modules.admin import service

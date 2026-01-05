@@ -6,7 +6,7 @@ Provides endpoints to manage global system settings.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.settings.database import get_db
 from app.core.auth.permissions import require_permissions
 from app.modules.admin import schemas, service
 

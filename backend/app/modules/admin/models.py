@@ -3,7 +3,7 @@ Admin Models - Database models for Admin module
 """
 from sqlalchemy import Column, String, Integer, Boolean, DateTime
 from sqlalchemy.sql import func
-from app.core.database import Base
+from app.core.settings.database import Base
 from app.core.mixins import UUIDMixin
 
 
