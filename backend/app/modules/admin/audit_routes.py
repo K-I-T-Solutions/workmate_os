@@ -10,7 +10,6 @@ from datetime import datetime
 from uuid import UUID
 
 from app.core.settings.database import get_db
-from app.core.auth.permissions import require_permissions
 from app.modules.backoffice.invoices import schemas as invoice_schemas
 from app.modules.admin import service
 
@@ -26,8 +25,7 @@ async def list_audit_logs(
     entity_type: Optional[str] = Query(None, description="Filter by entity type (Invoice, Payment, Employee, etc.)"),
     date_from: Optional[datetime] = Query(None, description="Filter from date (ISO 8601)"),
     date_to: Optional[datetime] = Query(None, description="Filter to date (ISO 8601)"),
-    db: Session = Depends(get_db),
-    current_user = Depends(require_permissions("admin.audit.*", "admin.*", "*"))
+    db: Session = Depends(get_db)
 ):
     """
     List all audit logs with optional filtering and pagination.
@@ -68,8 +66,7 @@ async def list_audit_logs(
 @router.get("/{audit_log_id}", response_model=invoice_schemas.AuditLogResponse)
 async def get_audit_log(
     audit_log_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(require_permissions("admin.audit.*", "admin.*", "*"))
+    db: Session = Depends(get_db)
 ):
     """
     Get a single audit log entry by ID.
