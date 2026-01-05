@@ -1,3 +1,10 @@
+---
+layout: default
+title: Stripe Webhook Setup Guide
+parent: Setup
+nav_order: 5
+---
+
 # Stripe Webhook Setup - WorkmateOS
 
 ## 🎯 Zweck

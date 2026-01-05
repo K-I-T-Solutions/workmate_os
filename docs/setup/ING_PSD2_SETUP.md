@@ -1,3 +1,10 @@
+---
+layout: default
+title: ING PSD2 API Setup Guide
+parent: Setup
+nav_order: 2
+---
+
 # ING PSD2 API Setup Guide
 
 ## Übersicht

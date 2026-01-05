@@ -1,3 +1,10 @@
+---
+layout: default
+title: SevDesk Integration Test Workflow
+parent: Setup
+nav_order: 4
+---
+
 # SevDesk Integration - Test Workflow
 
 ## Workflow-Konzept

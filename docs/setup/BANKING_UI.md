@@ -1,3 +1,10 @@
+---
+layout: default
+title: Banking UI Implementation Guide
+parent: Setup
+nav_order: 1
+---
+
 # Banking UI - Fertig implementiert! 🏦
 
 ## Übersicht

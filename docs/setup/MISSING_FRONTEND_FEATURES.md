@@ -1,3 +1,10 @@
+---
+layout: default
+title: Missing Frontend Features - Development Roadmap
+parent: Setup
+nav_order: 3
+---
+
 # Fehlende Frontend-Implementierungen
 
 Analyse vom 2026-01-02: Backend-Features die noch nicht im Frontend implementiert sind.
