@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # App Info
     APP_NAME: str = "Workmate OS Backend"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "2.0.0"
     ENVIRONMENT: str = "development"
 
     # Database
