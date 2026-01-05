@@ -104,7 +104,8 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         Index("ix_invoices_status", "status"),
         Index("ix_invoices_issued_date", "issued_date"),
         Index("ix_invoices_due_date", "due_date"),
-        Index("ix_invoices_invoice_number", "invoice_number"),
+        # UNIQUE Constraint für invoice_number (verhindert Duplikate und Race Conditions)
+        UniqueConstraint("invoice_number", name="uq_invoices_invoice_number"),
         CheckConstraint("total >= 0", name="check_invoice_total_positive"),
         CheckConstraint("subtotal >= 0", name="check_invoice_subtotal_positive"),
         CheckConstraint("tax_amount >= 0", name="check_invoice_tax_positive"),
@@ -121,8 +122,6 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     # Business Fields
     invoice_number: Mapped[str] = mapped_column(
         String(50),
-        unique=True,
-        index=True,
         nullable=False,
         comment="Eindeutige Rechnungsnummer (z.B. RE-2025-001)"
     )
@@ -564,6 +563,13 @@ class Payment(Base, UUIDMixin, TimestampMixin):
     note: Mapped[str | None] = mapped_column(
         Text,
         comment="Interne Notiz zum Zahlungseingang"
+    )
+
+    # Payment Gateway Integration Fields
+    stripe_payment_intent_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+        comment="Stripe Payment Intent ID (pi_...)"
     )
 
     # Soft-Delete (GoBD Compliance)

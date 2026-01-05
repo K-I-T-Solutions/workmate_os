@@ -2,6 +2,7 @@
 Workmate OS - Zitadel OIDC Integration
 Handles SSO authentication via Zitadel
 """
+import logging
 import httpx
 from jose import jwt, JWTError
 from typing import Optional, Dict
@@ -13,6 +14,8 @@ from app.core.settings.config import settings
 from app.modules.employees.models import Employee, Role
 from app.core.auth.role_mapping import extract_roles_from_token, map_zitadel_roles
 import re
+
+logger = logging.getLogger(__name__)
 
 
 class ZitadelAuth:
@@ -35,7 +38,7 @@ class ZitadelAuth:
                 response.raise_for_status()
                 return response.json()
         except Exception as e:
-            print(f"[DEBUG] Failed to fetch user info: {e}")
+            logger.debug(" Failed to fetch user info: {e}")
             return None
 
     @staticmethod
@@ -65,8 +68,8 @@ class ZitadelAuth:
             unverified_header = jwt.get_unverified_header(token)
             kid = unverified_header.get("kid")
 
-            print(f"[DEBUG] Token kid: {kid}")
-            print(f"[DEBUG] Available kids: {[k.get('kid') for k in jwks.get('keys', [])]}")
+            logger.debug(" Token kid: {kid}")
+            logger.debug(" Available kids: {[k.get('kid') for k in jwks.get('keys', [])]}")
 
             # Find matching key in JWKS
             rsa_key = None
@@ -76,11 +79,11 @@ class ZitadelAuth:
                     break
 
             if not rsa_key:
-                print(f"[DEBUG] RSA key not found for kid: {kid}")
+                logger.debug(" RSA key not found for kid: {kid}")
                 return None
 
             # Verify and decode token
-            print(f"[DEBUG] Verifying token with issuer: {settings.ZITADEL_ISSUER}, audience: {settings.ZITADEL_CLIENT_ID}")
+            logger.debug(" Verifying token with issuer: {settings.ZITADEL_ISSUER}, audience: {settings.ZITADEL_CLIENT_ID}")
             payload = jwt.decode(
                 token,
                 rsa_key,
@@ -92,14 +95,14 @@ class ZitadelAuth:
                 }
             )
 
-            print(f"[DEBUG] Token verified successfully! Sub: {payload.get('sub')}")
+            logger.debug(" Token verified successfully! Sub: {payload.get('sub')}")
             return payload
 
         except JWTError as e:
-            print(f"[DEBUG] JWTError: {e}")
+            logger.debug(" JWTError: {e}")
             return None
         except Exception as e:
-            print(f"[DEBUG] Exception: {e}")
+            logger.debug(" Exception: {e}")
             return None
 
     @staticmethod
@@ -155,23 +158,23 @@ class ZitadelAuth:
         given_name = zitadel_payload.get("given_name", "")
         family_name = zitadel_payload.get("family_name", "")
 
-        print(f"[DEBUG get_or_create_user] zitadel_user_id: {zitadel_user_id}")
-        print(f"[DEBUG get_or_create_user] email: {email}")
-        print(f"[DEBUG get_or_create_user] given_name: {given_name}")
-        print(f"[DEBUG get_or_create_user] family_name: {family_name}")
-        print(f"[DEBUG get_or_create_user] Full payload keys: {list(zitadel_payload.keys())}")
+        logger.debug("[DEBUG get_or_create_user] zitadel_user_id: {zitadel_user_id}")
+        logger.debug("[DEBUG get_or_create_user] email: {email}")
+        logger.debug("[DEBUG get_or_create_user] given_name: {given_name}")
+        logger.debug("[DEBUG get_or_create_user] family_name: {family_name}")
+        logger.debug("[DEBUG get_or_create_user] Full payload keys: {list(zitadel_payload.keys())}")
 
         if not zitadel_user_id or not email:
-            print(f"[DEBUG get_or_create_user] Missing required fields! user_id={zitadel_user_id}, email={email}")
+            logger.debug("[DEBUG get_or_create_user] Missing required fields! user_id={zitadel_user_id}, email={email}")
             return None
 
         # Extract and map roles from Zitadel token
         zitadel_roles = extract_roles_from_token(zitadel_payload)
         mapped_role_name, zitadel_role_id = map_zitadel_roles(zitadel_roles)
 
-        print(f"[DEBUG get_or_create_user] Zitadel roles: {zitadel_roles}")
-        print(f"[DEBUG get_or_create_user] Mapped to Workmate role: {mapped_role_name}")
-        print(f"[DEBUG get_or_create_user] Zitadel Role ID: {zitadel_role_id}")
+        logger.debug("[DEBUG get_or_create_user] Zitadel roles: {zitadel_roles}")
+        logger.debug("[DEBUG get_or_create_user] Mapped to Workmate role: {mapped_role_name}")
+        logger.debug("[DEBUG get_or_create_user] Zitadel Role ID: {zitadel_role_id}")
 
         # Find the role in the database (by name or by keycloak_id)
         role = None
@@ -181,15 +184,15 @@ class ZitadelAuth:
                 select(Role).where(Role.name == mapped_role_name)
             )
             if role:
-                print(f"[DEBUG get_or_create_user] Found role in DB: {role.name} (ID: {role.id})")
+                logger.debug("[DEBUG get_or_create_user] Found role in DB: {role.name} (ID: {role.id})")
 
                 # Update keycloak_id if we have a Zitadel role ID and it's not set
                 if zitadel_role_id and role.keycloak_id != zitadel_role_id:
-                    print(f"[DEBUG get_or_create_user] Updating role.keycloak_id from '{role.keycloak_id}' to '{zitadel_role_id}'")
+                    logger.debug("[DEBUG get_or_create_user] Updating role.keycloak_id from '{role.keycloak_id}' to '{zitadel_role_id}'")
                     role.keycloak_id = zitadel_role_id
                     db.commit()
             else:
-                print(f"[DEBUG get_or_create_user] Role '{mapped_role_name}' not found in DB!")
+                logger.debug("[DEBUG get_or_create_user] Role '{mapped_role_name}' not found in DB!")
 
         # Try to find existing user by Zitadel ID
         employee = db.scalar(
@@ -206,7 +209,7 @@ class ZitadelAuth:
                 employee.last_name = family_name
             # Update role from Zitadel
             if role and employee.role_id != role.id:
-                print(f"[DEBUG get_or_create_user] Updating role from '{employee.role.name if employee.role else None}' to '{role.name}'")
+                logger.debug("[DEBUG get_or_create_user] Updating role from '{employee.role.name if employee.role else None}' to '{role.name}'")
                 employee.role_id = role.id
             db.commit()
             return employee
@@ -221,7 +224,7 @@ class ZitadelAuth:
             employee.uuid_keycloak = zitadel_user_id
             # Update role from Zitadel
             if role and employee.role_id != role.id:
-                print(f"[DEBUG get_or_create_user] Linking user and setting role to '{role.name}'")
+                logger.debug("[DEBUG get_or_create_user] Linking user and setting role to '{role.name}'")
                 employee.role_id = role.id
             db.commit()
             return employee
@@ -230,11 +233,11 @@ class ZitadelAuth:
         # NOTE: Adjust this based on your user creation requirements
         from uuid import uuid4
 
-        print(f"[DEBUG get_or_create_user] Creating new user with role: {mapped_role_name}")
+        logger.debug("[DEBUG get_or_create_user] Creating new user with role: {mapped_role_name}")
 
         # Generate next sequential employee code
         employee_code = ZitadelAuth.get_next_employee_code(db, prefix="KIT")
-        print(f"[DEBUG get_or_create_user] Generated employee code: {employee_code}")
+        logger.debug("[DEBUG get_or_create_user] Generated employee code: {employee_code}")
 
         new_employee = Employee(
             id=str(uuid4()),
@@ -252,6 +255,6 @@ class ZitadelAuth:
         db.commit()
         db.refresh(new_employee)
 
-        print(f"[DEBUG get_or_create_user] Created new user: {new_employee.email} with role: {new_employee.role.name if new_employee.role else 'None'}")
+        logger.debug("[DEBUG get_or_create_user] Created new user: {new_employee.email} with role: {new_employee.role.name if new_employee.role else 'None'}")
 
         return new_employee

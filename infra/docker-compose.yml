@@ -16,6 +16,7 @@ services:
       PYTHONPATH: /app
       ENVIRONMENT: development
       WATCHFILES_FORCE_POLLING: true # ← Für besseren Hot-Reload
+      SEVDESK_ENCRYPTION_KEY: ${SEVDESK_ENCRYPTION_KEY}
     volumes:
       # Persistente Uploads → mapped in Container
       - ../docs/uploads:/root/workmate_os_uploads

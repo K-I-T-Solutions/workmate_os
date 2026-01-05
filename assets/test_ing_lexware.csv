@@ -1,0 +1,6 @@
+Buchung;Valuta;Auftraggeber/Empfänger;Buchungstext;Verwendungszweck;Saldo;Währung;Betrag;Währung
+02.01.2026;02.01.2026;Mustermann GmbH;Überweisung;Rechnung RE-2026-001 Projektarbeit Dezember;5.000,00;EUR;1.500,00;EUR
+02.01.2026;02.01.2026;AWS Ireland;Lastschrift;AWS Hosting Dezember 2025;3.500,00;EUR;-89,50;EUR
+01.01.2026;01.01.2026;Max Mustermann;Überweisung;Beratungsleistung Quartal Q4/2025;3.589,50;EUR;2.800,00;EUR
+29.12.2025;29.12.2025;Telekom Deutschland GmbH;Lastschrift;Mobilfunkvertrag Dezember;789,50;EUR;-59,99;EUR
+28.12.2025;28.12.2025;StartUp AG;Überweisung;Rechnung RE-2025-088 Softwareentwicklung;849,49;EUR;3.500,00;EUR

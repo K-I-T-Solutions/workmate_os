@@ -3,6 +3,15 @@
 // Audit Logs (GoBD Compliance)
 export * from './audit';
 
+// Banking Module
+export * from './banking';
+
+// SevDesk Integration
+export * from './sevdesk';
+
+// Stripe Payment Integration
+export * from './stripe';
+
 export interface InvoiceStatistics {
   total_count: number;
   total_revenue: number;

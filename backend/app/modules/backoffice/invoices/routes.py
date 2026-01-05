@@ -12,6 +12,7 @@ CHANGES:
 - ✅ Bulk operations
 - ✅ Recalculate endpoint
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -22,6 +23,9 @@ import os
 from io import BytesIO
 
 from app.core.settings.database import get_db
+from app.core.errors import ErrorCode, get_error_detail
+
+logger = logging.getLogger(__name__)
 from app.modules.backoffice.invoices import crud, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices import payments_crud
@@ -335,7 +339,7 @@ def _generate_pdf_background(invoice_id: uuid.UUID, db: Session):
                 db.commit()
 
     except Exception as e:
-        print(f"❌ Background PDF generation failed: {e}")
+        logger.error("❌ Background PDF generation failed: %s", e)
 
 
 # ============================================================================
@@ -524,9 +528,10 @@ def download_invoice_pdf(
             db.commit()
 
         except Exception as e:
+            logger.error("Failed to generate PDF: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to generate PDF: {str(e)}"
+                detail=get_error_detail(ErrorCode.INVOICE_PDF_FAILED)
             )
 
     # PDF aus Storage herunterladen
@@ -780,7 +785,7 @@ def bulk_update_status(
                 failed_ids.append(str(invoice_id))
         except Exception as e:
             failed_ids.append(str(invoice_id))
-            print(f"❌ Failed to update {invoice_id}: {e}")
+            logger.error("❌ Failed to update %s: %s", invoice_id, e)
 
     return schemas.BulkUpdateResponse(
         success_count=success_count,

@@ -46,3 +46,4 @@ app/uploads/
 *.orig
 *.rej
 *.cover
+../assets/openapi.yaml

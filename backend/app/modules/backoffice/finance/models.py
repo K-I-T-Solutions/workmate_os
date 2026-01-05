@@ -395,3 +395,324 @@ class BankTransaction(Base, UUIDMixin, TimestampMixin):
             f"counterparty='{self.counterparty_name}', "
             f"reconciled={self.is_reconciled})>"
         )
+
+
+# ============================================================================
+# SEVDESK INTEGRATION
+# ============================================================================
+
+class SevDeskSyncStatus(str, Enum):
+    """Status der SevDesk Synchronisation."""
+    SUCCESS = "success"
+    FAILED = "failed"
+    PARTIAL = "partial"
+
+
+class SevDeskConfig(Base, UUIDMixin, TimestampMixin):
+    """
+    SevDesk Konfiguration.
+
+    Speichert API-Token und Sync-Einstellungen für die
+    bidirektionale Synchronisation mit SevDesk.
+
+    Attributes:
+        api_token: SevDesk API Token (verschlüsselt)
+        auto_sync_enabled: Automatische Synchronisation aktiviert?
+        sync_invoices: Rechnungen synchronisieren?
+        sync_bank_accounts: Bankkonten synchronisieren?
+        sync_transactions: Transaktionen synchronisieren?
+        last_sync_at: Zeitpunkt der letzten Synchronisation
+        is_active: Konfiguration aktiv?
+    """
+    __tablename__ = "sevdesk_config"
+    __table_args__ = (
+        Index("ix_sevdesk_config_is_active", "is_active"),
+    )
+
+    # Configuration Fields
+    api_token: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+        comment="SevDesk API Token (verschlüsselt mit Fernet)"
+    )
+    auto_sync_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        comment="Automatische tägliche Synchronisation aktiviert?"
+    )
+    sync_invoices: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        comment="Rechnungen synchronisieren?"
+    )
+    sync_bank_accounts: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        comment="Bankkonten synchronisieren?"
+    )
+    sync_transactions: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        comment="Transaktionen synchronisieren?"
+    )
+    last_sync_at: Mapped[DateTime | None] = mapped_column(
+        DateTime,
+        comment="Zeitpunkt der letzten erfolgreichen Synchronisation"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        comment="Konfiguration ist aktiv?"
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<SevDeskConfig(auto_sync={self.auto_sync_enabled}, "
+            f"last_sync={self.last_sync_at})>"
+        )
+
+
+class SevDeskInvoiceMapping(Base, UUIDMixin, TimestampMixin):
+    """
+    Mapping zwischen WorkmateOS Invoice und SevDesk Invoice.
+
+    Speichert die Zuordnung von lokalen Rechnungen zu SevDesk-Rechnungen
+    für bidirektionale Synchronisation.
+
+    Attributes:
+        invoice_id: WorkmateOS Invoice UUID
+        sevdesk_invoice_id: SevDesk Invoice ID (Integer)
+        last_synced_at: Zeitpunkt der letzten Synchronisation
+        sync_status: Status der letzten Synchronisation
+    """
+    __tablename__ = "sevdesk_invoice_mappings"
+    __table_args__ = (
+        Index("ix_sevdesk_invoice_mappings_invoice_id", "invoice_id"),
+        Index("ix_sevdesk_invoice_mappings_sevdesk_id", "sevdesk_invoice_id"),
+    )
+
+    # Foreign Keys
+    invoice_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("invoices.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        comment="WorkmateOS Invoice ID"
+    )
+
+    # Mapping Fields
+    sevdesk_invoice_id: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+        comment="SevDesk Invoice ID"
+    )
+    last_synced_at: Mapped[DateTime | None] = mapped_column(
+        DateTime,
+        comment="Zeitpunkt der letzten Synchronisation"
+    )
+    sync_status: Mapped[str] = mapped_column(
+        String(50),
+        default=SevDeskSyncStatus.SUCCESS.value,
+        comment="Status der letzten Synchronisation"
+    )
+    sync_error: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Fehlermeldung bei fehlgeschlagener Synchronisation"
+    )
+
+    # Relationships
+    invoice: Mapped["Invoice"] = relationship(
+        "Invoice",
+        foreign_keys=[invoice_id]
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<SevDeskInvoiceMapping(invoice_id={self.invoice_id}, "
+            f"sevdesk_id={self.sevdesk_invoice_id})>"
+        )
+
+
+class SevDeskBankAccountMapping(Base, UUIDMixin, TimestampMixin):
+    """
+    Mapping zwischen WorkmateOS BankAccount und SevDesk CheckAccount.
+
+    Speichert die Zuordnung von lokalen Bankkonten zu SevDesk-CheckAccounts
+    für bidirektionale Synchronisation.
+
+    Attributes:
+        bank_account_id: WorkmateOS BankAccount UUID
+        sevdesk_check_account_id: SevDesk CheckAccount ID (Integer)
+        last_synced_at: Zeitpunkt der letzten Synchronisation
+        sync_status: Status der letzten Synchronisation
+    """
+    __tablename__ = "sevdesk_bank_account_mappings"
+    __table_args__ = (
+        Index("ix_sevdesk_bank_account_mappings_bank_account_id", "bank_account_id"),
+        Index("ix_sevdesk_bank_account_mappings_sevdesk_id", "sevdesk_check_account_id"),
+    )
+
+    # Foreign Keys
+    bank_account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("bank_accounts.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        comment="WorkmateOS BankAccount ID"
+    )
+
+    # Mapping Fields
+    sevdesk_check_account_id: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+        comment="SevDesk CheckAccount ID"
+    )
+    last_synced_at: Mapped[DateTime | None] = mapped_column(
+        DateTime,
+        comment="Zeitpunkt der letzten Synchronisation"
+    )
+    sync_status: Mapped[str] = mapped_column(
+        String(50),
+        default=SevDeskSyncStatus.SUCCESS.value,
+        comment="Status der letzten Synchronisation"
+    )
+    sync_error: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Fehlermeldung bei fehlgeschlagener Synchronisation"
+    )
+
+    # Relationships
+    bank_account: Mapped["BankAccount"] = relationship(
+        "BankAccount",
+        foreign_keys=[bank_account_id]
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<SevDeskBankAccountMapping(bank_account_id={self.bank_account_id}, "
+            f"sevdesk_id={self.sevdesk_check_account_id})>"
+        )
+
+
+class SevDeskSyncHistory(Base, UUIDMixin, TimestampMixin):
+    """
+    Synchronisations-Historie für SevDesk.
+
+    Protokolliert alle Synchronisations-Vorgänge für Audit-Trail
+    und Fehleranalyse.
+
+    Attributes:
+        sync_type: Typ der Synchronisation (invoice, bank_account, transaction)
+        direction: Richtung (push_to_sevdesk, pull_from_sevdesk)
+        status: Status (success, failed, partial)
+        records_processed: Anzahl verarbeiteter Datensätze
+        records_success: Anzahl erfolgreich synchronisierter Datensätze
+        records_failed: Anzahl fehlgeschlagener Datensätze
+        error_message: Fehlermeldung bei fehlgeschlagener Synchronisation
+        started_at: Startzeitpunkt
+        completed_at: Endzeitpunkt
+    """
+    __tablename__ = "sevdesk_sync_history"
+    __table_args__ = (
+        Index("ix_sevdesk_sync_history_sync_type", "sync_type"),
+        Index("ix_sevdesk_sync_history_status", "status"),
+        Index("ix_sevdesk_sync_history_started_at", "started_at"),
+    )
+
+    # Sync Fields
+    sync_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        comment="Typ: invoice, bank_account, transaction, payment"
+    )
+    direction: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        comment="Richtung: push_to_sevdesk, pull_from_sevdesk"
+    )
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        comment="Status: success, failed, partial"
+    )
+    records_processed: Mapped[int] = mapped_column(
+        default=0,
+        comment="Anzahl verarbeiteter Datensätze"
+    )
+    records_success: Mapped[int] = mapped_column(
+        default=0,
+        comment="Anzahl erfolgreich synchronisierter Datensätze"
+    )
+    records_failed: Mapped[int] = mapped_column(
+        default=0,
+        comment="Anzahl fehlgeschlagener Datensätze"
+    )
+    error_message: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Fehlermeldung"
+    )
+    started_at: Mapped[DateTime] = mapped_column(
+        DateTime,
+        nullable=False,
+        comment="Startzeitpunkt"
+    )
+    completed_at: Mapped[DateTime | None] = mapped_column(
+        DateTime,
+        comment="Endzeitpunkt"
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<SevDeskSyncHistory(type={self.sync_type}, "
+            f"direction={self.direction}, "
+            f"status={self.status}, "
+            f"success={self.records_success}/{self.records_processed})>"
+        )
+
+
+# ============================================================================
+# Stripe Payment Integration
+# ============================================================================
+
+
+class StripeConfig(UUIDMixin, TimestampMixin, Base):
+    """
+    Stripe API Configuration
+    Stores API keys for Stripe payment processing
+    """
+    __tablename__ = "stripe_config"
+
+    publishable_key: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        comment="Stripe Publishable Key (pk_test_... or pk_live_...)"
+    )
+    secret_key: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        comment="Stripe Secret Key (ENCRYPTED: sk_test_... or sk_live_...)"
+    )
+    webhook_secret: Mapped[str | None] = mapped_column(
+        String(255),
+        comment="Webhook Signing Secret (whsec_...)"
+    )
+    test_mode: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        comment="Test Mode (true) or Live Mode (false)"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        comment="Config aktiv/inaktiv"
+    )
+
+    def __repr__(self) -> str:
+        mode = "TEST" if self.test_mode else "LIVE"
+        status = "ACTIVE" if self.is_active else "INACTIVE"
+        return f"<StripeConfig(mode={mode}, status={status})>"

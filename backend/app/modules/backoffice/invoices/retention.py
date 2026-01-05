@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 
 from app.modules.backoffice.invoices.models import Invoice
-from app.modules.backoffice.invoices.audit import log_audit_event
+from app.modules.backoffice.invoices.audit import log_audit
 
 logger = logging.getLogger(__name__)
 
@@ -185,20 +185,23 @@ def hard_delete_expired_invoices(
 
                     # AUDIT LOG (before deletion)
                     try:
-                        log_audit_event(
+                        log_audit(
                             db=db,
-                            invoice_id=invoice_id,
-                            event_type="invoice_hard_deleted_retention",
-                            user_id="system_retention_policy",
-                            ip_address="127.0.0.1",
-                            changes={
-                                "action": "hard_delete",
-                                "reason": "retention_policy",
+                            entity_type="Invoice",
+                            entity_id=invoice_id,
+                            action="delete",
+                            old_values={
                                 "invoice_number": invoice_number,
                                 "deleted_at": deleted_at.isoformat() if deleted_at else None,
-                                "retention_years": RETENTION_PERIOD_YEARS,
                             },
-                            reason=f"Automatisches Löschen nach {RETENTION_PERIOD_YEARS} Jahren (§ 147 AO)"
+                            new_values={
+                                "hard_deleted": True,
+                                "reason": "retention_policy",
+                                "retention_years": RETENTION_PERIOD_YEARS,
+                                "note": f"Automatisches Löschen nach {RETENTION_PERIOD_YEARS} Jahren (§ 147 AO)"
+                            },
+                            user_id="system_retention_policy",
+                            ip_address="127.0.0.1"
                         )
                     except Exception as audit_error:
                         logger.warning(f"Audit logging failed: {audit_error}")

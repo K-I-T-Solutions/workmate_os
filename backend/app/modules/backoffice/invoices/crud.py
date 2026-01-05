@@ -13,6 +13,7 @@ CHANGES:
 - ✅ Filter support (status, customer_id, date_range)
 - ✅ Automatische Nummernkreise pro Dokumenttyp & Jahr
 """
+import logging
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 from decimal import Decimal
@@ -25,6 +26,9 @@ import hashlib
 from fastapi import HTTPException
 
 from app.modules.backoffice.invoices import models, schemas
+from app.core.errors import ErrorCode, get_error_detail
+
+logger = logging.getLogger(__name__)
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices.audit import (
     log_invoice_creation,
@@ -53,7 +57,10 @@ def _validate_customer_exists(db: Session, customer_id: uuid.UUID) -> Customer:
     """Prüft ob Customer existiert."""
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer:
-        raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error_detail(ErrorCode.INVOICE_CUSTOMER_NOT_FOUND, customer_id=str(customer_id))
+        )
     return customer
 
 
@@ -63,7 +70,10 @@ def _validate_project_exists(db: Session, project_id: uuid.UUID) -> Optional[Pro
         return None
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error_detail(ErrorCode.INVOICE_PROJECT_NOT_FOUND, project_id=str(project_id))
+        )
     return project
 
 
@@ -81,7 +91,7 @@ def _validate_invoice_number_unique(
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"Invoice number '{invoice_number}' already exists",
+            detail=get_error_detail(ErrorCode.INVOICE_NUMBER_EXISTS, invoice_number=invoice_number),
         )
 
 
@@ -171,11 +181,14 @@ def _generate_next_number(
             else:
                 raise HTTPException(
                     status_code=500,
-                    detail="Failed to generate invoice number after multiple retries"
+                    detail=get_error_detail(ErrorCode.INVOICE_GENERATION_FAILED)
                 )
 
     # Should never reach here
-    raise HTTPException(status_code=500, detail="Unexpected error generating invoice number")
+    raise HTTPException(
+        status_code=500,
+        detail=get_error_detail(ErrorCode.INVOICE_GENERATION_FAILED)
+    )
 
 
 def _generate_invoice_number(
@@ -415,7 +428,7 @@ def create_invoice(
             log_invoice_creation(db, invoice, user_id=user_id, ip_address=ip_address)
             db.commit()
         except Exception as audit_error:
-            print(f"⚠️ Audit logging failed: {audit_error}")
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
 
         # 9. PDF generieren (optional)
         if generate_pdf:
@@ -424,7 +437,7 @@ def create_invoice(
                 invoice.pdf_path = pdf_path
                 db.commit()
             except Exception as e:
-                print(f"⚠️ PDF generation failed: {e}")
+                logger.warning("⚠️ PDF generation failed: %s", e)
                 # Invoice bleibt bestehen, nur PDF fehlt
 
         return invoice
@@ -434,7 +447,11 @@ def create_invoice(
         raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(e)}")
+        logger.error("Failed to create invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
 
 
 def _calculate_checksum(content: bytes) -> str:
@@ -565,7 +582,7 @@ def update_invoice(
             log_invoice_update(db, invoice, old_invoice_data, user_id=user_id, ip_address=ip_address)
             db.commit()
         except Exception as audit_error:
-            print(f"⚠️ Audit logging failed: {audit_error}")
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
 
         # Regenerate PDF if line_items were updated
         if new_line_items is not None:
@@ -578,7 +595,7 @@ def update_invoice(
                 db.refresh(invoice)
             except Exception as pdf_error:
                 # PDF generation error should not fail the update
-                print(f"Warning: PDF generation failed: {pdf_error}")
+                logger.warning("Warning: PDF generation failed: %s", pdf_error)
 
         return invoice
 
@@ -587,7 +604,11 @@ def update_invoice(
         raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update invoice: {str(e)}")
+        logger.error("Failed to update invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
 
 
 def _set_invoice_status_internal(
@@ -633,7 +654,7 @@ def _set_invoice_status_internal(
         try:
             log_invoice_status_change(db, invoice, old_status, new_status, user_id=user_id, ip_address=ip_address)
         except Exception as audit_error:
-            print(f"⚠️ Audit logging failed: {audit_error}")
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
 
 
 def update_invoice_status(
@@ -673,7 +694,11 @@ def update_invoice_status(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update status: {str(e)}")
+        logger.error("Failed to update status: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
 
 
 def update_invoice_status_from_payments(
@@ -782,7 +807,7 @@ def delete_invoice(
                     if storage.exists(invoice.pdf_path):
                         storage.delete(invoice.pdf_path)
                 except Exception as e:
-                    print(f"⚠️ Failed to delete PDF from storage: {e}")
+                    logger.warning("⚠️ Failed to delete PDF from storage: %s", e)
 
             db.delete(invoice)
             db.commit()
@@ -798,7 +823,7 @@ def delete_invoice(
             log_invoice_deletion(db, invoice, user_id=user_id, ip_address=ip_address)
             db.commit()
         except Exception as audit_error:
-            print(f"⚠️ Audit logging failed: {audit_error}")
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
 
         return True
 
@@ -807,7 +832,11 @@ def delete_invoice(
         raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete invoice: {str(e)}")
+        logger.error("Failed to delete invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
 
 
 def restore_invoice(
@@ -839,13 +868,13 @@ def restore_invoice(
     if not invoice:
         raise HTTPException(
             status_code=404,
-            detail=f"Invoice {invoice_id} not found"
+            detail=get_error_detail(ErrorCode.INVOICE_NOT_FOUND, invoice_id=str(invoice_id))
         )
 
     if not invoice.deleted_at:
         raise HTTPException(
             status_code=400,
-            detail=f"Invoice {invoice_id} is not deleted and cannot be restored"
+            detail=get_error_detail(ErrorCode.INVOICE_NOT_DELETED, invoice_id=str(invoice_id))
         )
 
     try:
@@ -856,23 +885,26 @@ def restore_invoice(
 
         # AUDIT LOG
         try:
-            from app.modules.backoffice.invoices.audit import log_audit_event
-            log_audit_event(
+            from app.modules.backoffice.invoices.audit import log_audit
+            log_audit(
                 db=db,
-                invoice_id=invoice.id,
-                event_type="invoice_restored",
-                user_id=user_id,
-                ip_address=ip_address,
-                changes={
-                    "action": "restore",
-                    "invoice_number": invoice.invoice_number,
-                    "restored_at": datetime.utcnow().isoformat(),
+                entity_type="Invoice",
+                entity_id=invoice.id,
+                action="update",
+                old_values={
+                    "deleted_at": invoice.deleted_at.isoformat() if invoice.deleted_at else None,
                 },
-                reason="Invoice wurde wiederhergestellt"
+                new_values={
+                    "deleted_at": None,
+                    "restored_at": datetime.utcnow().isoformat(),
+                    "note": "Invoice wurde wiederhergestellt"
+                },
+                user_id=user_id,
+                ip_address=ip_address
             )
             db.commit()
         except Exception as audit_error:
-            print(f"⚠️ Audit logging failed: {audit_error}")
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
 
         return invoice
 
@@ -881,7 +913,11 @@ def restore_invoice(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to restore invoice: {str(e)}")
+        logger.error("Failed to restore invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
 
 
 # ============================================================================

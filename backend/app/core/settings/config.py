@@ -37,6 +37,17 @@ class Settings(BaseSettings):
     # Internal URL for backend-to-zitadel communication (Docker network)
     ZITADEL_INTERNAL_URL: str = os.getenv("ZITADEL_INTERNAL_URL", "http://zitadel:8080")
 
+    # JWT Authentication
+    JWT_SECRET_KEY: str = os.getenv(
+        "JWT_SECRET_KEY",
+        "CHANGE-THIS-IN-PRODUCTION-USE-RANDOM-256BIT-KEY"  # Fallback for dev
+    )
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # PSD2/Banking Configuration
+    PSD2_ENVIRONMENT: str = os.getenv("PSD2_ENVIRONMENT", "sandbox")  # "sandbox" or "production"
+
     # Keycloak (deprecated - wird durch Zitadel ersetzt)
     KEYCLOAK_URL: str | None = None
     KEYCLOAK_REALM: str = "kit"

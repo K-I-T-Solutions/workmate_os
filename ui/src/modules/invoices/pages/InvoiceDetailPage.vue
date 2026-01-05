@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useInvoices } from '../composables/useInvoices';
+import { useSevDesk, useStripe } from '@/modules/finance/composables';
 import type { InvoiceStatus, Payment, PaymentMethod, PaymentCreateRequest, PaymentUpdateRequest } from '../types';
 import { apiClient } from '@/services/api/client';
 import { useAppManager } from '@/layouts/app-manager/useAppManager';
@@ -19,7 +20,8 @@ import {
   AlertCircle,
   Clock,
   FileText,
-  X
+  X,
+  Upload
 } from 'lucide-vue-next';
 
 // Props
@@ -45,6 +47,19 @@ const {
   openPdf,
 } = useInvoices();
 const { openWindow } = useAppManager();
+const {
+  isConfigured: isSevDeskConfigured,
+  syncing: sevdeskSyncing,
+  syncInvoice: sevdeskSyncInvoice,
+  fetchConfig: sevdeskFetchConfig,
+} = useSevDesk();
+
+const {
+  isConfigured: isStripeConfigured,
+  processing: stripeProcessing,
+  createPaymentLink,
+  fetchConfig: stripeFetchConfig,
+} = useStripe();
 
 // State
 const showDeleteConfirm = ref(false);
@@ -53,6 +68,10 @@ const showPaymentModal = ref(false);
 const editingPayment = ref<Payment | null>(null);
 const paymentLoading = ref(false);
 const paymentError = ref<string | null>(null);
+const sevdeskSyncSuccess = ref<string | null>(null);
+const sevdeskSyncError = ref<string | null>(null);
+const stripePaymentSuccess = ref<string | null>(null);
+const stripePaymentError = ref<string | null>(null);
 
 // Payment Form State
 const paymentForm = ref<PaymentCreateRequest>({
@@ -75,8 +94,22 @@ const paymentMethods: { value: PaymentMethod; label: string }[] = [
 ];
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadInvoice(props.invoiceId);
+  // Load SevDesk config to check if it's configured
+  try {
+    await sevdeskFetchConfig();
+  } catch (e) {
+    // Ignore errors, just means not configured
+    console.log('SevDesk not configured');
+  }
+  // Load Stripe config to check if it's configured
+  try {
+    await stripeFetchConfig();
+  } catch (e) {
+    // Ignore errors, just means not configured
+    console.log('Stripe not configured');
+  }
 });
 
 // Computed
@@ -108,6 +141,55 @@ function handleDownloadPdf() {
 function handleOpenPdf() {
   if (!invoice.value) return;
   openPdf(invoice.value.id, invoice.value.invoice_number);
+}
+
+// SevDesk Sync
+async function handleSyncToSevDesk() {
+  if (!invoice.value) return;
+
+  sevdeskSyncSuccess.value = null;
+  sevdeskSyncError.value = null;
+
+  try {
+    const result = await sevdeskSyncInvoice(invoice.value.id);
+    if (result.success) {
+      sevdeskSyncSuccess.value = result.message || 'Rechnung erfolgreich zu SevDesk synchronisiert';
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        sevdeskSyncSuccess.value = null;
+      }, 5000);
+    } else {
+      sevdeskSyncError.value = result.message || 'Synchronisation fehlgeschlagen';
+    }
+  } catch (e: any) {
+    sevdeskSyncError.value = e.message || 'Fehler beim Synchronisieren zu SevDesk';
+  }
+}
+
+// Stripe Payment
+async function handleStripePayment() {
+  if (!invoice.value) return;
+
+  stripePaymentSuccess.value = null;
+  stripePaymentError.value = null;
+
+  try {
+    const result = await createPaymentLink(invoice.value.id);
+
+    if (result.success) {
+      // Öffne Stripe Checkout in neuem Tab
+      window.open(result.payment_url, '_blank');
+
+      stripePaymentSuccess.value = `Payment Link erstellt für ${formatCurrency(result.amount)}. Checkout-Seite wurde geöffnet.`;
+
+      // Auto-hide success message after 10 seconds
+      setTimeout(() => {
+        stripePaymentSuccess.value = null;
+      }, 10000);
+    }
+  } catch (e: any) {
+    stripePaymentError.value = e.message || 'Fehler beim Erstellen des Payment Links';
+  }
 }
 
 // Cross-App Navigation
@@ -264,6 +346,22 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
 
 <template>
   <div class="h-full flex flex-col gap-4 p-4">
+    <!-- SevDesk Sync Messages -->
+    <div v-if="sevdeskSyncSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30">
+      {{ sevdeskSyncSuccess }}
+    </div>
+    <div v-if="sevdeskSyncError" class="p-4 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30">
+      {{ sevdeskSyncError }}
+    </div>
+
+    <!-- Stripe Payment Messages -->
+    <div v-if="stripePaymentSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30">
+      {{ stripePaymentSuccess }}
+    </div>
+    <div v-if="stripePaymentError" class="p-4 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30">
+      {{ stripePaymentError }}
+    </div>
+
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -289,6 +387,36 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         </button>
         <button @click="handleOpenPdf" class="kit-btn-ghost" title="PDF öffnen">
           <ExternalLink :size="18" />
+        </button>
+        <button
+          v-if="invoice.status === 'draft'"
+          @click="handleStatusChange('sent')"
+          :disabled="statusLoading"
+          class="kit-btn-primary"
+          title="Rechnung als versendet markieren"
+        >
+          <CheckCircle :size="18" />
+          {{ statusLoading ? 'Sende...' : 'Als versendet markieren' }}
+        </button>
+        <button
+          v-if="isSevDeskConfigured"
+          @click="handleSyncToSevDesk"
+          :disabled="sevdeskSyncing"
+          class="kit-btn-ghost"
+          title="Zu SevDesk synchronisieren"
+        >
+          <Upload :size="18" />
+          {{ sevdeskSyncing ? 'Sync...' : 'SevDesk' }}
+        </button>
+        <button
+          v-if="isStripeConfigured && invoice.status !== 'paid' && invoice.status !== 'draft'"
+          @click="handleStripePayment"
+          :disabled="stripeProcessing"
+          class="kit-btn-primary"
+          title="Mit Stripe bezahlen"
+        >
+          <CreditCard :size="18" />
+          {{ stripeProcessing ? 'Erstelle...' : 'Stripe Zahlung' }}
         </button>
         <button @click="emit('edit', invoice.id)" class="kit-btn-secondary">
           <Edit :size="18" />

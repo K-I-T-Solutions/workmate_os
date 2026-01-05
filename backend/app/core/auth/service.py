@@ -4,6 +4,7 @@ Handles password-based authentication, JWT tokens, and sessions
 """
 from datetime import datetime, timedelta
 from typing import Optional
+import logging
 import bcrypt
 from jwt import encode as jwt_encode, decode as jwt_decode, ExpiredSignatureError, InvalidTokenError
 from sqlalchemy.orm import Session
@@ -11,11 +12,14 @@ from sqlalchemy import select
 
 from app.modules.employees.models import Employee, Role
 from app.core.settings.database import get_db
+from app.core.settings.config import settings
 
-# JWT Configuration
-SECRET_KEY = "your-secret-key-change-this-in-production"  # TODO: Move to environment variable
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+logger = logging.getLogger(__name__)
+
+# JWT Configuration (from environment)
+SECRET_KEY = settings.JWT_SECRET_KEY
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 class AuthService:
@@ -151,5 +155,5 @@ class AuthService:
             return True
         except Exception as e:
             db.rollback()
-            print(f"Error setting password: {e}")
+            logger.error("Error setting password: %s", e)
             return False

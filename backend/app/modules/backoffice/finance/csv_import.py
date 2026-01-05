@@ -57,6 +57,15 @@ FIELD_MAPPINGS = {
         "reference": ["Mandatsreferenz", "Referenz"],
         "iban": ["Kontonummer/IBAN", "IBAN"],
     },
+    BankFormat.ING: {
+        "date": ["Buchungstag"],
+        "value_date": ["Valuta"],
+        "amount": ["Betrag"],
+        "counterparty_payer": ["Auftraggeber/Zahlungsempfänger"],  # Für Gutschriften
+        "counterparty_payee": ["Empfänger/Zahlungspflichtiger"],   # Für Belastungen
+        "purpose": ["Vorgang/Verwendungszweck"],
+        "reference": ["Zusatzinfo (optional)", "Zusatzinfo"],
+    },
     BankFormat.GENERIC: {
         "date": ["Date", "Datum", "Buchungstag", "Valutadatum", "Transaction Date"],
         "amount": ["Amount", "Betrag", "Umsatz"],
@@ -97,8 +106,11 @@ def detect_bank_format(headers: List[str]) -> BankFormat:
     if any("commerzbank" in h for h in headers_lower):
         return BankFormat.COMMERZBANK
 
-    # ING detection
-    if any("ing" in h for h in headers_lower) or any("diba" in h for h in headers_lower):
+    # ING detection (Lexware format)
+    if (any("auftraggeber/zahlungsempfänger" in h for h in headers_lower) or
+        any("empfänger/zahlungspflichtiger" in h for h in headers_lower) or
+        any("ing" in h for h in headers_lower) or
+        any("diba" in h for h in headers_lower)):
         return BankFormat.ING
 
     # Default to generic
@@ -290,8 +302,19 @@ def parse_csv_file(
         # Find column mappings
         date_col = find_column(headers, field_mapping["date"])
         amount_col = find_column(headers, field_mapping["amount"])
-        counterparty_col = find_column(headers, field_mapping["counterparty"])
-        purpose_col = find_column(headers, field_mapping["purpose"])
+        value_date_col = find_column(headers, field_mapping.get("value_date", []))
+
+        # ING has separate payer/payee columns
+        if bank_format == BankFormat.ING:
+            counterparty_payer_col = find_column(headers, field_mapping.get("counterparty_payer", []))
+            counterparty_payee_col = find_column(headers, field_mapping.get("counterparty_payee", []))
+            counterparty_col = None
+        else:
+            counterparty_col = find_column(headers, field_mapping.get("counterparty", []))
+            counterparty_payer_col = None
+            counterparty_payee_col = None
+
+        purpose_col = find_column(headers, field_mapping.get("purpose", []))
         reference_col = find_column(headers, field_mapping.get("reference", []))
         iban_col = find_column(headers, field_mapping.get("iban", []))
 
@@ -319,10 +342,25 @@ def parse_csv_file(
                     continue
 
                 # Extract other fields
-                counterparty_name = row.get(counterparty_col, "").strip() if counterparty_col else None
+                # For ING: Choose counterparty column based on amount sign
+                if bank_format == BankFormat.ING:
+                    if amount >= 0:  # Gutschrift: Auftraggeber/Zahlungsempfänger
+                        counterparty_name = row.get(counterparty_payer_col, "").strip() if counterparty_payer_col else None
+                    else:  # Belastung: Empfänger/Zahlungspflichtiger
+                        counterparty_name = row.get(counterparty_payee_col, "").strip() if counterparty_payee_col else None
+                else:
+                    counterparty_name = row.get(counterparty_col, "").strip() if counterparty_col else None
+
                 purpose = row.get(purpose_col, "").strip() if purpose_col else None
                 reference = row.get(reference_col, "").strip() if reference_col else None
                 counterparty_iban = row.get(iban_col, "").strip() if iban_col else None
+
+                # Parse value_date if available (for ING)
+                value_date = transaction_date
+                if value_date_col:
+                    parsed_value_date = parse_date(row.get(value_date_col, ""))
+                    if parsed_value_date:
+                        value_date = parsed_value_date
 
                 # Detect transaction type
                 transaction_type = detect_transaction_type(amount, purpose)
@@ -331,7 +369,7 @@ def parse_csv_file(
                 transaction = BankTransactionCreate(
                     account_id=account_id,
                     transaction_date=transaction_date,
-                    value_date=transaction_date,  # Use same date if not provided
+                    value_date=value_date,
                     amount=amount,
                     transaction_type=transaction_type,
                     counterparty_name=counterparty_name[:255] if counterparty_name else None,

@@ -7,7 +7,8 @@ from datetime import datetime
 
 from backend.app.core.auth.auth import get_current_user
 from backend.app.core.settings.database import get_db, SessionLocal
-from app
+from app.core.audit.audit import AuditLog
+from app.core.errors import ErrorCode, get_error_detail
 
 # 🔁 Rollen-Aliases
 ROLE_ALIASES = {
@@ -43,7 +44,7 @@ def require_roles(allowed_roles: Union[str, List[str]]):
             if user is None:
                 raise HTTPException(
                     status_code=500,
-                    detail="Missing 'user' in route — please include user: dict = Depends(get_current_user)",
+                    detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
                 )
 
             # Rolle aus Abteilung oder Keycloak-Rollen bestimmen
@@ -88,7 +89,7 @@ def require_roles(allowed_roles: Union[str, List[str]]):
 
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Access denied. Allowed: {allowed_normalized} | Your roles: {normalized_user_roles or normalized_user_role}",
+                    detail=get_error_detail(ErrorCode.AUTH_INSUFFICIENT_PERMISSIONS),
                 )
 
             # ✅ Zugriff erlaubt → weiter

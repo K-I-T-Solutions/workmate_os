@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, 
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
+from app.core.settings.config import settings
+from app.core.errors import ErrorCode, get_error_detail
 from .models import ExpenseCategory, ReconciliationStatus
 from .schemas import (
     ExpenseCreate,
@@ -32,6 +34,20 @@ from .schemas import (
     FinTsAccountSyncResponse,
     FinTsBalanceRequest,
     FinTsBalanceResponse,
+)
+from .psd2_integration import (
+    PSD2Credentials,
+    PSD2ConsentRequest,
+    PSD2ConsentResponse,
+    PSD2TokenRequest,
+    PSD2TokenResponse,
+    initiate_consent,
+    request_application_access_token,
+    exchange_authorization_code,
+    get_accounts as psd2_get_accounts,
+    get_transactions as psd2_get_transactions,
+    convert_psd2_account_to_bank_account,
+    convert_psd2_transaction_to_bank_transaction,
 )
 from .crud import (
     create_expense,
@@ -125,7 +141,7 @@ def get_expense_endpoint(
     if not expense:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found",
+            detail=get_error_detail(ErrorCode.EXPENSE_NOT_FOUND),
         )
     return expense
 
@@ -143,7 +159,7 @@ def update_expense_endpoint(
     if not expense:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found",
+            detail=get_error_detail(ErrorCode.EXPENSE_NOT_FOUND),
         )
     updated = update_expense(db, expense, payload)
     return updated
@@ -159,7 +175,10 @@ def delete_expense_endpoint(
 ):
     expense = get_expense(db,expense_id)
     if not expense:
-        raise HTTPException(404, "Expense not found") #✔️ KORREKT
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=get_error_detail(ErrorCode.EXPENSE_NOT_FOUND),
+        )
     delete_expense(db, expense)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -246,7 +265,7 @@ def get_bank_account_endpoint(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bank account not found",
+            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
         )
     return account
 
@@ -265,7 +284,7 @@ def update_bank_account_endpoint(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bank account not found",
+            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
         )
     updated = update_bank_account(db, account, payload)
     return updated
@@ -284,7 +303,7 @@ def delete_bank_account_endpoint(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bank account not found"
+            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
         )
     delete_bank_account(db, account)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -314,7 +333,7 @@ def create_bank_transaction_endpoint(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bank account not found",
+            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
         )
 
     transaction = create_bank_transaction(db, payload)
@@ -368,7 +387,7 @@ def get_bank_transaction_endpoint(
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found",
+            detail=get_error_detail(ErrorCode.TRANSACTION_NOT_FOUND),
         )
     return transaction
 
@@ -387,7 +406,7 @@ def update_bank_transaction_endpoint(
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found",
+            detail=get_error_detail(ErrorCode.TRANSACTION_NOT_FOUND),
         )
     updated = update_bank_transaction(db, transaction, payload)
     return updated
@@ -411,7 +430,7 @@ def delete_bank_transaction_endpoint(
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found"
+            detail=get_error_detail(ErrorCode.TRANSACTION_NOT_FOUND),
         )
     delete_bank_transaction(db, transaction)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -444,13 +463,13 @@ def reconcile_transaction_endpoint(
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found",
+            detail=get_error_detail(ErrorCode.TRANSACTION_NOT_FOUND),
         )
 
     if not payload.payment_id and not payload.expense_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either payment_id or expense_id must be provided",
+            detail=get_error_detail(ErrorCode.TRANSACTION_LINK_INVALID),
         )
 
     # TODO: Add user_id from auth context
@@ -485,7 +504,7 @@ def unreconcile_transaction_endpoint(
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found",
+            detail=get_error_detail(ErrorCode.TRANSACTION_NOT_FOUND),
         )
 
     unreconciled = unreconcile_transaction(db, transaction)
@@ -522,7 +541,7 @@ def auto_reconcile_single_transaction_endpoint(
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found",
+            detail=get_error_detail(ErrorCode.TRANSACTION_NOT_FOUND),
         )
 
     success = auto_reconcile_transaction(db, transaction)
@@ -530,7 +549,7 @@ def auto_reconcile_single_transaction_endpoint(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No matching invoice found with sufficient confidence (>90%)",
+            detail=get_error_detail(ErrorCode.TRANSACTION_NO_MATCH),
         )
 
     # Refresh to get updated data
@@ -579,7 +598,7 @@ def auto_reconcile_all_transactions_endpoint(
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Bank account not found",
+                detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
             )
 
     stats = auto_reconcile_all_unmatched(db, str(account_id) if account_id else None)
@@ -625,7 +644,7 @@ def get_reconciliation_suggestions_endpoint(
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found",
+            detail=get_error_detail(ErrorCode.TRANSACTION_NOT_FOUND),
         )
 
     suggestions = get_reconciliation_suggestions(db, transaction, limit)
@@ -702,14 +721,14 @@ async def import_csv_transactions_endpoint(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bank account not found",
+            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
         )
 
     # Validate file type
     if not file.filename or not file.filename.endswith(('.csv', '.CSV')):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nur CSV-Dateien sind erlaubt",
+            detail=get_error_detail(ErrorCode.CSV_INVALID_FORMAT),
         )
 
     try:
@@ -728,7 +747,7 @@ async def import_csv_transactions_endpoint(
         if csv_content is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Konnte CSV-Datei nicht dekodieren. Unterstützte Encodings: UTF-8, Latin-1, Windows-1252",
+                detail=get_error_detail(ErrorCode.CSV_ENCODING_ERROR),
             )
 
         # Parse CSV
@@ -772,7 +791,7 @@ async def import_csv_transactions_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim CSV-Import: {str(e)}",
+            detail=get_error_detail(ErrorCode.CSV_IMPORT_FAILED, error=str(e)),
         )
 
 
@@ -825,13 +844,13 @@ def sync_fints_transactions_endpoint(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bank account not found",
+            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
         )
 
     if not account.iban:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bank account has no IBAN",
+            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NO_IBAN),
         )
 
     try:
@@ -860,7 +879,7 @@ def sync_fints_transactions_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"FinTS Sync Fehler: {str(e)}",
+            detail=get_error_detail(ErrorCode.FINTS_SYNC_FAILED, error=str(e)),
         )
 
 
@@ -914,7 +933,7 @@ def sync_fints_accounts_endpoint(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"FinTS Account Sync Fehler: {str(e)}",
+            detail=get_error_detail(ErrorCode.FINTS_SYNC_FAILED, error=str(e)),
         )
 
 
@@ -971,3 +990,316 @@ def check_fints_balance_endpoint(
             iban=payload.iban,
             error=str(e),
         )
+
+
+# ============================================================================
+# PSD2 OPEN BANKING API (ING)
+# ============================================================================
+
+@router.post("/psd2/consent/initiate", response_model=PSD2ConsentResponse)
+def initiate_psd2_consent(
+    payload: PSD2ConsentRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Initiiert PSD2 OAuth2 Consent Flow.
+
+    **Flow:**
+    1. Client ruft diesen Endpoint auf
+    2. Endpoint gibt authorization_url zurück
+    3. Client redirectet User zu authorization_url
+    4. User gibt Consent in ING App
+    5. ING redirectet zurück zu redirect_uri mit authorization_code
+    6. Client ruft /psd2/consent/callback mit authorization_code auf
+
+    **Hinweis:**
+    - Erfordert mTLS-Zertifikate (QWAC/QSealC)
+    - redirect_uri muss mit registrierter URI übereinstimmen
+
+    **Beispiel redirect_uri:**
+    - https://workmateOS.example.com/banking/callback
+    - http://localhost:5173/banking/callback (für Dev)
+    """
+    try:
+        credentials = PSD2Credentials(
+            client_id=payload.client_id,
+            environment=settings.PSD2_ENVIRONMENT,
+        )
+
+        consent_response = initiate_consent(
+            credentials=credentials,
+            redirect_uri=payload.redirect_uri,
+            scope=payload.scope,
+        )
+
+        return consent_response
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
+        )
+
+
+@router.post("/psd2/consent/callback", response_model=PSD2TokenResponse)
+def psd2_consent_callback(
+    payload: PSD2TokenRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Callback nach User-Consent.
+
+    Tauscht authorization_code gegen customer access_token.
+
+    **ING mTLS Flow:**
+    1. Request Application Access Token (mTLS-only)
+    2. Exchange authorization code with this token
+    3. Return Customer Access Token
+
+    **Parameter:**
+    - client_id: ING Client ID
+    - authorization_code: Code aus ING Redirect
+
+    **Returns:**
+    - access_token: Customer Access Token (gültig 15 min)
+    - refresh_token: Für Token-Refresh (gültig 30 Tage)
+
+    **Hinweis:**
+    - access_token muss sicher gespeichert werden
+    - Token ist personenbezogen
+    """
+    try:
+        credentials = PSD2Credentials(
+            client_id=payload.client_id,
+            environment=settings.PSD2_ENVIRONMENT,
+        )
+
+        # Step 1: Get Application Access Token via mTLS
+        app_token_response = request_application_access_token(credentials)
+        app_access_token = app_token_response["access_token"]
+
+        # Step 2: Exchange authorization code
+        token_response = exchange_authorization_code(
+            credentials=credentials,
+            authorization_code=payload.authorization_code,
+            application_access_token=app_access_token,
+        )
+
+        return token_response
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
+        )
+
+
+@router.post("/psd2/accounts/sync")
+def sync_psd2_accounts(
+    client_id: str,
+    access_token: str,
+    create_missing: bool = Query(default=True),
+    db: Session = Depends(get_db),
+):
+    """
+    Synct Konten von ING PSD2 API.
+
+    **Prerequisite:**
+    - User muss Consent gegeben haben (/psd2/consent/initiate)
+    - access_token muss valid sein
+
+    **Parameter:**
+    - client_id: ING Client ID
+    - access_token: OAuth2 Access Token
+    - create_missing: Neue Konten automatisch anlegen?
+
+    **Returns:**
+    - Liste der synchronisierten Konten
+    - Neu erstellte Konten werden markiert
+    """
+    try:
+        credentials = PSD2Credentials(
+            client_id=client_id,
+            environment=settings.PSD2_ENVIRONMENT,
+        )
+
+        # Get accounts from PSD2 API
+        psd2_accounts = psd2_get_accounts(
+            credentials=credentials,
+            access_token=access_token,
+        )
+
+        synced_accounts = []
+
+        for psd2_account in psd2_accounts:
+            # Check if account exists
+            existing_account = None
+            if psd2_account.iban:
+                from sqlalchemy import select
+                from .models import BankAccount
+                stmt = select(BankAccount).where(BankAccount.iban == psd2_account.iban)
+                existing_account = db.scalars(stmt).first()
+
+            if existing_account:
+                # Update existing account
+                account_data = convert_psd2_account_to_bank_account(psd2_account)
+                for key, value in account_data.items():
+                    if key not in ["id", "created_at", "updated_at"]:
+                        setattr(existing_account, key, value)
+                db.commit()
+                db.refresh(existing_account)
+
+                synced_accounts.append({
+                    "account": BankAccountRead.model_validate(existing_account),
+                    "created": False,
+                })
+
+            elif create_missing:
+                # Create new account
+                account_data = convert_psd2_account_to_bank_account(psd2_account)
+                new_account = create_bank_account(
+                    db,
+                    BankAccountCreate(**account_data)
+                )
+
+                synced_accounts.append({
+                    "account": new_account,
+                    "created": True,
+                })
+
+        return {
+            "success": True,
+            "accounts_synced": len(synced_accounts),
+            "accounts": synced_accounts,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
+        )
+
+
+@router.post("/psd2/transactions/sync")
+def sync_psd2_transactions(
+    client_id: str,
+    access_token: str,
+    account_id: uuid.UUID,
+    psd2_account_id: str,
+    date_from: Optional[str] = Query(default=None),
+    date_to: Optional[str] = Query(default=None),
+    skip_duplicates: bool = Query(default=True),
+    auto_reconcile: bool = Query(default=True),
+    db: Session = Depends(get_db),
+):
+    """
+    Synct Transaktionen von ING PSD2 API.
+
+    **Prerequisite:**
+    - User muss Consent gegeben haben
+    - access_token muss valid sein
+    - account_id muss existieren (WorkmateOS BankAccount)
+    - psd2_account_id ist der ING resource_id
+
+    **Parameter:**
+    - client_id: ING Client ID
+    - access_token: OAuth2 Access Token
+    - account_id: WorkmateOS BankAccount UUID
+    - psd2_account_id: ING Account Resource ID
+    - date_from: Start-Datum (YYYY-MM-DD)
+    - date_to: End-Datum (YYYY-MM-DD)
+    - skip_duplicates: Duplikate überspringen?
+    - auto_reconcile: Automatisches Reconciliation?
+
+    **Returns:**
+    - Anzahl importierter Transaktionen
+    - Anzahl übersprungener Duplikate
+    - Anzahl auto-reconciled Transaktionen
+    """
+    try:
+        credentials = PSD2Credentials(
+            client_id=client_id,
+            environment=settings.PSD2_ENVIRONMENT,
+        )
+
+        # Get transactions from PSD2 API
+        psd2_transactions = psd2_get_transactions(
+            credentials=credentials,
+            access_token=access_token,
+            account_id=psd2_account_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
+
+        imported_count = 0
+        skipped_count = 0
+        reconciled_count = 0
+
+        for psd2_txn in psd2_transactions:
+            # Check for duplicates
+            if skip_duplicates:
+                from sqlalchemy import select
+                from .models import BankTransaction
+                stmt = select(BankTransaction).where(
+                    BankTransaction.reference == psd2_txn.transaction_id
+                )
+                existing_txn = db.scalars(stmt).first()
+
+                if existing_txn:
+                    skipped_count += 1
+                    continue
+
+            # Convert and create transaction
+            txn_data = convert_psd2_transaction_to_bank_transaction(
+                psd2_txn,
+                account_id=account_id
+            )
+
+            new_txn = create_bank_transaction(
+                db,
+                BankTransactionCreate(**txn_data)
+            )
+            imported_count += 1
+
+            # Auto-reconciliation
+            if auto_reconcile:
+                try:
+                    result = auto_reconcile_transaction(db, new_txn.id)
+                    if result["reconciled"]:
+                        reconciled_count += 1
+                except Exception as reconcile_error:
+                    # Reconciliation failure should not stop import
+                    pass
+
+        return {
+            "success": True,
+            "imported": imported_count,
+            "skipped": skipped_count,
+            "auto_reconciled": reconciled_count,
+            "total_fetched": len(psd2_transactions),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
+        )
+
+
+# ============================================================================
+# SEVDESK INTEGRATION
+# ============================================================================
+
+from .sevdesk_router import router as sevdesk_router
+
+router.include_router(sevdesk_router)
+
+
+# ============================================================================
+# STRIPE PAYMENT INTEGRATION
+# ============================================================================
+
+from .stripe_router import router as stripe_router
+
+router.include_router(stripe_router)
+
