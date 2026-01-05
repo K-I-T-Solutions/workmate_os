@@ -1,3 +1,11 @@
+---
+layout: default
+title: Entities
+parent: Core
+grand_parent: Wiki
+nav_order: 3
+---
+
 # 📦 Core Entities
 
 Das Core-System besteht aus folgenden zentralen Entitäten:

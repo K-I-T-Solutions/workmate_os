@@ -106,9 +106,9 @@ function formatDate(dateString: string): string {
 </script>
 
 <template>
-  <div class="expenses-dashboard h-full overflow-y-auto p-6 space-y-6">
+  <div class="expenses-dashboard h-full overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div>
         <h1 class="text-2xl font-semibold text-white">Ausgaben Dashboard</h1>
         <p class="text-sm text-white/60 mt-1">
@@ -131,7 +131,7 @@ function formatDate(dateString: string): string {
 
     <template v-else>
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <!-- Total Expenses -->
         <div
           class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
@@ -289,3 +289,22 @@ function formatDate(dateString: string): string {
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .p-4 {
+    padding: 0.75rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .space-y-4 {
+    gap: 0.5rem;
+  }
+}
+</style>

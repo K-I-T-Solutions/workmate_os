@@ -181,9 +181,9 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div class="flex items-center gap-3">
         <button @click="emit('back')" class="kit-btn-ghost">
           <ChevronLeft :size="18" />
@@ -191,11 +191,11 @@ async function handleSubmit() {
         <h1 class="text-2xl font-bold text-white">{{ pageTitle }}</h1>
       </div>
 
-      <div class="flex gap-2">
-        <button @click="emit('back')" class="kit-btn-ghost" :disabled="saving">
+      <div class="flex gap-2 w-full sm:w-auto">
+        <button @click="emit('back')" class="kit-btn-ghost flex-1 sm:flex-none" :disabled="saving">
           Abbrechen
         </button>
-        <button @click="handleSubmit" class="kit-btn-primary" :disabled="saving">
+        <button @click="handleSubmit" class="kit-btn-primary flex-1 sm:flex-none" :disabled="saving">
           <Loader2 v-if="saving" :size="18" class="animate-spin" />
           <Save v-else :size="18" />
           Speichern
@@ -208,9 +208,9 @@ async function handleSubmit() {
       <!-- Section 1: Allgemeine Informationen -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Allgemeine Informationen</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- Titel -->
-          <div class="md:col-span-2">
+          <div class="sm:col-span-2">
             <label class="kit-label">Titel *</label>
             <input
               v-model="formData.title"
@@ -267,7 +267,7 @@ async function handleSubmit() {
           </div>
 
           <!-- Beschreibung -->
-          <div class="md:col-span-2">
+          <div class="sm:col-span-2">
             <label class="kit-label">Beschreibung</label>
             <textarea
               v-model="formData.description"
@@ -282,7 +282,7 @@ async function handleSubmit() {
       <!-- Section 2: Zeitplanung -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Zeitplanung</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <!-- Startdatum -->
           <div>
             <label class="kit-label">Startdatum</label>
@@ -320,7 +320,7 @@ async function handleSubmit() {
       <!-- Section 3: Finanzen -->
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Finanzen</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- Budget -->
           <div>
             <label class="kit-label">Budget (€)</label>
@@ -362,3 +362,16 @@ async function handleSubmit() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .rounded-lg.border {
+    padding: 0.75rem;
+  }
+
+  .text-lg {
+    font-size: 1rem;
+  }
+}
+</style>

@@ -53,5 +53,17 @@ export default defineConfig({
       "localhost",
       "127.0.0.1",
     ],
+    proxy: {
+      "/api": {
+        target: "http://workmate_backend:8000",
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, options) => {
+          proxy.on("proxyReq", (proxyReq, req, res) => {
+            console.log("🔄 [Vite Proxy] Forwarding:", req.method, req.url, "→", options.target);
+          });
+        },
+      },
+    },
   },
 });

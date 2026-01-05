@@ -16,6 +16,7 @@ services:
       PYTHONPATH: /app
       ENVIRONMENT: development
       WATCHFILES_FORCE_POLLING: true # ← Für besseren Hot-Reload
+      SEVDESK_ENCRYPTION_KEY: ${SEVDESK_ENCRYPTION_KEY}
     volumes:
       # Persistente Uploads → mapped in Container
       - ../docs/uploads:/root/workmate_os_uploads
@@ -37,6 +38,9 @@ services:
       - ../backend/alembic/versions:/app/alembic/versions
     networks:
       - core_network
+    # Allow backend to resolve external domain via Caddy
+    extra_hosts:
+      - "auth.intern.phudevelopement.xyz:host-gateway"
     # Development mode mit hot-reload
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app
     healthcheck:

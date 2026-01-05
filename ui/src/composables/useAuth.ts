@@ -107,6 +107,44 @@ export function useAuth() {
   }
 
   /**
+   * Login with Zitadel OIDC token
+   */
+  async function loginWithOIDC(idToken: string, accessToken?: string): Promise<boolean> {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await apiClient.post<LoginResponse>('/api/auth/oidc/login', {
+        id_token: idToken,
+        access_token: accessToken,
+      });
+      const data = response.data;
+
+      // Store token and user
+      token.value = data.access_token;
+      user.value = data.user;
+
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+      // Set authorization header for future requests
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+
+      // Apply user's theme
+      const { initializeTheme } = useTheme();
+      initializeTheme(data.user.theme);
+
+      return true;
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || 'SSO Login fehlgeschlagen';
+      console.error('OIDC login error:', e);
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
    * Logout and clear auth data
    */
   async function logout() {
@@ -172,10 +210,27 @@ export function useAuth() {
 
   /**
    * Check if user has a specific permission
+   * Supports wildcards: "*" (all), "backoffice.*" (all backoffice)
    */
   function hasPermission(permission: string): boolean {
     if (!user.value || !user.value.permissions) return false;
-    return user.value.permissions.includes(permission);
+
+    const userPermissions = user.value.permissions;
+
+    // Check for global wildcard
+    if (userPermissions.includes('*')) return true;
+
+    // Check for exact match
+    if (userPermissions.includes(permission)) return true;
+
+    // Check for wildcard patterns (e.g., "backoffice.*" matches "backoffice.crm")
+    return userPermissions.some(p => {
+      if (p.endsWith('.*')) {
+        const prefix = p.slice(0, -2); // Remove ".*"
+        return permission.startsWith(prefix + '.');
+      }
+      return false;
+    });
   }
 
   /**
@@ -220,6 +275,7 @@ export function useAuth() {
     // Actions
     initializeAuth,
     login,
+    loginWithOIDC,
     logout,
     fetchCurrentUser,
     hasPermission,

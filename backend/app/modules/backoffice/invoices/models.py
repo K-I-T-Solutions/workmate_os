@@ -33,7 +33,9 @@ from sqlalchemy import (
     CheckConstraint,
     event,
     Integer,
-    UniqueConstraint
+    UniqueConstraint,
+    DateTime,
+    JSON
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -102,7 +104,8 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         Index("ix_invoices_status", "status"),
         Index("ix_invoices_issued_date", "issued_date"),
         Index("ix_invoices_due_date", "due_date"),
-        Index("ix_invoices_invoice_number", "invoice_number"),
+        # UNIQUE Constraint für invoice_number (verhindert Duplikate und Race Conditions)
+        UniqueConstraint("invoice_number", name="uq_invoices_invoice_number"),
         CheckConstraint("total >= 0", name="check_invoice_total_positive"),
         CheckConstraint("subtotal >= 0", name="check_invoice_subtotal_positive"),
         CheckConstraint("tax_amount >= 0", name="check_invoice_tax_positive"),
@@ -119,8 +122,6 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     # Business Fields
     invoice_number: Mapped[str] = mapped_column(
         String(50),
-        unique=True,
-        index=True,
         nullable=False,
         comment="Eindeutige Rechnungsnummer (z.B. RE-2025-001)"
     )
@@ -169,6 +170,14 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         Text,
         comment="Pfad zur generierten PDF-Rechnung"
     )
+    xml_path: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Pfad zur XRechnung-XML-Datei"
+    )
+    zugferd_path: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Pfad zum ZUGFeRD-PDF (Hybrid mit eingebetteter XML)"
+    )
     notes: Mapped[str | None] = mapped_column(
         Text,
         comment="Interne Notizen"
@@ -176,6 +185,12 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     terms: Mapped[str | None] = mapped_column(
         Text,
         comment="Zahlungsbedingungen und AGB"
+    )
+
+    # Soft-Delete (GoBD Compliance)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        comment="Zeitpunkt der Soft-Deletion (NULL = nicht gelöscht)"
     )
 
     # Foreign Keys
@@ -240,16 +255,28 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
 
     def update_status_from_payments(self) -> None:
         """
-        Aktualisiert Status basierend auf Zahlungseingängen.
+        DEPRECATED: Use invoices_crud.update_invoice_status_from_payments() instead.
 
-        Logik:
+        Diese Methode wird nicht mehr verwendet. Status-Updates erfolgen jetzt
+        über die zentrale CRUD-Funktion für konsistentes Audit Logging und
+        State Machine Handling.
+
+        Old logic (for reference):
         - outstanding = 0 → PAID
         - 0 < outstanding < total → PARTIAL
         - outstanding = total → SENT (falls bereits gesendet)
         - overdue falls due_date überschritten
         """
+        import warnings
+        warnings.warn(
+            "update_status_from_payments() is deprecated. "
+            "Use invoices_crud.update_invoice_status_from_payments() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        # Legacy implementation (minimal, for backward compatibility)
         if self.status == InvoiceStatus.CANCELLED.value:
-            return  # Cancelled bleibt cancelled
+            return
 
         outstanding = self.outstanding_amount
 
@@ -259,7 +286,6 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
             self.status = InvoiceStatus.PARTIAL.value
         elif self.is_overdue:
             self.status = InvoiceStatus.OVERDUE.value
-        # Sonst status beibehalten (draft/sent)
 
     # ========================================================================
     # PROPERTIES
@@ -407,6 +433,12 @@ class InvoiceLineItem(Base, UUIDMixin):
         comment="Rabatt in Prozent"
     )
 
+    # Soft-Delete (GoBD Compliance)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        comment="Zeitpunkt der Soft-Deletion (NULL = nicht gelöscht)"
+    )
+
     # Foreign Keys
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("invoices.id", ondelete="CASCADE"),
@@ -533,6 +565,19 @@ class Payment(Base, UUIDMixin, TimestampMixin):
         comment="Interne Notiz zum Zahlungseingang"
     )
 
+    # Payment Gateway Integration Fields
+    stripe_payment_intent_id: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+        comment="Stripe Payment Intent ID (pi_...)"
+    )
+
+    # Soft-Delete (GoBD Compliance)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        comment="Zeitpunkt der Soft-Deletion (NULL = nicht gelöscht)"
+    )
+
     # Foreign Keys
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("invoices.id", ondelete="CASCADE"),
@@ -561,18 +606,98 @@ class Payment(Base, UUIDMixin, TimestampMixin):
 # EVENTS (Auto-Updates)
 # ============================================================================
 
-@event.listens_for(Payment, "after_insert")
-@event.listens_for(Payment, "after_update")
-@event.listens_for(Payment, "after_delete")
-def update_invoice_status_after_payment(mapper, connection, target):
-    """
-    Aktualisiert Invoice-Status automatisch nach Payment-Änderungen.
+# DEPRECATED: Event-Handler deaktiviert
+# Status-Updates werden jetzt explizit in payments_crud.py durchgeführt
+# über invoices_crud.update_invoice_status_from_payments()
+#
+# @event.listens_for(Payment, "after_insert")
+# @event.listens_for(Payment, "after_update")
+# @event.listens_for(Payment, "after_delete")
+# def update_invoice_status_after_payment(mapper, connection, target):
+#     """
+#     DEPRECATED: Aktualisiert Invoice-Status automatisch nach Payment-Änderungen.
+#     Status-Updates erfolgen jetzt über zentrale CRUD-Funktion.
+#     """
+#     if target.invoice:
+#         target.invoice.update_status_from_payments()
 
-    WICHTIG: Läuft im after_insert/update/delete Event!
+# =====================================================================
+# Audit Trail
+# =====================================================================
+
+class AuditLog(Base, UUIDMixin):
     """
-    # Target ist das Payment-Objekt
-    if target.invoice:
-        target.invoice.update_status_from_payments()
+    Audit Trail für Compliance (GoBD, HGB, AO).
+
+    Protokolliert alle Änderungen an Invoices, Payments und Expenses
+    für lückenlose Nachvollziehbarkeit und gesetzliche Anforderungen.
+
+    Attributes:
+        entity_type: Typ der geänderten Entität (Invoice, Payment, Expense)
+        entity_id: UUID der geänderten Entität
+        action: Art der Änderung (create, update, delete, status_change)
+        old_values: Alte Werte als JSON (bei update/delete)
+        new_values: Neue Werte als JSON (bei create/update)
+        user_id: Optionale User-ID (für zukünftige Auth-Integration)
+        timestamp: Zeitstempel der Änderung
+        ip_address: Optionale IP-Adresse für zusätzliche Sicherheit
+    """
+    __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_entity", "entity_type", "entity_id"),
+        Index("ix_audit_logs_timestamp", "timestamp"),
+        Index("ix_audit_logs_action", "action"),
+        Index("ix_audit_logs_user_id", "user_id"),
+        CheckConstraint(
+            "action IN ('create', 'update', 'delete', 'status_change')",
+            name="check_audit_action_valid"
+        ),
+    )
+
+    # Business Fields
+    entity_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        comment="Typ der Entität (Invoice, Payment, Expense)"
+    )
+    entity_id: Mapped[uuid.UUID] = mapped_column(
+        nullable=False,
+        comment="UUID der geänderten Entität"
+    )
+    action: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        comment="Art der Änderung (create, update, delete, status_change)"
+    )
+    old_values: Mapped[dict | None] = mapped_column(
+        JSON,
+        comment="Alte Werte als JSON (bei update/delete)"
+    )
+    new_values: Mapped[dict | None] = mapped_column(
+        JSON,
+        comment="Neue Werte als JSON (bei create/update)"
+    )
+    user_id: Mapped[str | None] = mapped_column(
+        String(100),
+        comment="User-ID des Benutzers (für zukünftige Integration)"
+    )
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False,
+        comment="Zeitstempel der Änderung"
+    )
+    ip_address: Mapped[str | None] = mapped_column(
+        String(45),
+        comment="IP-Adresse (IPv4/IPv6) für zusätzliche Sicherheit"
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<AuditLog(entity='{self.entity_type}:{self.entity_id}', "
+            f"action='{self.action}', timestamp={self.timestamp})>"
+        )
+
 
 # =====================================================================
 # Number Generator

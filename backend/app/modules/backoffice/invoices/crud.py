@@ -13,6 +13,7 @@ CHANGES:
 - ✅ Filter support (status, customer_id, date_range)
 - ✅ Automatische Nummernkreise pro Dokumenttyp & Jahr
 """
+import logging
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 from decimal import Decimal
@@ -20,14 +21,32 @@ from datetime import date, datetime
 from typing import Optional, List
 import uuid
 import os
+import hashlib
 
 from fastapi import HTTPException
 
 from app.modules.backoffice.invoices import models, schemas
+from app.core.errors import ErrorCode, get_error_detail
+
+logger = logging.getLogger(__name__)
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
+from app.modules.backoffice.invoices.audit import (
+    log_invoice_creation,
+    log_invoice_update,
+    log_invoice_status_change,
+    log_invoice_deletion,
+    serialize_for_audit,
+)
+from app.modules.backoffice.invoices.compliance import (
+    validate_invoice_update,
+    validate_invoice_deletion,
+    validate_invoice_status_change,
+)
 from app.modules.documents.models import Document
 from app.modules.backoffice.crm.models import Customer
 from app.modules.backoffice.projects.models import Project
+from app.core.storage.factory import get_storage
+from app.core.settings.config import settings
 
 
 # ============================================================================
@@ -38,7 +57,10 @@ def _validate_customer_exists(db: Session, customer_id: uuid.UUID) -> Customer:
     """Prüft ob Customer existiert."""
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer:
-        raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error_detail(ErrorCode.INVOICE_CUSTOMER_NOT_FOUND, customer_id=str(customer_id))
+        )
     return customer
 
 
@@ -48,7 +70,10 @@ def _validate_project_exists(db: Session, project_id: uuid.UUID) -> Optional[Pro
         return None
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
-        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error_detail(ErrorCode.INVOICE_PROJECT_NOT_FOUND, project_id=str(project_id))
+        )
     return project
 
 
@@ -66,7 +91,7 @@ def _validate_invoice_number_unique(
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"Invoice number '{invoice_number}' already exists",
+            detail=get_error_detail(ErrorCode.INVOICE_NUMBER_EXISTS, invoice_number=invoice_number),
         )
 
 
@@ -76,17 +101,17 @@ def _get_prefix_for_doc_type(doc_type: str) -> str:
     """
     Liefert Präfix für Nummernformat je Dokumenttyp.
 
-    Format (deine Wahl 1:A):
+    Format:
       RE-2025-0001 (invoice)
       AN-2025-0001 (quote)
       GS-2025-0001 (credit_note)
-      ST-2025-0001 (cancellation)
+      AB-2025-0001 (order_confirmation)
     """
     mapping = {
         "invoice": "RE",
         "quote": "AN",
         "credit_note": "GS",
-        "cancellation": "ST",
+        "order_confirmation": "AB",  # Auftragsbestätigung
     }
     return mapping.get(doc_type, "RE")  # Fallback: RE
 
@@ -109,31 +134,61 @@ def _generate_next_number(
 
     - Legt bei Bedarf einen neuen Eintrag an (startet bei 1)
     - Verwendet SELECT ... FOR UPDATE für concurrency safety
+    - Retry-Logic bei Race Conditions
     """
-    # Row mit FOR UPDATE sperren (Postgres)
-    seq_row = (
-        db.query(models.NumberSequence)
-        .filter(
-            models.NumberSequence.doc_type == doc_type,
-            models.NumberSequence.year == year,
-        )
-        .with_for_update()
-        .first()
+    from sqlalchemy.exc import IntegrityError
+    import time
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Row mit FOR UPDATE sperren (Postgres)
+            # NOWAIT=False: Wartet auf Lock-Release statt sofort zu failen
+            seq_row = (
+                db.query(models.NumberSequence)
+                .filter(
+                    models.NumberSequence.doc_type == doc_type,
+                    models.NumberSequence.year == year,
+                )
+                .with_for_update(nowait=False)
+                .first()
+            )
+
+            if not seq_row:
+                # Row existiert nicht → erstellen
+                # Kann zu IntegrityError führen wenn andere Transaction parallel erstellt
+                seq_row = models.NumberSequence(
+                    doc_type=doc_type,
+                    year=year,
+                    current_number=1,
+                )
+                db.add(seq_row)
+                db.flush()
+                return 1
+
+            # Row existiert → Nummer inkrementieren
+            seq_row.current_number += 1
+            db.flush()
+            return seq_row.current_number
+
+        except IntegrityError:
+            # Race Condition: Andere Transaction hat gerade Row erstellt
+            # Rollback und retry mit FOR UPDATE
+            db.rollback()
+            if attempt < max_retries - 1:
+                time.sleep(0.01 * (attempt + 1))  # Exponential backoff
+                continue
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=get_error_detail(ErrorCode.INVOICE_GENERATION_FAILED)
+                )
+
+    # Should never reach here
+    raise HTTPException(
+        status_code=500,
+        detail=get_error_detail(ErrorCode.INVOICE_GENERATION_FAILED)
     )
-
-    if not seq_row:
-        seq_row = models.NumberSequence(
-            doc_type=doc_type,
-            year=year,
-            current_number=1,
-        )
-        db.add(seq_row)
-        db.flush()
-        return 1
-
-    seq_row.current_number += 1
-    db.flush()
-    return seq_row.current_number
 
 
 def _generate_invoice_number(
@@ -196,15 +251,23 @@ def get_invoices(
     project_id: Optional[uuid.UUID] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    include_deleted: bool = False,
 ) -> List[models.Invoice]:
     """
     Holt Invoices mit Pagination und Filtern.
+
+    Args:
+        include_deleted: If True, include soft-deleted invoices (default: False)
     """
     query = db.query(models.Invoice).options(
         selectinload(models.Invoice.customer),
         selectinload(models.Invoice.line_items),
         selectinload(models.Invoice.payments),
     )
+
+    # SOFT-DELETE FILTER (GoBD compliance)
+    if not include_deleted:
+        query = query.filter(models.Invoice.deleted_at.is_(None))
 
     # Filter anwenden
     if status:
@@ -244,11 +307,14 @@ def count_invoices(
     return query.scalar()
 
 
-def get_invoice(db: Session, invoice_id: uuid.UUID) -> Optional[models.Invoice]:
+def get_invoice(db: Session, invoice_id: uuid.UUID, include_deleted: bool = False) -> Optional[models.Invoice]:
     """
     Holt eine einzelne Invoice inkl. Relations.
+
+    Args:
+        include_deleted: If True, include soft-deleted invoices (default: False)
     """
-    return (
+    query = (
         db.query(models.Invoice)
         .options(
             selectinload(models.Invoice.customer),
@@ -257,8 +323,13 @@ def get_invoice(db: Session, invoice_id: uuid.UUID) -> Optional[models.Invoice]:
             selectinload(models.Invoice.payments),
         )
         .filter(models.Invoice.id == invoice_id)
-        .first()
     )
+
+    # SOFT-DELETE FILTER (GoBD compliance)
+    if not include_deleted:
+        query = query.filter(models.Invoice.deleted_at.is_(None))
+
+    return query.first()
 
 
 def get_invoice_by_number(db: Session, invoice_number: str) -> Optional[models.Invoice]:
@@ -282,6 +353,8 @@ def create_invoice(
     db: Session,
     data: schemas.InvoiceCreate,
     generate_pdf: bool = True,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> models.Invoice:
     """
     Erstellt neue Invoice mit Line Items.
@@ -300,12 +373,15 @@ def create_invoice(
         raw_number = (data.invoice_number or "").strip() if data.invoice_number is not None else ""
         auto_mode = raw_number == "" or raw_number.upper() == "AUTO"
 
+        # Dokumenttyp aus data oder Default "invoice"
+        doc_type = data.document_type if hasattr(data, 'document_type') and data.document_type else "invoice"
+
         if auto_mode:
-            # automatische Nummernvergabe
+            # automatische Nummernvergabe mit korrektem Dokumenttyp
             invoice_number = _generate_invoice_number(
                 db=db,
                 issued_date=data.issued_date,
-                doc_type=_get_doc_type_for_invoice(),
+                doc_type=doc_type,
             )
         else:
             # manuelle Nummer -> Einzigartigkeit prüfen
@@ -347,69 +423,88 @@ def create_invoice(
         # 7. Invoice mit Relations neu laden
         invoice = get_invoice(db, invoice.id)
 
-        # 8. PDF generieren (optional)
+        # 8. AUDIT LOG (GoBD Compliance)
+        try:
+            log_invoice_creation(db, invoice, user_id=user_id, ip_address=ip_address)
+            db.commit()
+        except Exception as audit_error:
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
+
+        # 9. PDF generieren (optional)
         if generate_pdf:
             try:
                 pdf_path = _generate_and_save_pdf(db, invoice)
                 invoice.pdf_path = pdf_path
                 db.commit()
             except Exception as e:
-                print(f"⚠️ PDF generation failed: {e}")
+                logger.warning("⚠️ PDF generation failed: %s", e)
                 # Invoice bleibt bestehen, nur PDF fehlt
 
         return invoice
 
     except HTTPException:
         db.rollback()
-        raise
+        raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(e)}")
+        logger.error("Failed to create invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
+
+
+def _calculate_checksum(content: bytes) -> str:
+    """Calculate SHA256 checksum of file content."""
+    return hashlib.sha256(content).hexdigest()
 
 
 def _generate_and_save_pdf(db: Session, invoice: models.Invoice) -> str:
     """
-    Generiert PDF und registriert Dokument.
+    Generiert PDF und lädt es zu Storage hoch (Nextcloud/S3/Local).
 
-    Dateiname (deine Wahl 6):
-      KIT-RE-001.pdf
+    Dateiname: {invoice_number}.pdf (z.B. RE-2025-0001.pdf)
+    Remote Path: workmate/invoices/{invoice_number}.pdf
 
-    Umsetzung:
-    - aus invoice.invoice_number z.B. 'RE-2025-0001'
-    - extrahieren wir '0001'
-    - daraus 'KIT-RE-0001.pdf'
+    Returns:
+        Remote path in storage
     """
-    # PDF Directory
-    pdf_dir = "/root/workmate_os_uploads/invoices"
-    os.makedirs(pdf_dir, exist_ok=True)
+    storage = get_storage()
 
-    # Laufende Nummer aus Rechnungsnummer extrahieren
-    seq_str = _extract_seq_from_invoice_number(invoice.invoice_number)
+    # PDF-Dateiname: direkt die Rechnungsnummer verwenden
+    pdf_filename = f"{invoice.invoice_number}.pdf"
 
-    # Standard für Rechnungen → KIT-RE-<SEQ>.pdf
-    # (Wenn du später Angebote hier drüber laufen lässt, kannst du z.B. KIT-AN- etc. machen)
-    pdf_filename = f"KIT-RE-{seq_str}.pdf"
-    pdf_path = os.path.join(pdf_dir, pdf_filename)
+    # Remote path in storage (configurable via INVOICE_STORAGE_PATH)
+    storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+    remote_path = f"{storage_path}/{pdf_filename}"
 
-    # PDF generieren
-    generate_invoice_pdf(invoice, pdf_path)
+    # PDF als Bytes generieren
+    pdf_content = generate_invoice_pdf(invoice, output_path=None)
 
-    # Dokument registrieren
-    if os.path.exists(pdf_path):
-        doc = Document(
-            id=uuid.uuid4(),
-            title=f"Rechnung {invoice.invoice_number}",
-            file_path=pdf_path,
-            type="pdf",
-            category="Rechnungen",
-            owner_id=None,
-            linked_module="invoices",
-            checksum=None,
-            is_confidential=False,
-        )
-        db.add(doc)
+    if not pdf_content:
+        raise ValueError("PDF generation returned no content")
 
-    return pdf_path
+    # Checksum berechnen
+    checksum = _calculate_checksum(pdf_content)
+
+    # PDF zu Storage hochladen
+    storage.upload(remote_path, pdf_content)
+
+    # Dokument in Documents-Tabelle registrieren
+    doc = Document(
+        id=uuid.uuid4(),
+        title=f"Rechnung {invoice.invoice_number}",
+        file_path=remote_path,  # Remote path, NOT local filesystem path
+        type="pdf",
+        category="Rechnungen",
+        owner_id=None,  # TODO: Assign proper owner (invoice creator or customer contact)
+        linked_module="invoices",
+        checksum=checksum,
+        is_confidential=False,
+    )
+    db.add(doc)
+
+    return remote_path
 
 
 # ============================================================================
@@ -420,44 +515,235 @@ def update_invoice(
     db: Session,
     invoice_id: uuid.UUID,
     data: schemas.InvoiceUpdate,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> Optional[models.Invoice]:
-    """Aktualisiert Invoice."""
+    """Aktualisiert Invoice mit Compliance-Validierung (§238 HGB)."""
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
 
     try:
         update_data = data.model_dump(exclude_unset=True)
+
+        # IMMUTABILITY VALIDATION (GoBD/HGB Compliance)
+        update_fields = set(update_data.keys())
+        validate_invoice_update(invoice, update_fields)
+
+        # Capture old values for audit log
+        old_invoice_data = serialize_for_audit(invoice)
+
+        # Handle line_items separately
+        new_line_items = update_data.pop("line_items", None)
+
+        # Update regular fields
         for key, value in update_data.items():
             setattr(invoice, key, value)
 
+        # Update line items if provided
+        if new_line_items is not None:
+            # Delete existing line items
+            db.query(models.InvoiceLineItem).filter(
+                models.InvoiceLineItem.invoice_id == invoice_id
+            ).delete()
+
+            # Create new line items
+            for idx, item_data in enumerate(new_line_items, start=1):
+                # Extract only the fields that the model expects
+                line_item = models.InvoiceLineItem(
+                    invoice_id=invoice_id,
+                    position=idx,
+                    description=item_data.get('description', ''),
+                    quantity=item_data.get('quantity', 1),
+                    unit=item_data.get('unit', 'Stück'),
+                    unit_price=item_data.get('unit_price', 0),
+                    tax_rate=item_data.get('tax_rate', 19),
+                    discount_percent=item_data.get('discount_percent', 0),
+                )
+                db.add(line_item)
+
+            # Recalculate totals
+            db.flush()  # Flush to get line_items populated
+            db.refresh(invoice)
+
+            subtotal = sum(item.subtotal_after_discount for item in invoice.line_items)
+            tax_amount = sum(item.tax_amount for item in invoice.line_items)
+            total = subtotal + tax_amount
+
+            invoice.subtotal = subtotal
+            invoice.tax_amount = tax_amount
+            invoice.total = total
+
         db.commit()
         db.refresh(invoice)
+
+        # AUDIT LOG (GoBD Compliance)
+        try:
+            log_invoice_update(db, invoice, old_invoice_data, user_id=user_id, ip_address=ip_address)
+            db.commit()
+        except Exception as audit_error:
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
+
+        # Regenerate PDF if line_items were updated
+        if new_line_items is not None:
+            try:
+                # Reload invoice with full relations for PDF generation
+                invoice = get_invoice(db, invoice_id)
+                pdf_path = _generate_and_save_pdf(db, invoice)
+                invoice.pdf_path = pdf_path
+                db.commit()
+                db.refresh(invoice)
+            except Exception as pdf_error:
+                # PDF generation error should not fail the update
+                logger.warning("Warning: PDF generation failed: %s", pdf_error)
+
         return invoice
 
+    except HTTPException:
+        db.rollback()
+        raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update invoice: {str(e)}")
+        logger.error("Failed to update invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
+
+
+def _set_invoice_status_internal(
+    db: Session,
+    invoice: models.Invoice,
+    new_status: str,
+    validate_transition: bool = True,
+    create_audit: bool = True,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> None:
+    """
+    Zentrale interne Funktion zum Setzen des Invoice-Status.
+
+    Args:
+        db: Database Session
+        invoice: Invoice-Objekt
+        new_status: Neuer Status
+        validate_transition: State Machine Validierung durchführen (True für manuell, False für automatisch via Payments)
+        create_audit: Audit Log erstellen
+
+    Diese Funktion ist die EINZIGE Quelle der Wahrheit für Status-Änderungen.
+    """
+    valid_statuses = ["draft", "sent", "paid", "partial", "overdue", "cancelled"]
+    if new_status not in valid_statuses:
+        raise ValueError(f"Invalid status: {new_status}")
+
+    old_status = invoice.status
+
+    # Keine Änderung nötig
+    if old_status == new_status:
+        return
+
+    # STATE MACHINE VALIDATION (nur bei manuellen Updates)
+    if validate_transition:
+        validate_invoice_status_change(invoice, new_status)
+
+    # Status setzen
+    invoice.status = new_status
+
+    # AUDIT LOG (GoBD Compliance)
+    if create_audit:
+        try:
+            log_invoice_status_change(db, invoice, old_status, new_status, user_id=user_id, ip_address=ip_address)
+        except Exception as audit_error:
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
 
 
 def update_invoice_status(
     db: Session,
     invoice_id: uuid.UUID,
     new_status: str,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> Optional[models.Invoice]:
-    """Aktualisiert nur den Status einer Invoice."""
+    """
+    Aktualisiert den Status einer Invoice manuell (via API).
+
+    Verwendet State Machine Validierung und Audit Logging.
+    """
     invoice = get_invoice(db, invoice_id)
     if not invoice:
         return None
 
-    valid_statuses = ["draft", "sent", "paid", "partial", "overdue", "cancelled"]
-    if new_status not in valid_statuses:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}")
+    try:
+        # Verwende zentrale Funktion mit State Machine Validierung
+        _set_invoice_status_internal(
+            db=db,
+            invoice=invoice,
+            new_status=new_status,
+            validate_transition=True,  # Manuelle Updates müssen State Machine validieren
+            create_audit=True,
+            user_id=user_id,
+            ip_address=ip_address
+        )
 
-    invoice.status = new_status
-    db.commit()
-    db.refresh(invoice)
-    return invoice
+        db.commit()
+        db.refresh(invoice)
+        return invoice
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to update status: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
+
+
+def update_invoice_status_from_payments(
+    db: Session,
+    invoice: models.Invoice,
+) -> None:
+    """
+    Aktualisiert Invoice-Status automatisch basierend auf Zahlungseingängen.
+
+    Logik:
+    - outstanding = 0 → PAID
+    - 0 < outstanding < total → PARTIAL
+    - outstanding = total → SENT (falls bereits gesendet)
+    - overdue falls due_date überschritten
+
+    KEINE State Machine Validierung (Payments können Status zurücksetzen).
+    """
+    from decimal import Decimal
+
+    # Cancelled bleibt cancelled
+    if invoice.status == "cancelled":
+        return
+
+    outstanding = invoice.outstanding_amount
+
+    # Neuen Status bestimmen basierend auf Zahlungen
+    if outstanding <= Decimal("0.00"):
+        new_status = "paid"
+    elif outstanding < invoice.total:
+        new_status = "partial"
+    elif invoice.is_overdue:
+        new_status = "overdue"
+    else:
+        # Status beibehalten (draft/sent)
+        return
+
+    # Verwende zentrale Funktion OHNE State Machine Validierung
+    # (Payments dürfen Status zurücksetzen, z.B. paid → partial bei Rückzahlung)
+    _set_invoice_status_internal(
+        db=db,
+        invoice=invoice,
+        new_status=new_status,
+        validate_transition=False,  # Automatische Updates ignorieren State Machine
+        create_audit=True
+    )
 
 
 def recalculate_invoice_totals(
@@ -479,26 +765,219 @@ def recalculate_invoice_totals(
 # DELETE OPERATIONS
 # ============================================================================
 
-def delete_invoice(db: Session, invoice_id: uuid.UUID) -> bool:
-    """Löscht Invoice inkl. Line Items (CASCADE)."""
-    invoice = get_invoice(db, invoice_id)
+def delete_invoice(
+    db: Session,
+    invoice_id: uuid.UUID,
+    hard_delete: bool = False,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> bool:
+    """
+    Soft-Delete einer Invoice (GoBD Compliance).
+
+    Markiert Invoice als gelöscht (deleted_at), löscht aber NICHT physisch.
+    Dies ermöglicht Audit-Trail und Wiederherstellung.
+
+    Args:
+        db: Database Session
+        invoice_id: UUID der Invoice
+        hard_delete: If True, perform physical deletion (admin only, not recommended)
+
+    Returns:
+        True bei Erfolg
+
+    Raises:
+        HTTPException 403: Wenn Invoice bezahlt ist (darf nicht gelöscht werden)
+        HTTPException 404: Wenn Invoice nicht existiert
+    """
+    invoice = get_invoice(db, invoice_id, include_deleted=False)
     if not invoice:
         return False
 
     try:
-        if invoice.pdf_path and os.path.exists(invoice.pdf_path):
-            try:
-                os.remove(invoice.pdf_path)
-            except Exception as e:
-                print(f"⚠️ Failed to delete PDF: {e}")
+        # SOFT-DELETE VALIDATION (GoBD Compliance)
+        validate_invoice_deletion(invoice)
 
-        db.delete(invoice)
+        if hard_delete:
+            # HARD DELETE (nur für Admin-Zwecke, nicht empfohlen)
+            # Delete PDF from storage if exists
+            if invoice.pdf_path:
+                try:
+                    storage = get_storage()
+                    if storage.exists(invoice.pdf_path):
+                        storage.delete(invoice.pdf_path)
+                except Exception as e:
+                    logger.warning("⚠️ Failed to delete PDF from storage: %s", e)
+
+            db.delete(invoice)
+            db.commit()
+            return True
+
+        # SOFT DELETE (empfohlen für GoBD)
+        invoice.deleted_at = datetime.utcnow()
         db.commit()
+        db.refresh(invoice)
+
+        # AUDIT LOG (GoBD Compliance)
+        try:
+            log_invoice_deletion(db, invoice, user_id=user_id, ip_address=ip_address)
+            db.commit()
+        except Exception as audit_error:
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
+
         return True
 
+    except HTTPException:
+        db.rollback()
+        raise  # Re-raise HTTPException with original status code
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete invoice: {str(e)}")
+        logger.error("Failed to delete invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
+
+
+def restore_invoice(
+    db: Session,
+    invoice_id: uuid.UUID,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> Optional[models.Invoice]:
+    """
+    Stellt eine soft-deleted Invoice wieder her.
+
+    Setzt deleted_at = NULL und erstellt Audit Log Eintrag.
+
+    Args:
+        db: Database Session
+        invoice_id: UUID der Invoice
+        user_id: Optional Benutzer-ID für Audit
+        ip_address: Optional IP-Adresse für Audit
+
+    Returns:
+        Wiederhergestellte Invoice oder None
+
+    Raises:
+        HTTPException 404: Wenn Invoice nicht existiert oder nicht gelöscht
+    """
+    # Hole gelöschte Invoice (include_deleted=True)
+    invoice = get_invoice(db, invoice_id, include_deleted=True)
+
+    if not invoice:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error_detail(ErrorCode.INVOICE_NOT_FOUND, invoice_id=str(invoice_id))
+        )
+
+    if not invoice.deleted_at:
+        raise HTTPException(
+            status_code=400,
+            detail=get_error_detail(ErrorCode.INVOICE_NOT_DELETED, invoice_id=str(invoice_id))
+        )
+
+    try:
+        # Restore: Set deleted_at = NULL
+        invoice.deleted_at = None
+        db.commit()
+        db.refresh(invoice)
+
+        # AUDIT LOG
+        try:
+            from app.modules.backoffice.invoices.audit import log_audit
+            log_audit(
+                db=db,
+                entity_type="Invoice",
+                entity_id=invoice.id,
+                action="update",
+                old_values={
+                    "deleted_at": invoice.deleted_at.isoformat() if invoice.deleted_at else None,
+                },
+                new_values={
+                    "deleted_at": None,
+                    "restored_at": datetime.utcnow().isoformat(),
+                    "note": "Invoice wurde wiederhergestellt"
+                },
+                user_id=user_id,
+                ip_address=ip_address
+            )
+            db.commit()
+        except Exception as audit_error:
+            logger.warning("⚠️ Audit logging failed: %s", audit_error)
+
+        return invoice
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to restore invoice: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
+
+
+# ============================================================================
+# AUDIT LOGS
+# ============================================================================
+
+def get_audit_logs(
+    db: Session,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[uuid.UUID] = None,
+    action: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> List[models.AuditLog]:
+    """
+    Holt Audit-Log-Einträge mit Filtern.
+
+    Args:
+        db: Database Session
+        entity_type: Filter nach Entitätstyp (Invoice, Payment, Expense)
+        entity_id: Filter nach Entitäts-ID
+        action: Filter nach Aktion (create, update, delete, status_change)
+        skip: Pagination offset
+        limit: Max Anzahl Ergebnisse
+
+    Returns:
+        Liste von AuditLog-Einträgen
+    """
+    query = db.query(models.AuditLog)
+
+    if entity_type:
+        query = query.filter(models.AuditLog.entity_type == entity_type)
+    if entity_id:
+        query = query.filter(models.AuditLog.entity_id == entity_id)
+    if action:
+        query = query.filter(models.AuditLog.action == action)
+
+    query = query.order_by(models.AuditLog.timestamp.desc())
+    query = query.offset(skip).limit(limit)
+
+    return query.all()
+
+
+def count_audit_logs(
+    db: Session,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[uuid.UUID] = None,
+    action: Optional[str] = None,
+) -> int:
+    """Zählt Audit-Log-Einträge mit optionalen Filtern."""
+    query = db.query(func.count(models.AuditLog.id))
+
+    if entity_type:
+        query = query.filter(models.AuditLog.entity_type == entity_type)
+    if entity_id:
+        query = query.filter(models.AuditLog.entity_id == entity_id)
+    if action:
+        query = query.filter(models.AuditLog.action == action)
+
+    return query.scalar()
 
 
 # ============================================================================

@@ -189,21 +189,21 @@ function handleCancel() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div class="flex items-center gap-3">
         <button @click="handleCancel" class="kit-btn-ghost">
           <ChevronLeft :size="18" />
         </button>
         <h1 class="text-2xl font-bold text-white">{{ pageTitle }}</h1>
       </div>
-      <div class="flex gap-2">
-        <button @click="handleCancel" class="kit-btn-ghost">
+      <div class="flex gap-2 w-full sm:w-auto">
+        <button @click="handleCancel" class="kit-btn-ghost flex-1 sm:flex-none">
           <X :size="18" />
           Abbrechen
         </button>
-        <button @click="handleSave" class="kit-btn-primary" :disabled="loading">
+        <button @click="handleSave" class="kit-btn-primary flex-1 sm:flex-none" :disabled="loading">
           <Save :size="18" />
           {{ isEditMode ? 'Speichern' : 'Erstellen' }}
         </button>
@@ -231,7 +231,7 @@ function handleCancel() {
           <h3 class="font-semibold text-white">Zeitraum</h3>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- Start Date -->
           <div>
             <label class="kit-label flex items-center gap-1">
@@ -301,7 +301,7 @@ function handleCancel() {
           <h3 class="font-semibold text-white">Details</h3>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- Task Type -->
           <div>
             <label class="kit-label">Aufgabentyp</label>
@@ -370,7 +370,7 @@ function handleCancel() {
           <h3 class="font-semibold text-white">Finanzen</h3>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <!-- Hourly Rate -->
           <div>
             <label class="kit-label">Stundensatz (€)</label>
@@ -403,3 +403,16 @@ function handleCancel() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .rounded-lg.border {
+    padding: 0.75rem;
+  }
+
+  .text-lg {
+    font-size: 1rem;
+  }
+}
+</style>

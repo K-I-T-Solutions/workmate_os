@@ -1,6 +1,14 @@
+---
+layout: default
+title: Core
+parent: Wiki
+nav_order: 2
+has_children: true
+---
+
 # 🧠 Workmate OS – Core System
 
-Das **Core-System** ist das Fundament aller Module innerhalb von Workmate OS.  
+Das **Core-System** ist das Fundament aller Module innerhalb von Workmate OS.
 Es verwaltet zentrale Entitäten, wie **Mitarbeiter**, **Abteilungen**, **Rollen**, **Dokumente**, **Erinnerungen**, **Dashboards** und **Infrastruktur-Services**.
 
 ## 🎯 Hauptaufgaben

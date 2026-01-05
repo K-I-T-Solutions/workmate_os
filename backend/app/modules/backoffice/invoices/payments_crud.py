@@ -10,7 +10,12 @@ from datetime import date
 import uuid
 
 from app.modules.backoffice.invoices import models, schemas
+from app.modules.backoffice.invoices import crud as invoices_crud
 from fastapi import HTTPException, status
+from app.core.errors import ErrorCode, get_error_detail
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -81,14 +86,18 @@ def create_payment(
     if not invoice:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Invoice {invoice_id} not found"
+            detail=get_error_detail(ErrorCode.INVOICE_NOT_FOUND, invoice_id=str(invoice_id))
         )
 
     # 2. Validierung: Betrag nicht höher als outstanding amount
     if data.amount > invoice.outstanding_amount:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Payment amount ({data.amount}) exceeds outstanding amount ({invoice.outstanding_amount})"
+            detail=get_error_detail(
+                ErrorCode.PAYMENT_EXCEEDS_AMOUNT,
+                amount=str(data.amount),
+                outstanding=str(invoice.outstanding_amount)
+            )
         )
 
     try:
@@ -105,8 +114,8 @@ def create_payment(
         db.commit()
         db.refresh(payment)
 
-        # 4. Invoice Status manuell aktualisieren (da Event manchmal nicht triggert)
-        invoice.update_status_from_payments()
+        # 4. Invoice Status automatisch aktualisieren basierend auf Zahlungen
+        invoices_crud.update_invoice_status_from_payments(db, invoice)
         db.commit()
         db.refresh(invoice)
 
@@ -114,9 +123,10 @@ def create_payment(
 
     except Exception as e:
         db.rollback()
+        logger.error("Failed to create payment: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create payment: {str(e)}"
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
         )
 
 
@@ -152,17 +162,18 @@ def update_payment(
         db.commit()
         db.refresh(payment)
 
-        # Invoice Status aktualisieren
-        payment.invoice.update_status_from_payments()
+        # Invoice Status automatisch aktualisieren
+        invoices_crud.update_invoice_status_from_payments(db, payment.invoice)
         db.commit()
 
         return payment
 
     except Exception as e:
         db.rollback()
+        logger.error("Failed to update payment: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update payment: {str(e)}"
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
         )
 
 
@@ -191,15 +202,16 @@ def delete_payment(db: Session, payment_id: uuid.UUID) -> bool:
         db.delete(payment)
         db.commit()
 
-        # Invoice Status aktualisieren
-        invoice.update_status_from_payments()
+        # Invoice Status automatisch aktualisieren
+        invoices_crud.update_invoice_status_from_payments(db, invoice)
         db.commit()
 
         return True
 
     except Exception as e:
         db.rollback()
+        logger.error("Failed to delete payment: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete payment: {str(e)}"
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
         )

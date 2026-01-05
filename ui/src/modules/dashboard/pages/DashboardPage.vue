@@ -1,11 +1,11 @@
 <template>
-  <div class="w-full h-full p-6 space-y-8 text-white">
+  <div class="w-full h-full p-3 sm:p-6 space-y-4 sm:space-y-8 text-white">
 
     <!-- Header (Spacer) -->
-    <div class="h-8"></div>
+    <div class="h-4 sm:h-8"></div>
 
     <!-- Widgets Grid -->
-    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
       <div v-for="i in 3" :key="i" class="p-5 rounded-xl bg-white/5 border border-white/10 shadow-soft backdrop-blur-sm">
         <div class="animate-pulse space-y-3">
           <div class="h-4 bg-white/10 rounded w-3/4"></div>
@@ -16,7 +16,7 @@
 
     <div v-else>
       <!-- Main KPI Cards Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 sm:mb-6">
         <!-- Customers Card -->
         <div class="p-4 rounded-xl bg-white/5 border border-white/10 shadow-soft backdrop-blur-sm">
           <div class="flex items-center gap-2 mb-2">
@@ -85,7 +85,7 @@
       </div>
 
       <!-- Secondary Stats Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         <!-- Financial Details Widget -->
         <div class="p-5 rounded-xl bg-white/5 border border-white/10 shadow-soft backdrop-blur-sm">
           <h3 class="text-sm font-semibold text-white mb-4">Finanzen</h3>
@@ -301,3 +301,30 @@ function getActivityIcon(type: string) {
   return icons[type] || FileText;
 }
 </script>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .p-4 {
+    padding: 0.75rem;
+  }
+
+  .p-5 {
+    padding: 1rem;
+  }
+
+  .text-3xl {
+    font-size: 1.75rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .space-y-4 {
+    gap: 0.5rem;
+  }
+}
+</style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="w-screen h-screen overflow-hidden flex flex-col bg-bg-primary">
+  <div class="wm-app-root">
     <!-- Topbar -->
     <KitTopbar
       @open-profile="openProfile"
@@ -8,7 +8,7 @@
     />
 
     <!-- Main Area -->
-    <div class="flex flex-1 overflow-hidden relative">
+    <div class="wm-main-area">
 
       <!-- Dashboard Background Layer -->
       <div class="dashboard-background">
@@ -77,7 +77,42 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-/* Dashboard Background Layer */
+/* ============================================
+   ROOT CONTAINER & MAIN AREA
+   ============================================ */
+.wm-app-root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+}
+
+@media (max-width: 1024px) {
+  .wm-app-root {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
+
+.wm-main-area {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+@media (max-width: 1024px) {
+  .wm-main-area {
+    min-height: calc(100vh - var(--os-topbar-height) - var(--os-dock-height));
+    overflow: visible;
+  }
+}
+
+/* ============================================
+   DASHBOARD BACKGROUND LAYER
+   ============================================ */
 .dashboard-background {
   position: absolute;
   inset: 0;
@@ -85,9 +120,22 @@ async function handleLogout() {
   overflow: auto;
 }
 
+@media (max-width: 1024px) {
+  .dashboard-background {
+    position: relative;
+    inset: auto;
+    overflow: visible;
+    min-height: 100%;
+  }
+}
+
+/* ============================================
+   WINDOW LAYER
+   ============================================ */
 /* Windows float above dashboard */
 .window-layer {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 10;
   pointer-events: none; /* Allow clicks to pass through to dashboard when no windows */
 }
@@ -97,7 +145,9 @@ async function handleLogout() {
   pointer-events: auto;
 }
 
-/* System Pages Overlay */
+/* ============================================
+   SYSTEM PAGES OVERLAY
+   ============================================ */
 .system-page-overlay {
   position: absolute;
   inset: 0;
@@ -110,6 +160,15 @@ async function handleLogout() {
   padding: 2rem;
 }
 
+@media (max-width: 1024px) {
+  .system-page-overlay {
+    position: fixed;
+    padding: 0;
+    background: var(--color-bg-primary);
+    backdrop-filter: none;
+  }
+}
+
 .system-page-container {
   width: 100%;
   max-width: 1200px;
@@ -120,6 +179,18 @@ async function handleLogout() {
   border: 1px solid var(--color-border-light);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .system-page-container {
+    max-width: 100%;
+    height: calc(100vh - var(--os-topbar-height) - var(--os-dock-height));
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Transition */

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useFinance } from '../../composables/useFinance';
+import { useSevDesk } from '../../composables';
 import {
   TrendingUp,
   TrendingDown,
@@ -10,14 +11,33 @@ import {
   PieChart,
   ArrowUpCircle,
   ArrowDownCircle,
+  RefreshCw,
 } from 'lucide-vue-next';
 
 // Composable
 const { overview, isLoading, loadOverview } = useFinance();
+const {
+  isConfigured: isSevDeskConfigured,
+  syncing: sevdeskSyncing,
+  syncPayments,
+  lastSyncTime,
+  fetchConfig,
+} = useSevDesk();
+
+// SevDesk Sync State
+const syncSuccess = ref<string | null>(null);
+const syncError = ref<string | null>(null);
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadOverview();
+  // Load SevDesk config to check if it's configured
+  try {
+    await fetchConfig();
+  } catch (e) {
+    // Ignore errors, just means not configured
+    console.log('SevDesk not configured');
+  }
 });
 
 // Computed
@@ -92,13 +112,74 @@ function getCategoryColor(category: string): string {
   };
   return colors[category] || colors.other;
 }
+
+// SevDesk Payment Sync
+async function handleSyncPayments() {
+  syncSuccess.value = null;
+  syncError.value = null;
+
+  try {
+    const result = await syncPayments();
+    if (result.success) {
+      syncSuccess.value = `Erfolgreich: ${result.payments_created} Zahlung(en) erstellt, ${result.invoices_status_updated} Rechnung(en) aktualisiert`;
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        syncSuccess.value = null;
+      }, 5000);
+      // Reload overview to show updated data
+      loadOverview();
+    } else {
+      syncError.value = 'Synchronisation fehlgeschlagen';
+    }
+  } catch (e: any) {
+    syncError.value = e.message || 'Fehler beim Synchronisieren der Zahlungen';
+  }
+}
+
+function formatDateTime(dateString?: string) {
+  if (!dateString) return 'Nie';
+  return new Date(dateString).toLocaleString('de-DE');
+}
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <h1 class="text-2xl font-bold text-white">Finanzen Dashboard</h1>
+    </div>
+
+    <!-- SevDesk Sync Messages -->
+    <div v-if="syncSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30">
+      {{ syncSuccess }}
+    </div>
+    <div v-if="syncError" class="p-4 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30">
+      {{ syncError }}
+    </div>
+
+    <!-- SevDesk Sync Card -->
+    <div v-if="isSevDeskConfigured" class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
+            <RefreshCw :size="20" class="text-blue-200" />
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">SevDesk Zahlungssync</h3>
+            <p class="text-xs text-white/60 mt-0.5">
+              Letzte Synchronisation: {{ formatDateTime(lastSyncTime) }}
+            </p>
+          </div>
+        </div>
+        <button
+          @click="handleSyncPayments"
+          :disabled="sevdeskSyncing"
+          class="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+        >
+          <RefreshCw :size="16" :class="{ 'animate-spin': sevdeskSyncing }" />
+          {{ sevdeskSyncing ? 'Synchronisiere...' : 'Zahlungen synchronisieren' }}
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -109,7 +190,7 @@ function getCategoryColor(category: string): string {
     <!-- Dashboard Content -->
     <div v-else-if="overview" class="flex-1 overflow-y-auto space-y-4">
       <!-- KPI Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <!-- Total Revenue -->
         <div class="rounded-lg border border-white/10 bg-white/5 p-4">
           <div class="flex items-center justify-between mb-2">
@@ -181,7 +262,7 @@ function getCategoryColor(category: string): string {
       </div>
 
       <!-- Outstanding & Overdue -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <!-- Outstanding Revenue -->
         <div class="rounded-lg border border-white/10 bg-white/5 p-4">
           <div class="flex items-center gap-2 mb-3">
@@ -216,7 +297,7 @@ function getCategoryColor(category: string): string {
       </div>
 
       <!-- Charts Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <!-- Invoices by Status -->
         <div class="rounded-lg border border-white/10 bg-white/5 p-4">
           <h3 class="text-sm font-semibold text-white mb-4">Rechnungen nach Status</h3>
@@ -284,3 +365,22 @@ function getCategoryColor(category: string): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .p-4 {
+    padding: 0.75rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .flex-col.gap-3 {
+    gap: 0.5rem;
+  }
+}
+</style>

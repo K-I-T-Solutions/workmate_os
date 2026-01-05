@@ -1,6 +1,7 @@
 # app/core/auth.py
 from __future__ import annotations
 import json
+import logging
 import requests
 import jwt as pyjwt
 from jwt import ExpiredSignatureError, InvalidTokenError
@@ -10,8 +11,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from backend.app.core.settings.database import get_db
-from app.modules import  Employee
+from app.core.settings.database import get_db
+from app.modules.employees.models import Employee
+from app.core.errors import ErrorCode, get_error_detail
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -29,10 +33,10 @@ _JWKS_CACHE = None
 # ============================================================
 # 🔑 JWKS Key Retrieval (cached)
 # ============================================================
-def get_jwks():
+def get_jwks(force_refresh=False):
     """Lädt und cached die öffentlichen JWKS-Schlüssel vom Keycloak-Server."""
     global _JWKS_CACHE
-    if _JWKS_CACHE:
+    if _JWKS_CACHE and not force_refresh:
         return _JWKS_CACHE
     try:
         res = requests.get(JWKS_URI, timeout=5)
@@ -41,7 +45,11 @@ def get_jwks():
         _JWKS_CACHE = {key["kid"]: key for key in jwks["keys"]}
         return _JWKS_CACHE
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Fehler beim Laden der JWKS: {e}")
+        logger.error("Fehler beim Laden der JWKS: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+        )
 
 
 # ============================================================
@@ -60,7 +68,7 @@ async def get_current_user(
 
     # 🧪 Testmodus: Wenn Middleware einen Test-User gesetzt hat
     if hasattr(request.state, "test_user") and request.state.test_user:
-        print("🧪 TestAuth aktiv:", request.state.test_user)
+        logger.debug("🧪 TestAuth aktiv: %s", request.state.test_user)
         return request.state.test_user
 
     # 🧪 Alternativ: Direkter Header (z. B. für pytest)
@@ -68,38 +76,125 @@ async def get_current_user(
     if test_user_header:
         try:
             test_user = json.loads(test_user_header)
-            print("🧪 TestAuth (Header):", test_user)
+            logger.debug("🧪 TestAuth (Header): %s", test_user)
             return test_user
         except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Ungültiges X-Test-User Format")
+            raise HTTPException(
+                status_code=400,
+                detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
+            )
 
     # 🧱 Kein Token vorhanden → nicht authentifiziert
     if creds is None:
-        raise HTTPException(status_code=401, detail="Missing credentials")
-
-    token = creds.credentials
-    try:
-        header = pyjwt.get_unverified_header(token)
-        keys = get_jwks()
-        key_data = keys.get(header.get("kid"))
-        if not key_data:
-            raise HTTPException(status_code=401, detail="Unknown key ID in token header")
-
-        public_key = RSAAlgorithm.from_jwk(key_data)
-        decoded = pyjwt.decode(
-            token,
-            key=public_key,
-            algorithms=["RS256"],
-            options={"verify_aud": False},
-            issuer=OIDC_ISSUER,
+        raise HTTPException(
+            status_code=401,
+            detail=get_error_detail(ErrorCode.AUTH_NOT_AUTHENTICATED)
         )
 
+    token = creds.credentials
+    decoded = None
+
+    # Try to determine token type by header
+    try:
+        header = pyjwt.get_unverified_header(token)
+        alg = header.get("alg")
+        kid = header.get("kid")
+
+        logger.debug("🔍 [Auth] Token algorithm: %s, Key ID: %s", alg, kid)
+
+        # ============================================================
+        # Option 1: HS256 Token (Local Auth Service)
+        # ============================================================
+        if alg == "HS256":
+            logger.debug("🔑 [Auth] Validating HS256 token (Local Auth)")
+            from app.core.auth.service import SECRET_KEY, ALGORITHM
+
+            try:
+                decoded = pyjwt.decode(
+                    token,
+                    key=SECRET_KEY,
+                    algorithms=[ALGORITHM],
+                    options={"verify_aud": False},
+                )
+                logger.debug("✅ [Auth] HS256 token validated successfully")
+            except ExpiredSignatureError:
+                raise HTTPException(
+                    status_code=401,
+                    detail=get_error_detail(ErrorCode.AUTH_EXPIRED_TOKEN)
+                )
+            except InvalidTokenError as e:
+                logger.debug("Invalid HS256 token: %s", e)
+                raise HTTPException(
+                    status_code=401,
+                    detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN)
+                )
+
+        # ============================================================
+        # Option 2: RS256 Token (Keycloak/Zitadel)
+        # ============================================================
+        elif alg == "RS256":
+            logger.debug("🔑 [Auth] Validating RS256 token (Keycloak/Zitadel)")
+
+            # Try to get key from cache
+            keys = get_jwks()
+            key_data = keys.get(kid)
+
+            # If key not found, refresh JWKS cache and try again
+            if not key_data:
+                logger.warning("⚠️ Key ID %s not found in cache, refreshing JWKS...", kid)
+                keys = get_jwks(force_refresh=True)
+                key_data = keys.get(kid)
+
+                # If still not found after refresh, fail
+                if not key_data:
+                    logger.error("Unknown key ID in token header: %s", kid)
+                    raise HTTPException(
+                        status_code=401,
+                        detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN)
+                    )
+
+            public_key = RSAAlgorithm.from_jwk(key_data)
+            decoded = pyjwt.decode(
+                token,
+                key=public_key,
+                algorithms=["RS256"],
+                options={"verify_aud": False},
+                issuer=OIDC_ISSUER,
+            )
+            logger.debug("✅ [Auth] RS256 token validated successfully")
+
+        else:
+            logger.error("Unsupported token algorithm: %s", alg)
+            raise HTTPException(
+                status_code=401,
+                detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN)
+            )
+
     except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        raise HTTPException(
+            status_code=401,
+            detail=get_error_detail(ErrorCode.AUTH_EXPIRED_TOKEN)
+        )
     except InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+        logger.debug("Invalid token: %s", e)
+        raise HTTPException(
+            status_code=401,
+            detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN)
+        )
+    except HTTPException:
+        raise  # Re-raise HTTPExceptions as-is
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")
+        logger.error("Token verification failed: %s", e)
+        raise HTTPException(
+            status_code=401,
+            detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN)
+        )
+
+    if not decoded:
+        raise HTTPException(
+            status_code=401,
+            detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN)
+        )
 
     # ============================================================
     # 🧭 Benutzer in DB finden
@@ -109,42 +204,62 @@ async def get_current_user(
     user = None
 
     if email:
-        user = db.scalar(select(Employee.Employee).where(Employee.Employee.email == email))
+        user = db.scalar(select(Employee).where(Employee.email == email))
     if not user and username:
         user = db.scalar(
-            select(Employee.Employee).where(
-                (Employee.Employee.name.ilike(username))
-                | (Employee.Employee.employee_id.ilike(f"%{username}%"))
+            select(Employee).where(
+                (Employee.first_name.ilike(username))
+                | (Employee.last_name.ilike(username))
+                | (Employee.employee_code.ilike(f"%{username}%"))
             )
         )
 
     if not user:
-        raise HTTPException(status_code=404, detail="Kein Employee für aktuellen Benutzer gefunden")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error_detail(ErrorCode.EMPLOYEE_NOT_FOUND)
+        )
 
     # ============================================================
     # 🧩 Rolle ableiten
     # ============================================================
-    dept = (user.department or "").lower()
-    if dept in ("backoffice", "hr"):
+    # Department kann ein Objekt oder None sein
+    dept_name = ""
+    if user.department:
+        if hasattr(user.department, 'name'):
+            dept_name = (user.department.name or "").lower()
+        elif hasattr(user.department, 'code'):
+            dept_name = (user.department.code or "").lower()
+        elif isinstance(user.department, str):
+            dept_name = user.department.lower()
+
+    if dept_name in ("backoffice", "hr"):
         role = "hr"
-    elif dept == "management":
+    elif dept_name == "management":
         role = "management"
-    elif dept == "support":
+    elif dept_name == "support":
         role = "support"
-    elif dept in ("facility", "security"):
+    elif dept_name in ("facility", "security"):
         role = "admin"
     else:
         role = "employee"
 
+    # Build full name
+    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+    if not full_name:
+        full_name = user.employee_code
+
     result = {
-        "preferred_username": user.name,
+        "preferred_username": full_name,
         "email": user.email,
-        "employee_id": user.employee_id,
-        "department": dept,
+        "employee_code": user.employee_code,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "department": dept_name,
         "role": role,
     }
 
-    print("✅ Authenticated as:", result)
+    logger.debug("✅ Authenticated as: %s", result)
     return result
 
 

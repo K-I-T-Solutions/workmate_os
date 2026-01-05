@@ -10,8 +10,13 @@ from typing import Optional
 
 from app.core.settings.database import get_db
 from app.core.auth.service import AuthService
+from app.core.auth.zitadel import ZitadelAuth
 from app.modules.employees.models import Employee
+from app.core.errors import ErrorCode, get_error_detail
 from sqlalchemy import select
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Router
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -28,6 +33,12 @@ class LoginRequest(BaseModel):
     """Login request schema"""
     email: EmailStr
     password: str
+
+
+class OIDCLoginRequest(BaseModel):
+    """OIDC/SSO login request schema"""
+    id_token: str
+    access_token: str | None = None  # Optional: used to fetch user info
 
 
 class LoginResponse(BaseModel):
@@ -92,7 +103,7 @@ async def get_current_user(
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
+            detail=get_error_detail(ErrorCode.AUTH_NOT_AUTHENTICATED),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -102,7 +113,7 @@ async def get_current_user(
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -110,7 +121,7 @@ async def get_current_user(
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
+            detail=get_error_detail(ErrorCode.AUTH_INVALID_PAYLOAD),
         )
 
     # Get user from database
@@ -119,13 +130,13 @@ async def get_current_user(
     if not employee:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail=get_error_detail(ErrorCode.AUTH_USER_NOT_FOUND),
         )
 
     if employee.status != "active":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is not active",
+            detail=get_error_detail(ErrorCode.AUTH_USER_INACTIVE),
         )
 
     return employee
@@ -150,11 +161,87 @@ async def login(
     if not employee:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail=get_error_detail(ErrorCode.AUTH_INVALID_CREDENTIALS),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Create token
+    token_data = AuthService.create_token_for_user(db, employee)
+
+    # Prepare user data
+    user_data = {
+        "id": str(employee.id),
+        "employee_code": employee.employee_code,
+        "email": employee.email,
+        "first_name": employee.first_name,
+        "last_name": employee.last_name,
+        "role": {
+            "id": str(employee.role.id),
+            "name": employee.role.name,
+        } if employee.role else None,
+        "department": {
+            "id": str(employee.department.id),
+            "name": employee.department.name,
+            "code": employee.department.code,
+        } if employee.department else None,
+        "permissions": AuthService.get_user_permissions(db, employee),
+        "theme": employee.theme or "kit-standard",
+    }
+
+    return {
+        **token_data,
+        "user": user_data,
+    }
+
+
+@auth_router.post("/oidc/login", response_model=LoginResponse)
+async def oidc_login(
+    request: OIDCLoginRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate user with Zitadel OIDC token (SSO)
+    Returns JWT access token compatible with existing frontend
+    """
+    # Verify Zitadel token
+    zitadel_payload = await ZitadelAuth.verify_token(request.id_token)
+
+    if not zitadel_payload:
+        logger.debug("[DEBUG OIDC] Token verification failed")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    logger.debug("[DEBUG OIDC] Token verified, payload: %s", zitadel_payload)
+
+    # Fetch user info from UserInfo endpoint if access_token provided
+    user_info = None
+    if request.access_token:
+        user_info = await ZitadelAuth.get_user_info(request.access_token)
+        logger.debug("[DEBUG OIDC] UserInfo fetched: %s", user_info)
+
+    # Merge user_info into payload (userinfo takes priority)
+    combined_payload = {**zitadel_payload}
+    if user_info:
+        combined_payload.update(user_info)
+
+    logger.debug("[DEBUG OIDC] Combined payload: %s", combined_payload)
+
+    # Get or create user from Zitadel data
+    employee = ZitadelAuth.get_or_create_user(db, combined_payload)
+
+    logger.debug("[DEBUG OIDC] Employee result: %s", employee)
+
+    if not employee:
+        logger.debug("[DEBUG OIDC] Failed to get/create employee")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=get_error_detail(ErrorCode.AUTH_OIDC_FAILED),
+        )
+
+    # Create local JWT token (same as password login)
     token_data = AuthService.create_token_for_user(db, employee)
 
     # Prepare user data
@@ -259,7 +346,7 @@ async def set_password(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to set password"
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
         )
 
     return {
@@ -281,20 +368,20 @@ async def change_password(
     if not current_user.password_hash:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No password set for this account"
+            detail=get_error_detail(ErrorCode.AUTH_NO_PASSWORD_SET)
         )
 
     if not AuthService.verify_password(request.current_password, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Current password is incorrect"
+            detail=get_error_detail(ErrorCode.AUTH_WRONG_PASSWORD)
         )
 
     # Validate new password
     if len(request.new_password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 8 characters long"
+            detail=get_error_detail(ErrorCode.AUTH_PASSWORD_TOO_SHORT)
         )
 
     # Set new password
@@ -303,7 +390,7 @@ async def change_password(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to change password"
+            detail=get_error_detail(ErrorCode.SYSTEM_ERROR)
         )
 
     return {

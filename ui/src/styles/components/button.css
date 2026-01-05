@@ -179,6 +179,49 @@
     focus-visible:ring-red-400/40;
 }
 
+/* =========================
+   MOBILE TOUCH OPTIMIZATION
+   ========================= */
+@media (max-width: 1024px) {
+  .kit-btn-primary,
+  .kit-btn-secondary,
+  .kit-btn-accent,
+  .kit-btn-success,
+  .kit-btn-danger,
+  .kit-btn-ghost {
+    min-height: var(--touch-target-min);
+    padding: 0.625rem 1rem;
+    font-size: 0.9375rem;
+  }
 
+  /* Icon-only buttons */
+  .kit-btn-primary:has(svg:only-child),
+  .kit-btn-secondary:has(svg:only-child),
+  .kit-btn-ghost:has(svg:only-child) {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+    padding: 0.625rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .kit-btn-primary,
+  .kit-btn-secondary,
+  .kit-btn-accent,
+  .kit-btn-success,
+  .kit-btn-danger,
+  .kit-btn-ghost {
+    min-height: 48px;
+    padding: 0.75rem 1.125rem;
+  }
+
+  .kit-btn-primary:has(svg:only-child),
+  .kit-btn-secondary:has(svg:only-child),
+  .kit-btn-ghost:has(svg:only-child) {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0.75rem;
+  }
+}
 
 }

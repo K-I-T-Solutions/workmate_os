@@ -31,31 +31,30 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Briefcase,
-  Users,
-  Clock,
-  Receipt,
-  Wallet,
-  Euro,
-} from "lucide-vue-next";
-
 import { useAppManager } from "../app-manager/useAppManager";
 import { apps } from "../app-manager/appRegistry";
-import { markRaw } from "vue";
+import { useAuth } from "@/composables/useAuth";
+import { computed } from "vue";
 
 const { openWindow, focusWindow, restoreWindow, activeWindow, windows } = useAppManager();
+const { hasPermission } = useAuth();
 
-// Dock items (App-Zuweisungen)
-const dockItems = [
-  { id: "crm", label: "Kunden", icon: markRaw(Users) },
-  { id: "projects", label: "Projekte", icon: markRaw(Briefcase) },
-  { id: "time-tracking", label: "Zeiterfassung", icon: markRaw(Clock) },
-  { id: "invoices", label: "Rechnungen", icon: markRaw(Receipt) },
-  { id: "expenses", label: "Ausgaben", icon: markRaw(Euro) },
-  { id: "finance", label: "Finanzen", icon: markRaw(Wallet) },
-  // Chat entfernt - Interne Kommunikation erfolgt über externe Systeme (Matrix/Mattermost) + Ticketsystem
-];
+// Generate dock items dynamically from app registry
+const dockItems = computed(() => {
+  return apps
+    .filter(app => app.showInDock) // Only apps that should be in dock
+    .filter(app => {
+      // Filter by permissions
+      if (!app.requiredPermission) return true;
+      return hasPermission(app.requiredPermission);
+    })
+    .sort((a, b) => (a.dockOrder || 0) - (b.dockOrder || 0)) // Sort by dockOrder
+    .map(app => ({
+      id: app.id,
+      label: app.title,
+      icon: app.icon
+    }));
+});
 
 // Check if any window of this app is open (even if minimized)
 function isOpen(appId: string): boolean {

@@ -12,18 +12,26 @@ CHANGES:
 - ✅ Bulk operations
 - ✅ Recalculate endpoint
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 import uuid
 import os
+from io import BytesIO
 
 from app.core.settings.database import get_db
+from app.core.errors import ErrorCode, get_error_detail
+
+logger = logging.getLogger(__name__)
 from app.modules.backoffice.invoices import crud, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices import payments_crud
+from app.modules.backoffice.invoices.dependencies import RequestContext
+from app.core.storage.factory import get_storage
+from app.core.settings.config import settings
 
 
 router = APIRouter(prefix="/backoffice/invoices", tags=["Backoffice Invoices"])
@@ -97,6 +105,121 @@ def get_statistics(
 
 
 # ============================================================================
+# AUDIT LOGS (GoBD COMPLIANCE)
+# ============================================================================
+
+@router.get("/audit-logs", response_model=schemas.AuditLogListResponse)
+def list_audit_logs(
+    entity_type: Optional[str] = Query(None, description="Filter nach Entitätstyp (Invoice, Payment, Expense)"),
+    entity_id: Optional[uuid.UUID] = Query(None, description="Filter nach Entitäts-ID"),
+    action: Optional[str] = Query(None, description="Filter nach Aktion (create, update, delete, status_change)"),
+    skip: int = Query(0, ge=0, description="Offset für Pagination"),
+    limit: int = Query(100, ge=1, le=500, description="Max Anzahl Ergebnisse"),
+    db: Session = Depends(get_db)
+):
+    """
+    Liste aller Audit-Log-Einträge mit Pagination und Filtern.
+
+    **Compliance:** Erfüllt GoBD-Anforderungen für lückenlose Nachvollziehbarkeit.
+
+    **Filter-Optionen:**
+    - `entity_type`: Invoice, Payment, Expense
+    - `entity_id`: UUID der Entität
+    - `action`: create, update, delete, status_change
+
+    **Pagination:**
+    - `skip`: Offset (Standard: 0)
+    - `limit`: Max Anzahl (Standard: 100, Max: 500)
+    """
+    logs = crud.get_audit_logs(
+        db=db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action,
+        skip=skip,
+        limit=limit
+    )
+
+    total = crud.count_audit_logs(
+        db=db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action
+    )
+
+    return schemas.AuditLogListResponse(
+        items=logs,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
+
+
+# ============================================================================
+
+# ============================================================================
+# GoBD EXPORT
+# ============================================================================
+
+@router.get("/gobd-export", response_class=StreamingResponse)
+def export_gobd_data(
+    from_date: Optional[date] = Query(None, description="Start-Datum (YYYY-MM-DD)"),
+    to_date: Optional[date] = Query(None, description="End-Datum (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """
+    GoBD-konformer Export aller Daten als ZIP-Archiv.
+    
+    **Inhalt:**
+    - invoices.csv (alle Rechnungen inkl. gelöschte)
+    - invoice_line_items.csv
+    - payments.csv
+    - audit_logs.csv
+    - metadata.json
+    - README.txt
+    
+    **GoBD-Konformität:**
+    - ✓ Vollständigkeit (inkl. gelöschter Einträge)
+    - ✓ Nachvollziehbarkeit (Audit Trail)
+    - ✓ Unveränderbarkeit (Zeitstempel)
+    - ✓ Maschinenlesbarkeit (CSV-Format)
+    
+    **Filter:**
+    - `from_date`: Nur Daten ab diesem Datum
+    - `to_date`: Nur Daten bis zu diesem Datum
+    
+    **Verwendung:**
+    Für Betriebsprüfungen gemäß § 147 Abs. 6 AO (Datenzugriff).
+    """
+    from app.modules.backoffice.invoices.gobd_export import generate_gobd_export
+    from datetime import datetime
+    
+    # Convert date to datetime for filtering
+    from_datetime = datetime.combine(from_date, datetime.min.time()) if from_date else None
+    to_datetime = datetime.combine(to_date, datetime.max.time()) if to_date else None
+    
+    # Generate export
+    zip_buffer = generate_gobd_export(db, from_datetime, to_datetime)
+    
+    # Generate filename
+    date_suffix = ""
+    if from_date and to_date:
+        date_suffix = f"_{from_date.isoformat()}_to_{to_date.isoformat()}"
+    elif from_date:
+        date_suffix = f"_from_{from_date.isoformat()}"
+    elif to_date:
+        date_suffix = f"_until_{to_date.isoformat()}"
+    
+    filename = f"gobd_export{date_suffix}_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.zip"
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
 # SINGLE INVOICE
 # ============================================================================
 
@@ -143,7 +266,8 @@ def create_invoice(
     data: schemas.InvoiceCreate,
     background_tasks: BackgroundTasks,
     generate_pdf: bool = Query(True, description="PDF sofort generieren?"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Neue Invoice erstellen.
@@ -160,10 +284,22 @@ def create_invoice(
     try:
         if generate_pdf:
             # Synchrone PDF-Generierung
-            invoice = crud.create_invoice(db=db, data=data, generate_pdf=True)
+            invoice = crud.create_invoice(
+                db=db,
+                data=data,
+                generate_pdf=True,
+                user_id=ctx.user_id,
+                ip_address=ctx.ip_address
+            )
         else:
             # Asynchrone PDF-Generierung via Background Task
-            invoice = crud.create_invoice(db=db, data=data, generate_pdf=False)
+            invoice = crud.create_invoice(
+                db=db,
+                data=data,
+                generate_pdf=False,
+                user_id=ctx.user_id,
+                ip_address=ctx.ip_address
+            )
             background_tasks.add_task(
                 _generate_pdf_background,
                 invoice.id,
@@ -182,20 +318,28 @@ def create_invoice(
 
 
 def _generate_pdf_background(invoice_id: uuid.UUID, db: Session):
-    """Background Task für PDF-Generierung."""
+    """Background Task für PDF-Generierung mit Storage-Backend."""
     try:
         invoice = crud.get_invoice(db, invoice_id)
         if invoice and not invoice.pdf_path:
-            pdf_dir = "/root/workmate_os_uploads/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+            storage = get_storage()
 
-            generate_invoice_pdf(invoice, pdf_path)
-            invoice.pdf_path = pdf_path
-            db.commit()
+            # PDF-Dateiname und remote path
+            pdf_filename = f"{invoice.invoice_number}.pdf"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/{pdf_filename}"
+
+            # PDF als Bytes generieren
+            pdf_content = generate_invoice_pdf(invoice, output_path=None)
+
+            if pdf_content:
+                # PDF zu Storage hochladen
+                storage.upload(remote_path, pdf_content)
+                invoice.pdf_path = remote_path
+                db.commit()
 
     except Exception as e:
-        print(f"❌ Background PDF generation failed: {e}")
+        logger.error("❌ Background PDF generation failed: %s", e)
 
 
 # ============================================================================
@@ -206,7 +350,8 @@ def _generate_pdf_background(invoice_id: uuid.UUID, db: Session):
 def update_invoice(
     invoice_id: uuid.UUID,
     data: schemas.InvoiceUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Invoice aktualisieren (Partial Update).
@@ -215,13 +360,16 @@ def update_invoice(
     - status
     - notes
     - terms
+    - line_items (ersetzt ALLE Positionen!)
 
     **Nicht änderbar:**
     - invoice_number (einmalig)
     - customer_id (nach Erstellung fixiert)
     - totals (automatisch berechnet)
+
+    **Wichtig:** Wenn line_items übergeben werden, werden alle existierenden Positionen gelöscht und durch die neuen ersetzt!
     """
-    invoice = crud.update_invoice(db, invoice_id, data)
+    invoice = crud.update_invoice(db, invoice_id, data, user_id=ctx.user_id, ip_address=ctx.ip_address)
     if not invoice:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -234,7 +382,8 @@ def update_invoice(
 def update_invoice_status(
     invoice_id: uuid.UUID,
     status_update: schemas.InvoiceStatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Nur Status ändern.
@@ -244,7 +393,7 @@ def update_invoice_status(
     - sent → paid / overdue / cancelled
     - partial → paid / overdue
     """
-    invoice = crud.update_invoice_status(db, invoice_id, status_update.status)
+    invoice = crud.update_invoice_status(db, invoice_id, status_update.status, user_id=ctx.user_id, ip_address=ctx.ip_address)
     if not invoice:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -282,7 +431,8 @@ def recalculate_totals(
 @router.delete("/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_invoice(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
 ):
     """
     Invoice löschen.
@@ -292,7 +442,7 @@ def delete_invoice(
     - Payments werden mitgelöscht
     - PDF wird gelöscht (falls vorhanden)
     """
-    success = crud.delete_invoice(db, invoice_id)
+    success = crud.delete_invoice(db, invoice_id, user_id=ctx.user_id, ip_address=ctx.ip_address)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -301,11 +451,45 @@ def delete_invoice(
     return None
 
 
+@router.post("/{invoice_id}/restore", response_model=schemas.InvoiceResponse)
+def restore_invoice(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    ctx: RequestContext = Depends()
+):
+    """
+    Stellt eine gelöschte Invoice wieder her (Restore).
+
+    **Hinweis:**
+    - Nur soft-deleted Invoices können wiederhergestellt werden
+    - Hard-deleted Invoices sind permanent gelöscht
+    - Audit Log wird erstellt
+
+    **Use Case:**
+    - Versehentlich gelöschte Rechnung wiederherstellen
+    - Stornierung rückgängig machen
+    """
+    invoice = crud.restore_invoice(
+        db,
+        invoice_id,
+        user_id=ctx.user_id,
+        ip_address=ctx.ip_address
+    )
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found or not deleted"
+        )
+
+    return invoice
+
+
 # ============================================================================
 # PDF OPERATIONS
 # ============================================================================
 
-@router.get("/{invoice_id}/pdf", response_class=FileResponse)
+@router.get("/{invoice_id}/pdf")
 def download_invoice_pdf(
     invoice_id: uuid.UUID,
     db: Session = Depends(get_db)
@@ -322,28 +506,209 @@ def download_invoice_pdf(
             detail=f"Invoice {invoice_id} not found"
         )
 
-    # PDF generieren falls nicht vorhanden
-    if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
-        try:
-            pdf_dir = "/root/workmate_os_uploads/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+    storage = get_storage()
 
-            generate_invoice_pdf(invoice, pdf_path)
-            invoice.pdf_path = pdf_path
+    # PDF generieren falls nicht vorhanden
+    if not invoice.pdf_path or not storage.exists(invoice.pdf_path):
+        try:
+            # PDF-Dateiname und remote path
+            pdf_filename = f"{invoice.invoice_number}.pdf"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/{pdf_filename}"
+
+            # PDF als Bytes generieren
+            pdf_content = generate_invoice_pdf(invoice, output_path=None)
+
+            if not pdf_content:
+                raise ValueError("PDF generation returned no content")
+
+            # PDF zu Storage hochladen
+            storage.upload(remote_path, pdf_content)
+            invoice.pdf_path = remote_path
+            db.commit()
+
+        except Exception as e:
+            logger.error("Failed to generate PDF: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=get_error_detail(ErrorCode.INVOICE_PDF_FAILED)
+            )
+
+    # PDF aus Storage herunterladen
+    try:
+        pdf_content = storage.download(invoice.pdf_path)
+        filename = f"{invoice.invoice_number}.pdf"
+
+        return StreamingResponse(
+            BytesIO(pdf_content),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download PDF: {str(e)}"
+        )
+
+
+# ============================================================================
+# E-RECHNUNG (XRechnung/ZUGFeRD)
+# ============================================================================
+
+@router.get("/{invoice_id}/xrechnung")
+def download_xrechnung_xml(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    XRechnung-XML herunterladen (EN16931).
+
+    **E-Rechnung Pflicht:** Gemäß § 14 UStG ab 01.01.2025 für B2B.
+
+    **Format:** XML nach EN16931 Standard (XRechnung 3.0)
+
+    **Verwendung:**
+    - Öffentliche Auftraggeber (Pflicht)
+    - B2B-Rechnungen in Deutschland
+    - Automatisierte Rechnungsverarbeitung
+    """
+    from app.modules.backoffice.invoices.xrechnung_generator import generate_xrechnung_xml
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found"
+        )
+
+    storage = get_storage()
+
+    # XML generieren falls nicht vorhanden
+    if not invoice.xml_path or not storage.exists(invoice.xml_path):
+        try:
+            # XML generieren
+            xml_content = generate_xrechnung_xml(invoice)
+
+            # XML-Dateiname und remote path
+            xml_filename = f"{invoice.invoice_number}.xml"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/xml/{xml_filename}"
+
+            # XML zu Storage hochladen
+            storage.upload(remote_path, xml_content)
+            invoice.xml_path = remote_path
             db.commit()
 
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to generate PDF: {str(e)}"
+                detail=f"Failed to generate XRechnung XML: {str(e)}"
             )
 
-    return FileResponse(
-        path=invoice.pdf_path,
-        filename=os.path.basename(invoice.pdf_path),
-        media_type="application/pdf"
-    )
+    # XML aus Storage herunterladen
+    try:
+        xml_content = storage.download(invoice.xml_path)
+        filename = f"{invoice.invoice_number}_xrechnung.xml"
+
+        return StreamingResponse(
+            BytesIO(xml_content),
+            media_type="application/xml",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download XRechnung XML: {str(e)}"
+        )
+
+
+@router.get("/{invoice_id}/zugferd")
+def download_zugferd_pdf(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    ZUGFeRD-PDF herunterladen (Hybrid-PDF mit eingebetteter XML).
+
+    **Format:** PDF/A-3 mit eingebetteter XRechnung-XML
+
+    **Vorteile:**
+    - Menschenlesbar (PDF) + Maschinenlesbar (XML)
+    - Kompatibel mit allen PDF-Readern
+    - Automatische Verarbeitung möglich
+    - GoBD-konform
+
+    **Standard:** ZUGFeRD 2.1 / Factur-X (EN16931 Profil)
+    """
+    from app.modules.backoffice.invoices.xrechnung_generator import generate_zugferd_pdf
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found"
+        )
+
+    storage = get_storage()
+
+    # ZUGFeRD-PDF generieren falls nicht vorhanden
+    if not invoice.zugferd_path or not storage.exists(invoice.zugferd_path):
+        try:
+            # Erst normales PDF generieren/laden
+            if not invoice.pdf_path or not storage.exists(invoice.pdf_path):
+                # PDF generieren
+                pdf_filename = f"{invoice.invoice_number}.pdf"
+                storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+                pdf_remote_path = f"{storage_path}/{pdf_filename}"
+
+                pdf_content = generate_invoice_pdf(invoice, output_path=None)
+                if not pdf_content:
+                    raise ValueError("PDF generation returned no content")
+
+                storage.upload(pdf_remote_path, pdf_content)
+                invoice.pdf_path = pdf_remote_path
+                db.commit()
+
+            # PDF laden
+            pdf_binary = storage.download(invoice.pdf_path)
+
+            # ZUGFeRD-PDF generieren (PDF mit eingebetteter XML)
+            zugferd_content = generate_zugferd_pdf(invoice, pdf_binary)
+
+            # ZUGFeRD-Dateiname und remote path
+            zugferd_filename = f"{invoice.invoice_number}_zugferd.pdf"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/zugferd/{zugferd_filename}"
+
+            # ZUGFeRD-PDF zu Storage hochladen
+            storage.upload(remote_path, zugferd_content)
+            invoice.zugferd_path = remote_path
+            db.commit()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate ZUGFeRD PDF: {str(e)}"
+            )
+
+    # ZUGFeRD-PDF aus Storage herunterladen
+    try:
+        zugferd_content = storage.download(invoice.zugferd_path)
+        filename = f"{invoice.invoice_number}_zugferd.pdf"
+
+        return StreamingResponse(
+            BytesIO(zugferd_content),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download ZUGFeRD PDF: {str(e)}"
+        )
 
 
 @router.post("/{invoice_id}/regenerate-pdf", response_model=schemas.InvoiceResponse)
@@ -362,17 +727,26 @@ def regenerate_pdf(
         )
 
     try:
-        pdf_dir = "/root/workmate_os_uploads/invoices"
-        os.makedirs(pdf_dir, exist_ok=True)
-        pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+        storage = get_storage()
 
-        # Altes PDF löschen
-        if invoice.pdf_path and os.path.exists(invoice.pdf_path):
-            os.remove(invoice.pdf_path)
+        # Altes PDF aus Storage löschen
+        if invoice.pdf_path and storage.exists(invoice.pdf_path):
+            storage.delete(invoice.pdf_path)
+
+        # PDF-Dateiname und remote path
+        pdf_filename = f"{invoice.invoice_number}.pdf"
+        storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+        remote_path = f"{storage_path}/{pdf_filename}"
 
         # Neues PDF generieren
-        generate_invoice_pdf(invoice, pdf_path)
-        invoice.pdf_path = pdf_path
+        pdf_content = generate_invoice_pdf(invoice, output_path=None)
+
+        if not pdf_content:
+            raise ValueError("PDF generation returned no content")
+
+        # PDF zu Storage hochladen
+        storage.upload(remote_path, pdf_content)
+        invoice.pdf_path = remote_path
         db.commit()
         db.refresh(invoice)
 
@@ -411,13 +785,81 @@ def bulk_update_status(
                 failed_ids.append(str(invoice_id))
         except Exception as e:
             failed_ids.append(str(invoice_id))
-            print(f"❌ Failed to update {invoice_id}: {e}")
+            logger.error("❌ Failed to update %s: %s", invoice_id, e)
 
     return schemas.BulkUpdateResponse(
         success_count=success_count,
         failed_count=len(failed_ids),
         failed_ids=failed_ids
     )
+
+
+@router.post("/{invoice_id}/validate-xrechnung")
+def validate_xrechnung_endpoint(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Validiert XRechnung-XML gegen EN16931 Standard.
+
+    **Prüfungen:**
+    1. XML Syntax (Well-Formed)
+    2. XML Struktur (Pflichtfelder)
+    3. Business Rules (Basic)
+
+    **Standards:**
+    - EN 16931: Europäische Norm
+    - XRechnung 3.0: Deutscher CIUS
+
+    **Returns:**
+    ```json
+    {
+        "valid": true,
+        "syntax_check": {...},
+        "structure_check": {...},
+        "errors": [],
+        "warnings": [],
+        "summary": "✅ XRechnung validation passed"
+    }
+    ```
+    """
+    from app.modules.backoffice.invoices.xrechnung_validator import validate_xrechnung
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoice {invoice_id} not found"
+        )
+
+    storage = get_storage()
+
+    # XRechnung XML generieren falls nicht vorhanden
+    if not invoice.xml_path or not storage.exists(invoice.xml_path):
+        from app.modules.backoffice.invoices.xrechnung_generator import generate_xrechnung_xml
+
+        xml_content = generate_xrechnung_xml(invoice)
+
+        # Speichern
+        filename = f"{invoice.invoice_number}_xrechnung.xml"
+        xml_path = f"invoices/xrechnung/{invoice.invoice_number}/{filename}"
+        storage.upload(xml_path, xml_content)
+
+        invoice.xml_path = xml_path
+        db.commit()
+    else:
+        # XML aus Storage laden
+        xml_content = storage.download(invoice.xml_path)
+
+    # Validierung durchführen
+    validation_result = validate_xrechnung(xml_content)
+
+    return {
+        "invoice_id": str(invoice_id),
+        "invoice_number": invoice.invoice_number,
+        "xml_path": invoice.xml_path,
+        **validation_result
+    }
 
 
 # ============================================================================
@@ -504,3 +946,70 @@ def delete_payment(
             detail=f"Payment {payment_id} not found"
         )
     return None
+
+
+# ============================================================================
+# RETENTION POLICY (GoBD § 147 AO)
+# ============================================================================
+
+@router.get("/retention/report")
+def get_retention_report_endpoint(
+    db: Session = Depends(get_db)
+):
+    """
+    Retention Policy Report.
+
+    Zeigt Statistiken über soft-deleted Invoices und Retention Status.
+
+    **GoBD Compliance:**
+    - § 147 AO: 10 Jahre Aufbewahrungspflicht
+    - § 257 HGB: 10 Jahre für Handelsbriefe
+    - Frist beginnt mit Schluss des Kalenderjahrs
+
+    **Returns:**
+    - Retention-Deadline
+    - Anzahl soft-deleted Invoices
+    - Anzahl eligible für Hard-Delete
+    - Liste aller eligible Invoices
+    """
+    from app.modules.backoffice.invoices.retention import get_retention_report
+
+    report = get_retention_report(db)
+    return report
+
+
+@router.post("/retention/cleanup")
+def execute_retention_cleanup_endpoint(
+    dry_run: bool = Query(default=True, description="Nur simulieren (kein echtes Löschen)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Führt Retention Policy Cleanup aus.
+
+    Löscht alle Invoices die älter als 10 Jahre sind (Hard-Delete).
+
+    **WARNUNG:**
+    Dies ist IRREVERSIBEL! Invoices werden permanent gelöscht.
+
+    **Parameter:**
+    - dry_run=true: Simulation (kein echtes Löschen) - EMPFOHLEN zum Testen!
+    - dry_run=false: Echtes Löschen (VORSICHT!)
+
+    **GoBD Compliance:**
+    - § 147 AO: Nach 10 Jahren dürfen Invoices gelöscht werden
+    - Audit Log wird erstellt vor Löschung
+
+    **Returns:**
+    - Statistiken über gelöschte Invoices
+    """
+    from app.modules.backoffice.invoices.retention import hard_delete_expired_invoices
+
+    stats = hard_delete_expired_invoices(db, dry_run=dry_run)
+
+    return {
+        "success": stats["failed"] == 0,
+        "stats": stats,
+        "warning": "DRY RUN - Keine echten Änderungen" if dry_run else "ECHTES LÖSCHEN durchgeführt!"
+    }
+
+

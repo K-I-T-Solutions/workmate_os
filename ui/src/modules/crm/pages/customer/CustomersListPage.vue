@@ -140,9 +140,9 @@ function getTypeLabel(type: string | null): string {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div class="flex items-center gap-3">
         <button @click="emit('openDashboard')" class="kit-btn-ghost">
           <ChevronLeft :size="18" />
@@ -152,7 +152,7 @@ function getTypeLabel(type: string | null): string {
           <p class="text-sm text-white/60 mt-1">{{ total }} Kunden insgesamt</p>
         </div>
       </div>
-      <button @click="$emit('openCustomer', 'create')" class="kit-btn-primary">
+      <button @click="$emit('openCustomer', 'create')" class="kit-btn-primary w-full sm:w-auto">
         <Plus :size="18" />
         Neuer Kunde
       </button>
@@ -247,7 +247,7 @@ function getTypeLabel(type: string | null): string {
             <!-- Left: Customer Info -->
             <div class="flex-1 min-w-0">
               <!-- Name + Status Badge -->
-              <div class="flex items-center gap-3 mb-3">
+              <div class="flex items-center flex-wrap gap-2 sm:gap-3 mb-3">
                 <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
                   <Users :size="18" class="text-blue-200" />
                 </div>
@@ -273,7 +273,7 @@ function getTypeLabel(type: string | null): string {
               </div>
 
               <!-- 3-column info grid -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-sm">
                 <div v-if="customer.email">
                   <div class="text-white/50 text-xs flex items-center gap-1">
                     <Mail :size="12" />
@@ -308,17 +308,17 @@ function getTypeLabel(type: string | null): string {
             </div>
 
             <!-- Right: Actions -->
-            <div class="flex items-start gap-2">
+            <div class="flex items-start gap-1 sm:gap-2">
               <button
                 @click.stop="emit('openCustomer', customer.id)"
-                class="p-2 hover:bg-blue-500/20 rounded-lg transition"
+                class="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-blue-500/20 rounded-lg transition"
                 title="Details anzeigen"
               >
                 <Eye :size="18" class="text-blue-200" />
               </button>
               <button
                 @click.stop="showDeleteConfirm(customer.id)"
-                class="p-2 hover:bg-red-500/20 rounded-lg transition"
+                class="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-red-500/20 rounded-lg transition"
                 title="Kunde löschen"
               >
                 <Trash2 :size="18" class="text-red-200" />
@@ -332,18 +332,18 @@ function getTypeLabel(type: string | null): string {
     <!-- Pagination -->
     <div
       v-if="!loading && !isEmpty"
-      class="flex items-center justify-between text-sm text-white/60"
+      class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 text-sm text-white/60"
     >
       <div>
         Seite {{ currentPage }} von {{ pages }} ({{ total }} Kunden)
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex gap-2 w-full sm:w-auto">
         <button
           @click="goToPage(currentPage - 1)"
           :disabled="currentPage === 1"
           :class="[
-            'px-3 py-2 rounded-lg transition flex items-center gap-1',
+            'flex-1 sm:flex-none px-3 py-2 rounded-lg transition flex items-center justify-center gap-1',
             currentPage === 1
               ? 'opacity-30 cursor-not-allowed text-white/40'
               : 'kit-btn-ghost',
@@ -356,7 +356,7 @@ function getTypeLabel(type: string | null): string {
           @click="goToPage(currentPage + 1)"
           :disabled="currentPage === pages"
           :class="[
-            'px-3 py-2 rounded-lg transition flex items-center gap-1',
+            'flex-1 sm:flex-none px-3 py-2 rounded-lg transition flex items-center justify-center gap-1',
             currentPage === pages
               ? 'opacity-30 cursor-not-allowed text-white/40'
               : 'kit-btn-ghost',
@@ -398,5 +398,22 @@ function getTypeLabel(type: string | null): string {
 </template>
 
 <style scoped>
-/* Zusätzliche Styles falls benötigt */
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .rounded-lg.border.bg-white\/5 {
+    padding: 0.75rem;
+  }
+
+  .flex.items-center.gap-3.mb-3 {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 1024px) {
+  .p-2.hover\:bg-blue-500\/20,
+  .p-2.hover\:bg-red-500\/20 {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
 </style>

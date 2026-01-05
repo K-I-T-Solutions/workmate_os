@@ -1,10 +1,15 @@
-<!-- phase2_backoffice_concept.md -->
+---
+layout: default
+title: Phase 2 Backoffice Concept
+parent: Roadmap
+nav_order: 3
+---
 
 # 🧩 WorkmateOS — Phase 2 (Backoffice & CRM) Concept
 
-**Datum:** 24. Oktober 2025  
-**Projekt:** WorkmateOS — Phase 2 (Backoffice Layer)  
-**Ersteller:** Joshua Phu Kuhrau  
+**Datum:** 24. Oktober 2025
+**Projekt:** WorkmateOS — Phase 2 (Backoffice Layer)
+**Ersteller:** Joshua Phu Kuhrau
 **Firma:** [K.I.T. Solutions](https://kit-it-koblenz.de)
 
 ---

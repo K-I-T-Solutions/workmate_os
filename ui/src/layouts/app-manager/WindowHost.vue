@@ -34,14 +34,24 @@ function resolveComponent(appID: string){
 
 <style scoped>
 .window-host {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  z-index: 10;
+  pointer-events: none;
   overflow: hidden;
 }
 
-@media (min-width: 1025px) {
+@media (max-width: 1024px) {
   .window-host {
-    position: relative;
+    position: fixed;
+    top: var(--os-topbar-height);
+    bottom: var(--os-dock-height);
+    left: 0;
+    right: 0;
+    z-index: 100;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    pointer-events: auto;
   }
 }
 </style>

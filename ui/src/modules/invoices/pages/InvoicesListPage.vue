@@ -132,9 +132,9 @@ function formatDate(dateString: string | null): string {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4">
+  <div class="h-full flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div class="flex items-center gap-3">
         <button
           @click="emit('back')"
