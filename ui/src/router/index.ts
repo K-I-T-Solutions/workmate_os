@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppLayout from "@/layouts/AppLayout.vue";
 import CrmApp from "@/modules/crm/CrmApp.vue";
+import HRApp from "@/modules/hr/HRApp.vue";
 import LoginPage from "@/pages/LoginPage.vue";
 import { useAuth } from "@/composables/useAuth";
 
@@ -44,6 +45,11 @@ const routes = [
         path: "crm",
         name: "crm",
         component: CrmApp,
+      },
+      {
+        path: "hr",
+        name: "hr",
+        component: HRApp,
       }
     ],
   },

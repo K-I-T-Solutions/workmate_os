@@ -6,6 +6,7 @@ import ProjectsApp from "@/modules/projects/ProjectsApp.vue";
 import TimeTrackingApp from "@/modules/time-tracking/TimeTrackingApp.vue";
 import ExpensesApp from "@/modules/expenses/ExpensesApp.vue";
 import FinanceApp from "@/modules/finance/FinanceApp.vue";
+import HRApp from "@/modules/hr/HRApp.vue";
 import AdminApp from "@/modules/admin/AdminApp.vue";
 
 export const apps = [
@@ -82,6 +83,19 @@ export const apps = [
     requiredPermission: "backoffice.finance",
     showInDock: true,
     dockOrder: 6,
+    window: {
+      width: 1200,
+      height: 800
+    }
+  },
+  {
+    id: "hr",
+    title: "Personal",
+    icon: markRaw(icons.UserCheck),
+    component: markRaw(HRApp),
+    requiredPermission: "hr",
+    showInDock: true,
+    dockOrder: 7,
     window: {
       width: 1200,
       height: 800
