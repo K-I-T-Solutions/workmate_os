@@ -5,8 +5,8 @@ from functools import wraps
 import inspect, uuid
 from datetime import datetime
 
-from backend.app.core.auth.auth import get_current_user
-from backend.app.core.settings.database import get_db, SessionLocal
+from app.core.auth.auth import get_current_user
+from app.core.settings.database import get_db, SessionLocal
 from app.core.audit.audit import AuditLog
 from app.core.errors import ErrorCode, get_error_detail
 
@@ -17,6 +17,13 @@ ROLE_ALIASES = {
     "management": "management",
     "admin": "management",
     "support": "admin",
+    # HR-spezifische Rollen
+    "hr.admin": "hr_admin",
+    "hr.manager": "hr_manager",
+    "hr.recruiter": "hr_recruiter",
+    "hr_admin": "hr_admin",
+    "hr_manager": "hr_manager",
+    "hr_recruiter": "hr_recruiter",
 }
 
 def normalize_role(role: str) -> str:

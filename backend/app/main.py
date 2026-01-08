@@ -29,6 +29,7 @@ from app.modules.backoffice.chat import routes as chat_routes
 from app.modules.backoffice.finance import routes as finance_routes
 from app.modules.admin.audit_routes import router as audit_router
 from app.modules.admin.settings_routes import router as settings_router
+from app.modules.hr import router as hr_router
 
 
 # Logging aktivieren
@@ -130,6 +131,9 @@ app.include_router(finance_routes.router, prefix="/api", tags=["Backoffice Finan
 # Admin Module
 app.include_router(audit_router, tags=["Admin"])
 app.include_router(settings_router, tags=["Admin"])
+
+# HR Module
+app.include_router(hr_router, prefix="/api", tags=["HR"])
 
 # === Core Endpoints ===
 @app.get("/", tags=["Root"])
