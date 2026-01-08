@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { Plus, Search, Edit, Trash2, Mail, Phone, Calendar } from 'lucide-vue-next';
-import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getDepartments, getRoles } from '../services/hr.service';
-import type { Employee, EmployeeCreate, EmploymentType, Department, Role } from '../types';
+import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getDepartments } from '../services/hr.service';
+import type { Employee, EmployeeCreate, EmploymentType, Department } from '../types';
 
 const loading = ref(true);
 const employees = ref<Employee[]>([]);
 const departments = ref<Department[]>([]);
-const roles = ref<Role[]>([]);
 const showCreateForm = ref(false);
 const showEditForm = ref(false);
 const selectedEmployee = ref<Employee | null>(null);
@@ -22,8 +21,8 @@ const newEmployee = ref<EmployeeCreate>({
   first_name: '',
   last_name: '',
   phone: '',
+  bio: '',
   department_id: '',
-  role_id: '',
   employment_type: 'full_time',
   hire_date: '',
   status: 'active',
@@ -33,7 +32,6 @@ onMounted(async () => {
   await Promise.all([
     loadEmployees(),
     loadDepartments(),
-    loadRoles(),
   ]);
 });
 
@@ -42,14 +40,6 @@ async function loadDepartments() {
     departments.value = await getDepartments();
   } catch (error) {
     console.error('Failed to load departments:', error);
-  }
-}
-
-async function loadRoles() {
-  try {
-    roles.value = await getRoles();
-  } catch (error) {
-    console.error('Failed to load roles:', error);
   }
 }
 
@@ -90,8 +80,8 @@ async function handleUpdateEmployee() {
       last_name: selectedEmployee.value.last_name,
       email: selectedEmployee.value.email,
       phone: selectedEmployee.value.phone,
+      bio: selectedEmployee.value.bio,
       department_id: selectedEmployee.value.department_id,
-      role_id: selectedEmployee.value.role_id,
       employment_type: selectedEmployee.value.employment_type,
       hire_date: selectedEmployee.value.hire_date,
       status: selectedEmployee.value.status,
@@ -124,8 +114,8 @@ function resetForm() {
     first_name: '',
     last_name: '',
     phone: '',
+    bio: '',
     department_id: '',
-    role_id: '',
     employment_type: 'full_time',
     hire_date: '',
     status: 'active',
@@ -225,6 +215,15 @@ const formatDate = (date: string): string => {
             />
           </div>
           <div>
+            <label class="block text-white/80 mb-2">Position</label>
+            <input
+              v-model="newEmployee.bio"
+              type="text"
+              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              placeholder="z.B. Senior Developer"
+            />
+          </div>
+          <div>
             <label class="block text-white/80 mb-2">Abteilung</label>
             <select
               v-model="newEmployee.department_id"
@@ -233,18 +232,6 @@ const formatDate = (date: string): string => {
               <option value="">Keine Abteilung</option>
               <option v-for="dept in departments" :key="dept.id" :value="dept.id">
                 {{ dept.name }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-white/80 mb-2">Rolle</label>
-            <select
-              v-model="newEmployee.role_id"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-            >
-              <option value="">Keine Rolle</option>
-              <option v-for="role in roles" :key="role.id" :value="role.id">
-                {{ role.name }}
               </option>
             </select>
           </div>
@@ -447,6 +434,15 @@ const formatDate = (date: string): string => {
               />
             </div>
             <div>
+              <label class="block text-white/80 mb-2">Position</label>
+              <input
+                v-model="selectedEmployee.bio"
+                type="text"
+                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                placeholder="z.B. Senior Developer"
+              />
+            </div>
+            <div>
               <label class="block text-white/80 mb-2">Abteilung</label>
               <select
                 v-model="selectedEmployee.department_id"
@@ -455,18 +451,6 @@ const formatDate = (date: string): string => {
                 <option value="">Keine Abteilung</option>
                 <option v-for="dept in departments" :key="dept.id" :value="dept.id">
                   {{ dept.name }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-white/80 mb-2">Rolle</label>
-              <select
-                v-model="selectedEmployee.role_id"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              >
-                <option value="">Keine Rolle</option>
-                <option v-for="role in roles" :key="role.id" :value="role.id">
-                  {{ role.name }}
                 </option>
               </select>
             </div>
