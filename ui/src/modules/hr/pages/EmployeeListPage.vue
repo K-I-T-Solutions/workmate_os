@@ -348,7 +348,7 @@ const formatDate = (date: string): string => {
           <h3 class="text-xl font-semibold text-white mb-1">
             {{ employee.first_name }} {{ employee.last_name }}
           </h3>
-          <p class="text-blue-400 text-sm">{{ employee.role?.name || 'Keine Rolle' }}</p>
+          <p class="text-blue-400 text-sm">{{ employee.bio || 'Keine Beschreibung' }}</p>
           <p class="text-white/60 text-sm">{{ employee.department?.name || 'Keine Abteilung' }}</p>
         </div>
 
