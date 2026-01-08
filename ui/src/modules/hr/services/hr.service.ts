@@ -5,6 +5,8 @@ import type {
   EmployeeUpdate,
   EmployeeListResponse,
   EmployeeFilters,
+  Department,
+  Role,
   LeaveRequest,
   LeaveRequestCreate,
   LeaveRequestUpdate,
@@ -112,6 +114,46 @@ export async function getEmployeeStatistics(): Promise<EmployeeStatistics> {
   });
 
   return stats;
+}
+
+// ============================================================================
+// Departments
+// ============================================================================
+
+/**
+ * Get list of departments
+ */
+export async function getDepartments(): Promise<Department[]> {
+  const response = await apiClient.get('/api/departments');
+  return response.data;
+}
+
+/**
+ * Get single department by ID
+ */
+export async function getDepartment(id: string): Promise<Department> {
+  const response = await apiClient.get(`/api/departments/${id}`);
+  return response.data;
+}
+
+// ============================================================================
+// Roles
+// ============================================================================
+
+/**
+ * Get list of roles
+ */
+export async function getRoles(): Promise<Role[]> {
+  const response = await apiClient.get('/api/roles');
+  return response.data;
+}
+
+/**
+ * Get single role by ID
+ */
+export async function getRole(id: string): Promise<Role> {
+  const response = await apiClient.get(`/api/roles/${id}`);
+  return response.data;
 }
 
 // ============================================================================

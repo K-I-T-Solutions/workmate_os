@@ -9,6 +9,31 @@ export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'intern' | 'freelance';
 
 // ============================================================================
+// Department (from Core API)
+// ============================================================================
+
+export interface Department {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  manager_id?: string;
+  created_at?: string;
+}
+
+// ============================================================================
+// Role (from Core API)
+// ============================================================================
+
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  keycloak_id?: string;
+  permissions_json?: string[];
+}
+
+// ============================================================================
 // Employee (matches Core API schema)
 // ============================================================================
 
@@ -32,11 +57,14 @@ export interface Employee {
   address_city?: string;
   address_country?: string;
 
-  // Organization
-  department?: string;  // Will be department name from joined data
+  // Organization (IDs)
   department_id?: string;
   role_id?: string;
   reports_to?: string;
+
+  // Organization (Nested Objects from API)
+  department?: Department;
+  role?: Role;
 
   // Employment
   employment_type?: EmploymentType;
