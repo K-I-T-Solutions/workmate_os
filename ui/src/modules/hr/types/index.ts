@@ -9,34 +9,88 @@ export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'intern' | 'freelance';
 
 // ============================================================================
-// Employee
+// Employee (matches Core API schema)
 // ============================================================================
 
 export interface Employee {
   id: string;
-  first_name: string;
-  last_name: string;
+  employee_code: string;
+  uuid_keycloak?: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   phone?: string;
-  department?: string;
-  position?: string;
-  employment_type: EmploymentType;
-  hire_date: string;
+  gender?: string;
+  birth_date?: string;
+  nationality?: string;
+  photo_url?: string;
+  bio?: string;
+
+  // Address
+  address_street?: string;
+  address_zip?: string;
+  address_city?: string;
+  address_country?: string;
+
+  // Organization
+  department?: string;  // Will be department name from joined data
+  department_id?: string;
+  role_id?: string;
+  reports_to?: string;
+
+  // Employment
+  employment_type?: EmploymentType;
+  hire_date?: string;
   termination_date?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  status?: string;  // 'active' | 'inactive' | 'on_leave'
+
+  // Preferences
+  timezone?: string;
+  language?: string;
+  theme?: string;
+  notifications_enabled?: boolean;
+  matrix_username?: string;
+
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
+  last_login?: string;
+
+  // Helper for UI
+  is_active?: boolean;  // Computed from status
 }
 
 export interface EmployeeCreate {
-  first_name: string;
-  last_name: string;
+  employee_code: string;
   email: string;
+  first_name?: string;
+  last_name?: string;
   phone?: string;
-  department?: string;
-  position?: string;
-  employment_type: EmploymentType;
-  hire_date: string;
+  gender?: string;
+  birth_date?: string;
+  nationality?: string;
+
+  // Address
+  address_street?: string;
+  address_zip?: string;
+  address_city?: string;
+  address_country?: string;
+
+  // Organization
+  department_id?: string;
+  role_id?: string;
+  reports_to?: string;
+
+  // Employment
+  employment_type?: EmploymentType;
+  hire_date?: string;
+  status?: string;
+
+  // Preferences
+  timezone?: string;
+  language?: string;
+  theme?: string;
+  notifications_enabled?: boolean;
 }
 
 export interface EmployeeUpdate {
@@ -44,12 +98,35 @@ export interface EmployeeUpdate {
   last_name?: string;
   email?: string;
   phone?: string;
-  department?: string;
-  position?: string;
-  employment_type?: EmploymentType;
+  gender?: string;
+  birth_date?: string;
+  nationality?: string;
+  photo_url?: string;
+  bio?: string;
+
+  // Address
+  address_street?: string;
+  address_zip?: string;
+  address_city?: string;
+  address_country?: string;
+
+  // Organization
+  department_id?: string;
+  role_id?: string;
+  reports_to?: string;
+
+  // Employment
+  employment_type?: string;
   hire_date?: string;
   termination_date?: string;
-  is_active?: boolean;
+  status?: string;
+
+  // Preferences
+  timezone?: string;
+  language?: string;
+  theme?: string;
+  notifications_enabled?: boolean;
+  matrix_username?: string;
 }
 
 // ============================================================================

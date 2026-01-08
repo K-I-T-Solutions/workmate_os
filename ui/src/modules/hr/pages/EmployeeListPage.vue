@@ -15,14 +15,15 @@ const filterEmploymentType = ref<EmploymentType | ''>('');
 
 // Form data
 const newEmployee = ref<EmployeeCreate>({
+  employee_code: '',
+  email: '',
   first_name: '',
   last_name: '',
-  email: '',
   phone: '',
-  department: '',
-  position: '',
+  department_id: '',
   employment_type: 'full_time',
   hire_date: '',
+  status: 'active',
 });
 
 onMounted(async () => {
@@ -66,10 +67,11 @@ async function handleUpdateEmployee() {
       last_name: selectedEmployee.value.last_name,
       email: selectedEmployee.value.email,
       phone: selectedEmployee.value.phone,
-      department: selectedEmployee.value.department,
-      position: selectedEmployee.value.position,
+      department_id: selectedEmployee.value.department_id,
+      role_id: selectedEmployee.value.role_id,
       employment_type: selectedEmployee.value.employment_type,
       hire_date: selectedEmployee.value.hire_date,
+      status: selectedEmployee.value.status,
     });
     showEditForm.value = false;
     selectedEmployee.value = null;
@@ -94,14 +96,15 @@ async function handleDeleteEmployee(id: string) {
 
 function resetForm() {
   newEmployee.value = {
+    employee_code: '',
+    email: '',
     first_name: '',
     last_name: '',
-    email: '',
     phone: '',
-    department: '',
-    position: '',
+    department_id: '',
     employment_type: 'full_time',
     hire_date: '',
+    status: 'active',
   };
 }
 
@@ -110,12 +113,17 @@ function startEdit(employee: Employee) {
   showEditForm.value = true;
 }
 
-const getEmploymentTypeLabel = (type: EmploymentType): string => {
-  const labels: Record<EmploymentType, string> = {
+const getEmploymentTypeLabel = (type?: string): string => {
+  if (!type) return 'Keine Angabe';
+  const labels: Record<string, string> = {
+    fulltime: 'Vollzeit',
+    parttime: 'Teilzeit',
+    intern: 'Praktikant',
+    external: 'Freelancer',
+    contract: 'Vertrag',
+    // Legacy support
     full_time: 'Vollzeit',
     part_time: 'Teilzeit',
-    contract: 'Vertrag',
-    intern: 'Praktikant',
     freelance: 'Freelancer',
   };
   return labels[type] || type;
@@ -150,12 +158,30 @@ const formatDate = (date: string): string => {
       <form @submit.prevent="handleCreateEmployee" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
+            <label class="block text-white/80 mb-2">Mitarbeiter-Code *</label>
+            <input
+              v-model="newEmployee.employee_code"
+              type="text"
+              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              placeholder="z.B. KIT-0001"
+              required
+            />
+          </div>
+          <div>
+            <label class="block text-white/80 mb-2">E-Mail *</label>
+            <input
+              v-model="newEmployee.email"
+              type="email"
+              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              required
+            />
+          </div>
+          <div>
             <label class="block text-white/80 mb-2">Vorname</label>
             <input
               v-model="newEmployee.first_name"
               type="text"
               class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              required
             />
           </div>
           <div>
@@ -164,16 +190,6 @@ const formatDate = (date: string): string => {
               v-model="newEmployee.last_name"
               type="text"
               class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              required
-            />
-          </div>
-          <div>
-            <label class="block text-white/80 mb-2">E-Mail</label>
-            <input
-              v-model="newEmployee.email"
-              type="email"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              required
             />
           </div>
           <div>
@@ -185,33 +201,15 @@ const formatDate = (date: string): string => {
             />
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Abteilung</label>
-            <input
-              v-model="newEmployee.department"
-              type="text"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <div>
-            <label class="block text-white/80 mb-2">Position</label>
-            <input
-              v-model="newEmployee.position"
-              type="text"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <div>
             <label class="block text-white/80 mb-2">Beschäftigungsart</label>
             <select
               v-model="newEmployee.employment_type"
               class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              required
             >
-              <option value="full_time">Vollzeit</option>
-              <option value="part_time">Teilzeit</option>
-              <option value="contract">Vertrag</option>
+              <option value="fulltime">Vollzeit</option>
+              <option value="parttime">Teilzeit</option>
               <option value="intern">Praktikant</option>
-              <option value="freelance">Freelancer</option>
+              <option value="external">Freelancer</option>
             </select>
           </div>
           <div>
@@ -220,7 +218,6 @@ const formatDate = (date: string): string => {
               v-model="newEmployee.hire_date"
               type="date"
               class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              required
             />
           </div>
         </div>
@@ -272,11 +269,10 @@ const formatDate = (date: string): string => {
             class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
           >
             <option value="">Alle Beschäftigungsarten</option>
-            <option value="full_time">Vollzeit</option>
-            <option value="part_time">Teilzeit</option>
-            <option value="contract">Vertrag</option>
+            <option value="fulltime">Vollzeit</option>
+            <option value="parttime">Teilzeit</option>
             <option value="intern">Praktikant</option>
-            <option value="freelance">Freelancer</option>
+            <option value="external">Freelancer</option>
           </select>
         </div>
       </div>
@@ -327,12 +323,12 @@ const formatDate = (date: string): string => {
           <span
             :class="[
               'px-3 py-1 rounded-full text-xs font-semibold',
-              employee.is_active
+              employee.status === 'active'
                 ? 'bg-green-500/20 text-green-300'
                 : 'bg-gray-500/20 text-gray-300'
             ]"
           >
-            {{ employee.is_active ? 'Aktiv' : 'Inaktiv' }}
+            {{ employee.status === 'active' ? 'Aktiv' : (employee.status === 'on_leave' ? 'Beurlaubt' : 'Inaktiv') }}
           </span>
         </div>
 

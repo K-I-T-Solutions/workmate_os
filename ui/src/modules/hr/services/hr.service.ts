@@ -22,7 +22,7 @@ import type {
 } from '../types';
 
 // ============================================================================
-// Employees
+// Employees (using Core Employee API)
 // ============================================================================
 
 /**
@@ -36,20 +36,27 @@ export async function getEmployees(
     limit: filters?.limit || 50,
   };
 
-  if (filters?.department) params.department = filters.department;
+  if (filters?.department) params.department_id = filters.department;
   if (filters?.employment_type) params.employment_type = filters.employment_type;
-  if (filters?.is_active !== undefined) params.is_active = filters.is_active;
+  if (filters?.is_active !== undefined) params.status = filters.is_active ? 'active' : 'inactive';
   if (filters?.search) params.search = filters.search;
 
-  const response = await apiClient.get('/api/hr/employees', { params });
-  return response.data;
+  const response = await apiClient.get('/api/employees', { params });
+
+  // Transform response to match our interface
+  return {
+    items: response.data.employees || [],
+    total: response.data.total || 0,
+    skip: filters?.skip || 0,
+    limit: filters?.limit || 50,
+  };
 }
 
 /**
  * Get single employee by ID
  */
 export async function getEmployee(id: string): Promise<Employee> {
-  const response = await apiClient.get(`/api/hr/employees/${id}`);
+  const response = await apiClient.get(`/api/employees/${id}`);
   return response.data;
 }
 
@@ -57,7 +64,7 @@ export async function getEmployee(id: string): Promise<Employee> {
  * Create new employee
  */
 export async function createEmployee(data: EmployeeCreate): Promise<Employee> {
-  const response = await apiClient.post('/api/hr/employees', data);
+  const response = await apiClient.post('/api/employees', data);
   return response.data;
 }
 
@@ -68,23 +75,43 @@ export async function updateEmployee(
   id: string,
   data: EmployeeUpdate
 ): Promise<Employee> {
-  const response = await apiClient.put(`/api/hr/employees/${id}`, data);
+  const response = await apiClient.put(`/api/employees/${id}`, data);
   return response.data;
 }
 
 /**
- * Delete employee
+ * Delete employee (soft delete)
  */
 export async function deleteEmployee(id: string): Promise<void> {
-  await apiClient.delete(`/api/hr/employees/${id}`);
+  await apiClient.delete(`/api/employees/${id}`);
 }
 
 /**
  * Get employee statistics
+ * Note: This endpoint doesn't exist yet in the API, returns mock data
  */
 export async function getEmployeeStatistics(): Promise<EmployeeStatistics> {
-  const response = await apiClient.get('/api/hr/employees/statistics');
-  return response.data;
+  // TODO: Implement in backend
+  // For now, fetch employees and calculate stats client-side
+  const response = await getEmployees({ limit: 1000 });
+
+  const stats: EmployeeStatistics = {
+    total_employees: response.total,
+    active_employees: response.items.filter(e => e.is_active || e.status === 'active').length,
+    by_department: {},
+    by_employment_type: {},
+  };
+
+  // Calculate department stats
+  response.items.forEach(emp => {
+    const dept = emp.department || 'Keine Abteilung';
+    stats.by_department[dept] = (stats.by_department[dept] || 0) + 1;
+
+    const empType = emp.employment_type || 'full_time';
+    stats.by_employment_type[empType] = (stats.by_employment_type[empType] || 0) + 1;
+  });
+
+  return stats;
 }
 
 // ============================================================================
