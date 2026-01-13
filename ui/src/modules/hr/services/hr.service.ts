@@ -39,15 +39,21 @@ export async function getEmployees(
   };
 
   if (filters?.department) params.department_id = filters.department;
-  if (filters?.employment_type) params.employment_type = filters.employment_type;
   if (filters?.is_active !== undefined) params.status = filters.is_active ? 'active' : 'inactive';
   if (filters?.search) params.search = filters.search;
 
   const response = await apiClient.get('/api/employees', { params });
 
   // Transform response to match our interface
+  let items = response.data.employees || [];
+
+  // Client-side filter for employment_type since API doesn't support it
+  if (filters?.employment_type) {
+    items = items.filter((emp: any) => emp.employment_type === filters.employment_type);
+  }
+
   return {
-    items: response.data.employees || [],
+    items,
     total: response.data.total || 0,
     skip: filters?.skip || 0,
     limit: filters?.limit || 50,
