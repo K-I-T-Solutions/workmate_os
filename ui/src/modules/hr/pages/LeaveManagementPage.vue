@@ -122,7 +122,7 @@ const formatDate = (date: string): string => {
       <h1 class="text-3xl font-bold text-white">Urlaubsverwaltung</h1>
       <button
         @click="showCreateForm = !showCreateForm"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        class="kit-btn-primary"
       >
         <Plus :size="20" />
         Neuer Antrag
@@ -136,10 +136,10 @@ const formatDate = (date: string): string => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Leave Type -->
           <div>
-            <label class="block text-white/80 mb-2">Typ</label>
+            <label class="kit-label">Typ</label>
             <select
               v-model="newRequest.leave_type"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
               required
             >
               <option value="vacation">Urlaub</option>
@@ -154,11 +154,11 @@ const formatDate = (date: string): string => {
 
           <!-- Employee ID (Temp) -->
           <div>
-            <label class="block text-white/80 mb-2">Mitarbeiter ID</label>
+            <label class="kit-label">Mitarbeiter ID</label>
             <input
               v-model="newRequest.employee_id"
               type="text"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
               placeholder="UUID des Mitarbeiters"
               required
             />
@@ -166,22 +166,22 @@ const formatDate = (date: string): string => {
 
           <!-- Start Date -->
           <div>
-            <label class="block text-white/80 mb-2">Startdatum</label>
+            <label class="kit-label">Startdatum</label>
             <input
               v-model="newRequest.start_date"
               type="date"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
               required
             />
           </div>
 
           <!-- End Date -->
           <div>
-            <label class="block text-white/80 mb-2">Enddatum</label>
+            <label class="kit-label">Enddatum</label>
             <input
               v-model="newRequest.end_date"
               type="date"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
               required
             />
           </div>
@@ -189,10 +189,10 @@ const formatDate = (date: string): string => {
 
         <!-- Reason -->
         <div>
-          <label class="block text-white/80 mb-2">Grund (optional)</label>
+          <label class="kit-label">Grund (optional)</label>
           <textarea
             v-model="newRequest.reason"
-            class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+            class="kit-input"
             rows="3"
             placeholder="Grund für den Antrag..."
           ></textarea>
@@ -200,16 +200,13 @@ const formatDate = (date: string): string => {
 
         <!-- Actions -->
         <div class="flex gap-2">
-          <button
-            type="submit"
-            class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
-          >
+          <button type="submit" class="kit-btn-success">
             Antrag erstellen
           </button>
           <button
             type="button"
             @click="showCreateForm = false; resetForm()"
-            class="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+            class="kit-btn-ghost"
           >
             Abbrechen
           </button>
@@ -227,7 +224,7 @@ const formatDate = (date: string): string => {
             v-model="searchQuery"
             type="text"
             placeholder="Suchen..."
-            class="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-4 py-2 text-white placeholder-white/40"
+            class="kit-input pl-10"
           />
         </div>
 
@@ -236,7 +233,7 @@ const formatDate = (date: string): string => {
           <select
             v-model="filterStatus"
             @change="loadLeaveRequests"
-            class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+            class="kit-input"
           >
             <option value="">Alle Status</option>
             <option value="pending">Ausstehend</option>
@@ -251,7 +248,7 @@ const formatDate = (date: string): string => {
           <select
             v-model="filterType"
             @change="loadLeaveRequests"
-            class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+            class="kit-input"
           >
             <option value="">Alle Typen</option>
             <option value="vacation">Urlaub</option>
@@ -311,7 +308,7 @@ const formatDate = (date: string): string => {
           <button
             v-if="request.status === 'pending'"
             @click="handleDeleteRequest(request.id)"
-            class="text-red-400 hover:text-red-300 transition-colors"
+            class="kit-btn-danger text-sm py-1"
           >
             Löschen
           </button>

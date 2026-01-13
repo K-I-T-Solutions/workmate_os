@@ -157,14 +157,14 @@ const formatDate = (date: string): string => {
         <div class="flex gap-3">
           <button
             @click="handleApprove(request)"
-            class="bg-green-500/20 hover:bg-green-500/30 text-green-300 px-6 py-2 rounded-lg transition-colors border border-green-500/30 flex items-center gap-2"
+            class="kit-btn-success"
           >
             <Check :size="18" />
             Genehmigen
           </button>
           <button
             @click="showRejectForm(request)"
-            class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-6 py-2 rounded-lg transition-colors border border-red-500/30 flex items-center gap-2"
+            class="kit-btn-danger"
           >
             <X :size="18" />
             Ablehnen
@@ -186,7 +186,7 @@ const formatDate = (date: string): string => {
         </p>
         <textarea
           v-model="rejectionReason"
-          class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white mb-4"
+          class="kit-input mb-4"
           rows="4"
           placeholder="Grund für die Ablehnung..."
           autofocus
@@ -194,13 +194,13 @@ const formatDate = (date: string): string => {
         <div class="flex gap-3">
           <button
             @click="handleReject"
-            class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors flex-1"
+            class="kit-btn-danger flex-1"
           >
             Ablehnen
           </button>
           <button
             @click="showRejectDialog = false"
-            class="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+            class="kit-btn-ghost"
           >
             Abbrechen
           </button>

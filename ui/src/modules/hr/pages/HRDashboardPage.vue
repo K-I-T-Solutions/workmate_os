@@ -146,19 +146,13 @@ const getLeaveTypeLabel = (type: string): string => {
       <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
         <h3 class="text-xl font-semibold text-white mb-4">Schnellzugriff</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            class="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-4 py-3 rounded-lg transition-colors border border-blue-500/30"
-          >
+          <button class="kit-btn-primary py-3">
             🌴 Neuer Urlaubsantrag
           </button>
-          <button
-            class="bg-green-500/20 hover:bg-green-500/30 text-green-300 px-4 py-3 rounded-lg transition-colors border border-green-500/30"
-          >
+          <button class="kit-btn-success py-3">
             ✅ Anträge genehmigen
           </button>
-          <button
-            class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-4 py-3 rounded-lg transition-colors border border-purple-500/30"
-          >
+          <button class="kit-btn-accent py-3">
             👥 Neuer Mitarbeiter
           </button>
         </div>
