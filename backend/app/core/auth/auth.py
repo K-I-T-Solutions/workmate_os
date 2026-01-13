@@ -197,17 +197,25 @@ async def get_current_user(
         )
 
     # ============================================================
-    # 🧭 Benutzer in DB finden
+    # 🧭 Benutzer in DB finden (mit eager loading der Rolle)
     # ============================================================
+    from sqlalchemy.orm import joinedload
+
     email = decoded.get("email")
     username = decoded.get("preferred_username")
     user = None
 
     if email:
-        user = db.scalar(select(Employee).where(Employee.email == email))
+        user = db.scalar(
+            select(Employee)
+            .options(joinedload(Employee.role), joinedload(Employee.department))
+            .where(Employee.email == email)
+        )
     if not user and username:
         user = db.scalar(
-            select(Employee).where(
+            select(Employee)
+            .options(joinedload(Employee.role), joinedload(Employee.department))
+            .where(
                 (Employee.first_name.ilike(username))
                 | (Employee.last_name.ilike(username))
                 | (Employee.employee_code.ilike(f"%{username}%"))
@@ -221,28 +229,63 @@ async def get_current_user(
         )
 
     # ============================================================
-    # 🧩 Rolle ableiten
+    # 🧩 Rolle ableiten - Verwende Datenbank-Rolle falls vorhanden
     # ============================================================
-    # Department kann ein Objekt oder None sein
+    # Primär: Verwende die Rolle aus der Datenbank
+    if user.role and hasattr(user.role, 'name'):
+        db_role_name = user.role.name
+        role_permissions = user.role.permissions_json if hasattr(user.role, 'permissions_json') else []
+
+        # Extrahiere Rollen aus Permissions für backward compatibility
+        roles_list = [db_role_name]
+
+        # Füge spezifische Rollen basierend auf Permissions hinzu
+        if "*" in role_permissions:
+            # Admin/CEO haben Vollzugriff auf alles
+            roles_list.extend(["admin", "hr_admin", "hr_manager", "management"])
+        else:
+            # Prüfe HR-Permissions
+            has_hr_approve = any(p in ["hr.approve", "backoffice.*"] for p in role_permissions)
+            has_hr_view = any(p in ["hr.view", "hr.approve", "backoffice.*"] for p in role_permissions)
+
+            if has_hr_approve:
+                roles_list.append("hr_manager")
+            if has_hr_view:
+                roles_list.append("hr")
+    else:
+        # Fallback: Rolle aus Department ableiten (alte Logik)
+        dept_name = ""
+        if user.department:
+            if hasattr(user.department, 'name'):
+                dept_name = (user.department.name or "").lower()
+            elif hasattr(user.department, 'code'):
+                dept_name = (user.department.code or "").lower()
+            elif isinstance(user.department, str):
+                dept_name = user.department.lower()
+
+        if dept_name in ("backoffice", "hr"):
+            role = "hr"
+        elif dept_name == "management":
+            role = "management"
+        elif dept_name == "support":
+            role = "support"
+        elif dept_name in ("facility", "security"):
+            role = "admin"
+        else:
+            role = "employee"
+
+        db_role_name = role
+        roles_list = [role]
+
+    # Department name für Anzeige
     dept_name = ""
     if user.department:
         if hasattr(user.department, 'name'):
-            dept_name = (user.department.name or "").lower()
+            dept_name = user.department.name or ""
         elif hasattr(user.department, 'code'):
-            dept_name = (user.department.code or "").lower()
+            dept_name = user.department.code or ""
         elif isinstance(user.department, str):
-            dept_name = user.department.lower()
-
-    if dept_name in ("backoffice", "hr"):
-        role = "hr"
-    elif dept_name == "management":
-        role = "management"
-    elif dept_name == "support":
-        role = "support"
-    elif dept_name in ("facility", "security"):
-        role = "admin"
-    else:
-        role = "employee"
+            dept_name = user.department
 
     # Build full name
     full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
@@ -256,10 +299,11 @@ async def get_current_user(
         "first_name": user.first_name,
         "last_name": user.last_name,
         "department": dept_name,
-        "role": role,
+        "role": db_role_name,  # Primäre Rolle aus DB
+        "roles": roles_list,   # Erweiterte Rollen-Liste für require_roles()
     }
 
-    logger.debug("✅ Authenticated as: %s", result)
+    logger.debug("✅ Authenticated as: %s (roles: %s)", result["email"], roles_list)
     return result
 
 
