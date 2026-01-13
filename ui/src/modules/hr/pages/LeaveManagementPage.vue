@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { Plus, Calendar, Search, Filter } from 'lucide-vue-next';
-import { getLeaveRequests, createLeaveRequest, deleteLeaveRequest } from '../services/hr.service';
-import type { LeaveRequest, LeaveRequestCreate, LeaveType, LeaveStatus } from '../types';
+import { getLeaveRequests, createLeaveRequest, deleteLeaveRequest, getEmployees } from '../services/hr.service';
+import type { LeaveRequest, LeaveRequestCreate, LeaveType, LeaveStatus, Employee } from '../types';
 
 const loading = ref(true);
 const leaveRequests = ref<LeaveRequest[]>([]);
+const employees = ref<Employee[]>([]);
 const showCreateForm = ref(false);
 const searchQuery = ref('');
 const filterStatus = ref<LeaveStatus | ''>('');
@@ -21,8 +22,20 @@ const newRequest = ref<LeaveRequestCreate>({
 });
 
 onMounted(async () => {
-  await loadLeaveRequests();
+  await Promise.all([
+    loadLeaveRequests(),
+    loadEmployees(),
+  ]);
 });
+
+async function loadEmployees() {
+  try {
+    const response = await getEmployees({ limit: 1000 });
+    employees.value = response.items;
+  } catch (error) {
+    console.error('Failed to load employees:', error);
+  }
+}
 
 async function loadLeaveRequests() {
   loading.value = true;
@@ -152,16 +165,19 @@ const formatDate = (date: string): string => {
             </select>
           </div>
 
-          <!-- Employee ID (Temp) -->
+          <!-- Employee Selection -->
           <div>
-            <label class="kit-label">Mitarbeiter ID</label>
-            <input
+            <label class="kit-label">Mitarbeiter</label>
+            <select
               v-model="newRequest.employee_id"
-              type="text"
               class="kit-input"
-              placeholder="UUID des Mitarbeiters"
               required
-            />
+            >
+              <option value="">Mitarbeiter auswählen</option>
+              <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                {{ emp.first_name }} {{ emp.last_name }} - {{ emp.employee_code }}
+              </option>
+            </select>
           </div>
 
           <!-- Start Date -->
