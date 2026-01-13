@@ -31,9 +31,7 @@ onMounted(async () => {
 async function loadEmployees() {
   try {
     const response = await getEmployees({ limit: 1000 });
-    console.log('Loaded employees:', response);
     employees.value = response.items;
-    console.log('Employees array:', employees.value);
   } catch (error) {
     console.error('Failed to load employees:', error);
   }
