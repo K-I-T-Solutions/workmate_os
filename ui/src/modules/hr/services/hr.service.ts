@@ -35,7 +35,7 @@ export async function getEmployees(
 ): Promise<EmployeeListResponse> {
   const params: Record<string, any> = {
     skip: filters?.skip || 0,
-    limit: filters?.limit || 50,
+    limit: Math.min(filters?.limit || 50, 500), // Backend max is 500
   };
 
   if (filters?.department) params.department_id = filters.department;
@@ -56,7 +56,7 @@ export async function getEmployees(
     items,
     total: response.data.total || 0,
     skip: filters?.skip || 0,
-    limit: filters?.limit || 50,
+    limit: Math.min(filters?.limit || 50, 500),
   };
 }
 
@@ -101,7 +101,7 @@ export async function deleteEmployee(id: string): Promise<void> {
 export async function getEmployeeStatistics(): Promise<EmployeeStatistics> {
   // TODO: Implement in backend
   // For now, fetch employees and calculate stats client-side
-  const response = await getEmployees({ limit: 1000 });
+  const response = await getEmployees({ limit: 500 }); // Backend max is 500
 
   const stats: EmployeeStatistics = {
     total_employees: response.total,
@@ -112,8 +112,8 @@ export async function getEmployeeStatistics(): Promise<EmployeeStatistics> {
 
   // Calculate department stats
   response.items.forEach(emp => {
-    const dept = emp.department || 'Keine Abteilung';
-    stats.by_department[dept] = (stats.by_department[dept] || 0) + 1;
+    const deptName = emp.department?.name || 'Keine Abteilung';
+    stats.by_department[deptName] = (stats.by_department[deptName] || 0) + 1;
 
     const empType = emp.employment_type || 'full_time';
     stats.by_employment_type[empType] = (stats.by_employment_type[empType] || 0) + 1;
@@ -174,14 +174,14 @@ export async function getLeaveRequests(
 ): Promise<LeaveRequestListResponse> {
   const params: Record<string, any> = {
     skip: filters?.skip || 0,
-    limit: filters?.limit || 50,
+    limit: Math.min(filters?.limit || 50, 500), // Backend max is 500
   };
 
   if (filters?.employee_id) params.employee_id = filters.employee_id;
   if (filters?.leave_type) params.leave_type = filters.leave_type;
   if (filters?.status) params.status = filters.status;
-  if (filters?.from_date) params.from_date = filters.from_date;
-  if (filters?.to_date) params.to_date = filters.to_date;
+  if (filters?.from_date) params.date_from = filters.from_date; // Backend expects date_from
+  if (filters?.to_date) params.date_to = filters.to_date; // Backend expects date_to
 
   const response = await apiClient.get('/api/hr/leave/requests', { params });
   return response.data;
@@ -263,7 +263,7 @@ export async function getLeaveStatistics(
   // TODO: Implement in backend at /api/hr/leave/statistics
   // For now, fetch all requests and calculate stats client-side
   try {
-    const response = await getLeaveRequests({ limit: 1000 });
+    const response = await getLeaveRequests({ limit: 500 }); // Max allowed by backend
 
     const stats: LeaveStatistics = {
       total_requests: response.total,

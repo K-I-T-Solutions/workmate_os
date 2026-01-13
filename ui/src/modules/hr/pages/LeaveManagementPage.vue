@@ -30,7 +30,7 @@ onMounted(async () => {
 
 async function loadEmployees() {
   try {
-    const response = await getEmployees({ limit: 1000 });
+    const response = await getEmployees({ limit: 500 }); // Backend max is 500
     employees.value = response.items;
   } catch (error) {
     console.error('Failed to load employees:', error);
