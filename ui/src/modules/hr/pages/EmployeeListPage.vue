@@ -159,7 +159,7 @@ const formatDate = (date: string): string => {
       <h1 class="text-3xl font-bold text-white">Mitarbeiter</h1>
       <button
         @click="showCreateForm = !showCreateForm"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        class="kit-btn-primary"
       >
         <Plus :size="20" />
         Neuer Mitarbeiter
@@ -172,62 +172,62 @@ const formatDate = (date: string): string => {
       <form @submit.prevent="handleCreateEmployee" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-white/80 mb-2">Mitarbeiter-Code *</label>
+            <label class="kit-label">Mitarbeiter-Code *</label>
             <input
               v-model="newEmployee.employee_code"
               type="text"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
               placeholder="z.B. KIT-0001"
               required
             />
           </div>
           <div>
-            <label class="block text-white/80 mb-2">E-Mail *</label>
+            <label class="kit-label">E-Mail *</label>
             <input
               v-model="newEmployee.email"
               type="email"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
               required
             />
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Vorname</label>
+            <label class="kit-label">Vorname</label>
             <input
               v-model="newEmployee.first_name"
               type="text"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
             />
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Nachname</label>
+            <label class="kit-label">Nachname</label>
             <input
               v-model="newEmployee.last_name"
               type="text"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
             />
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Telefon</label>
+            <label class="kit-label">Telefon</label>
             <input
               v-model="newEmployee.phone"
               type="tel"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
             />
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Position</label>
+            <label class="kit-label">Position</label>
             <input
               v-model="newEmployee.bio"
               type="text"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
               placeholder="z.B. Senior Developer"
             />
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Abteilung</label>
+            <label class="kit-label">Abteilung</label>
             <select
               v-model="newEmployee.department_id"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
             >
               <option value="">Keine Abteilung</option>
               <option v-for="dept in departments" :key="dept.id" :value="dept.id">
@@ -236,10 +236,10 @@ const formatDate = (date: string): string => {
             </select>
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Beschäftigungsart</label>
+            <label class="kit-label">Beschäftigungsart</label>
             <select
               v-model="newEmployee.employment_type"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
             >
               <option value="fulltime">Vollzeit</option>
               <option value="parttime">Teilzeit</option>
@@ -248,26 +248,23 @@ const formatDate = (date: string): string => {
             </select>
           </div>
           <div>
-            <label class="block text-white/80 mb-2">Eintrittsdatum</label>
+            <label class="kit-label">Eintrittsdatum</label>
             <input
               v-model="newEmployee.hire_date"
               type="date"
-              class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+              class="kit-input"
             />
           </div>
         </div>
 
         <div class="flex gap-2">
-          <button
-            type="submit"
-            class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
-          >
+          <button type="submit" class="kit-btn-success">
             Mitarbeiter erstellen
           </button>
           <button
             type="button"
             @click="showCreateForm = false; resetForm()"
-            class="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+            class="kit-btn-ghost"
           >
             Abbrechen
           </button>
@@ -285,14 +282,14 @@ const formatDate = (date: string): string => {
             @input="loadEmployees"
             type="text"
             placeholder="Name oder E-Mail suchen..."
-            class="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-4 py-2 text-white placeholder-white/40"
+            class="kit-input pl-10"
           />
         </div>
         <div>
           <select
             v-model="filterDepartment"
             @change="loadEmployees"
-            class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+            class="kit-input"
           >
             <option value="">Alle Abteilungen</option>
             <option v-for="dept in departments" :key="dept.id" :value="dept.id">
@@ -304,7 +301,7 @@ const formatDate = (date: string): string => {
           <select
             v-model="filterEmploymentType"
             @change="loadEmployees"
-            class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+            class="kit-input"
           >
             <option value="">Alle Beschäftigungsarten</option>
             <option value="fulltime">Vollzeit</option>
@@ -373,14 +370,14 @@ const formatDate = (date: string): string => {
         <div class="flex gap-2">
           <button
             @click="startEdit(employee)"
-            class="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+            class="kit-btn-ghost flex-1 justify-center"
           >
             <Edit :size="16" />
             Bearbeiten
           </button>
           <button
             @click="handleDeleteEmployee(employee.id)"
-            class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+            class="kit-btn-danger"
           >
             <Trash2 :size="16" />
           </button>
@@ -399,54 +396,54 @@ const formatDate = (date: string): string => {
         <form @submit.prevent="handleUpdateEmployee" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-white/80 mb-2">Vorname</label>
+              <label class="kit-label">Vorname</label>
               <input
                 v-model="selectedEmployee.first_name"
                 type="text"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
                 required
               />
             </div>
             <div>
-              <label class="block text-white/80 mb-2">Nachname</label>
+              <label class="kit-label">Nachname</label>
               <input
                 v-model="selectedEmployee.last_name"
                 type="text"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
                 required
               />
             </div>
             <div>
-              <label class="block text-white/80 mb-2">E-Mail</label>
+              <label class="kit-label">E-Mail</label>
               <input
                 v-model="selectedEmployee.email"
                 type="email"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
                 required
               />
             </div>
             <div>
-              <label class="block text-white/80 mb-2">Telefon</label>
+              <label class="kit-label">Telefon</label>
               <input
                 v-model="selectedEmployee.phone"
                 type="tel"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
               />
             </div>
             <div>
-              <label class="block text-white/80 mb-2">Position</label>
+              <label class="kit-label">Position</label>
               <input
                 v-model="selectedEmployee.bio"
                 type="text"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
                 placeholder="z.B. Senior Developer"
               />
             </div>
             <div>
-              <label class="block text-white/80 mb-2">Abteilung</label>
+              <label class="kit-label">Abteilung</label>
               <select
                 v-model="selectedEmployee.department_id"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
               >
                 <option value="">Keine Abteilung</option>
                 <option v-for="dept in departments" :key="dept.id" :value="dept.id">
@@ -455,10 +452,10 @@ const formatDate = (date: string): string => {
               </select>
             </div>
             <div>
-              <label class="block text-white/80 mb-2">Beschäftigungsart</label>
+              <label class="kit-label">Beschäftigungsart</label>
               <select
                 v-model="selectedEmployee.employment_type"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
                 required
               >
                 <option value="full_time">Vollzeit</option>
@@ -469,27 +466,24 @@ const formatDate = (date: string): string => {
               </select>
             </div>
             <div>
-              <label class="block text-white/80 mb-2">Eintrittsdatum</label>
+              <label class="kit-label">Eintrittsdatum</label>
               <input
                 v-model="selectedEmployee.hire_date"
                 type="date"
-                class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                class="kit-input"
                 required
               />
             </div>
           </div>
 
           <div class="flex gap-2">
-            <button
-              type="submit"
-              class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
-            >
+            <button type="submit" class="kit-btn-success">
               Speichern
             </button>
             <button
               type="button"
               @click="showEditForm = false"
-              class="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+              class="kit-btn-ghost"
             >
               Abbrechen
             </button>
