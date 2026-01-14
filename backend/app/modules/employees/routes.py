@@ -270,7 +270,7 @@ def get_employee_statistics(
     # Total and active employees
     total = db.query(func.count(Employee.id)).scalar() or 0
     active = db.query(func.count(Employee.id)).filter(
-        (Employee.status == "active") | (Employee.is_active == True)
+        Employee.status == "active"
     ).scalar() or 0
 
     # By department
