@@ -61,6 +61,52 @@ def list_employees(
     }
 
 
+@employee_router.get("/statistics", response_model=schemas.EmployeeStatistics)
+def get_employee_statistics(
+    db: Session = Depends(get_db)
+):
+    """
+    Get employee statistics for dashboard
+
+    Returns counts by department, employment type, and active/total employees
+    """
+    from sqlalchemy import func
+    from app.modules.employees.models import Employee, Department
+
+    # Total and active employees
+    total = db.query(func.count(Employee.id)).scalar() or 0
+    active = db.query(func.count(Employee.id)).filter(
+        Employee.status == "active"
+    ).scalar() or 0
+
+    # By department
+    dept_name_col = func.coalesce(Department.name, "Keine Abteilung")
+    dept_stats = db.query(
+        dept_name_col.label("dept_name"),
+        func.count(Employee.id).label("count")
+    ).outerjoin(Department, Employee.department_id == Department.id)\
+     .group_by(dept_name_col)\
+     .all()
+
+    by_department = {dept: count for dept, count in dept_stats}
+
+    # By employment type
+    emp_type_col = func.coalesce(Employee.employment_type, "fulltime")
+    type_stats = db.query(
+        emp_type_col.label("emp_type"),
+        func.count(Employee.id).label("count")
+    ).group_by(emp_type_col).all()
+
+    by_employment_type = {emp_type: count for emp_type, count in type_stats}
+
+    return schemas.EmployeeStatistics(
+        total_employees=total,
+        active_employees=active,
+        by_department=by_department,
+        by_employment_type=by_employment_type
+    )
+
+
 @employee_router.get("/{employee_id}", response_model=schemas.EmployeeResponse)
 def get_employee(
     employee_id: UUID,
@@ -249,56 +295,6 @@ def update_role(
     if role is None:
         raise HTTPException(status_code=404, detail="Role not found")
     return role
-
-
-# ============================================================================
-# STATISTICS ENDPOINTS
-# ============================================================================
-
-@employee_router.get("/statistics", response_model=schemas.EmployeeStatistics)
-def get_employee_statistics(
-    db: Session = Depends(get_db)
-):
-    """
-    Get employee statistics for dashboard
-
-    Returns counts by department, employment type, and active/total employees
-    """
-    from sqlalchemy import func, case
-    from app.modules.employees.models import Employee, Department
-
-    # Total and active employees
-    total = db.query(func.count(Employee.id)).scalar() or 0
-    active = db.query(func.count(Employee.id)).filter(
-        Employee.status == "active"
-    ).scalar() or 0
-
-    # By department
-    dept_name_col = func.coalesce(Department.name, "Keine Abteilung")
-    dept_stats = db.query(
-        dept_name_col.label("dept_name"),
-        func.count(Employee.id).label("count")
-    ).outerjoin(Department, Employee.department_id == Department.id)\
-     .group_by(dept_name_col)\
-     .all()
-
-    by_department = {dept: count for dept, count in dept_stats}
-
-    # By employment type
-    emp_type_col = func.coalesce(Employee.employment_type, "fulltime")
-    type_stats = db.query(
-        emp_type_col.label("emp_type"),
-        func.count(Employee.id).label("count")
-    ).group_by(emp_type_col).all()
-
-    by_employment_type = {emp_type: count for emp_type, count in type_stats}
-
-    return schemas.EmployeeStatistics(
-        total_employees=total,
-        active_employees=active,
-        by_department=by_department,
-        by_employment_type=by_employment_type
-    )
 
 
 # ============================================================================
