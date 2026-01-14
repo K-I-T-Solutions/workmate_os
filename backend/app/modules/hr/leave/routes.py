@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
 from app.core.auth.auth import get_current_user
-from app.core.auth.roles import require_roles
+from app.core.auth.roles import require_permissions
 from app.modules.hr.enums import LeaveStatus
 
 from . import crud, schemas
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/leave", tags=["Leave Management"])
 # ============================================================================
 
 @router.get("/policies", response_model=schemas.LeavePolicyListResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def list_leave_policies(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -33,7 +33,7 @@ async def list_leave_policies(
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Liste alle Leave Policies (HR only)"""
+    """Liste alle Leave Policies (benötigt: hr.view)"""
     policies, total = crud.get_leave_policies(db, skip, limit, is_active)
     return {
         "items": policies,
@@ -44,13 +44,13 @@ async def list_leave_policies(
 
 
 @router.get("/policies/{policy_id}", response_model=schemas.LeavePolicyResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def get_leave_policy(
     policy_id: UUID,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Holt eine spezifische Leave Policy"""
+    """Holt eine spezifische Leave Policy (benötigt: hr.view)"""
     policy = crud.get_leave_policy(db, policy_id)
     if not policy:
         raise HTTPException(
@@ -61,25 +61,25 @@ async def get_leave_policy(
 
 
 @router.post("/policies", response_model=schemas.LeavePolicyResponse, status_code=status.HTTP_201_CREATED)
-@require_roles(["hr_admin"])
+@require_permissions(["hr.manage_policies"])
 async def create_leave_policy(
     policy_data: schemas.LeavePolicyCreate,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Erstellt eine neue Leave Policy (HR Admin only)"""
+    """Erstellt eine neue Leave Policy (benötigt: hr.manage_policies oder *)"""
     return crud.create_leave_policy(db, policy_data)
 
 
 @router.put("/policies/{policy_id}", response_model=schemas.LeavePolicyResponse)
-@require_roles(["hr_admin"])
+@require_permissions(["hr.manage_policies"])
 async def update_leave_policy(
     policy_id: UUID,
     policy_data: schemas.LeavePolicyUpdate,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Aktualisiert eine Leave Policy (HR Admin only)"""
+    """Aktualisiert eine Leave Policy (benötigt: hr.manage_policies oder *)"""
     policy = crud.update_leave_policy(db, policy_id, policy_data)
     if not policy:
         raise HTTPException(
@@ -90,13 +90,13 @@ async def update_leave_policy(
 
 
 @router.delete("/policies/{policy_id}", status_code=status.HTTP_204_NO_CONTENT)
-@require_roles(["hr_admin"])
+@require_permissions(["hr.manage_policies"])
 async def delete_leave_policy(
     policy_id: UUID,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Löscht eine Leave Policy (HR Admin only)"""
+    """Löscht eine Leave Policy (benötigt: hr.manage_policies oder *)"""
     success = crud.delete_leave_policy(db, policy_id)
     if not success:
         raise HTTPException(
@@ -110,7 +110,7 @@ async def delete_leave_policy(
 # ============================================================================
 
 @router.get("/balances", response_model=schemas.LeaveBalanceListResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def list_leave_balances(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -119,7 +119,7 @@ async def list_leave_balances(
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Liste alle Leave Balances (HR only)"""
+    """Liste alle Leave Balances (benötigt: hr.view)"""
     balances, total = crud.get_leave_balances(db, skip, limit, employee_id, year)
     return {
         "items": balances,
@@ -130,14 +130,14 @@ async def list_leave_balances(
 
 
 @router.get("/balances/employee/{employee_id}", response_model=schemas.LeaveBalanceResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def get_employee_balance(
     employee_id: UUID,
     year: int = Query(..., ge=2020, le=2100),
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Holt Balance für spezifischen Mitarbeiter und Jahr (HR only)"""
+    """Holt Balance für spezifischen Mitarbeiter und Jahr (benötigt: hr.view)"""
     balance = crud.get_employee_balance(db, employee_id, year)
     if not balance:
         raise HTTPException(
@@ -148,25 +148,25 @@ async def get_employee_balance(
 
 
 @router.post("/balances", response_model=schemas.LeaveBalanceResponse, status_code=status.HTTP_201_CREATED)
-@require_roles(["hr_admin"])
+@require_permissions(["hr.manage_balances"])
 async def create_leave_balance(
     balance_data: schemas.LeaveBalanceCreate,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Erstellt/Initialisiert einen Leave Balance (HR Admin only)"""
+    """Erstellt/Initialisiert einen Leave Balance (benötigt: hr.manage_balances oder *)"""
     return crud.create_leave_balance(db, balance_data)
 
 
 @router.put("/balances/{balance_id}", response_model=schemas.LeaveBalanceResponse)
-@require_roles(["hr_admin"])
+@require_permissions(["hr.manage_balances"])
 async def update_leave_balance(
     balance_id: UUID,
     balance_data: schemas.LeaveBalanceUpdate,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Aktualisiert einen Leave Balance (HR Admin only)"""
+    """Aktualisiert einen Leave Balance (benötigt: hr.manage_balances oder *)"""
     balance = crud.update_leave_balance(db, balance_id, balance_data)
     if not balance:
         raise HTTPException(
@@ -181,7 +181,7 @@ async def update_leave_balance(
 # ============================================================================
 
 @router.get("/requests", response_model=schemas.LeaveRequestListResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def list_leave_requests(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -193,7 +193,7 @@ async def list_leave_requests(
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Liste alle Leave Requests (HR only)"""
+    """Liste alle Leave Requests (benötigt: hr.view)"""
     requests, total = crud.get_leave_requests(
         db, skip, limit, employee_id, status, leave_type, date_from, date_to
     )
@@ -206,13 +206,13 @@ async def list_leave_requests(
 
 
 @router.get("/requests/{request_id}", response_model=schemas.LeaveRequestResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def get_leave_request(
     request_id: UUID,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Holt einen spezifischen Leave Request (HR only)"""
+    """Holt einen spezifischen Leave Request (benötigt: hr.view)"""
     leave_request = crud.get_leave_request(db, request_id)
     if not leave_request:
         raise HTTPException(
@@ -223,13 +223,13 @@ async def get_leave_request(
 
 
 @router.post("/requests", response_model=schemas.LeaveRequestResponse, status_code=status.HTTP_201_CREATED)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.approve"])
 async def create_leave_request_for_employee(
     request_data: schemas.LeaveRequestCreate,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Erstellt Leave Request für Mitarbeiter (HR only)"""
+    """Erstellt Leave Request für Mitarbeiter (benötigt: hr.approve)"""
     if not request_data.employee_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -240,14 +240,14 @@ async def create_leave_request_for_employee(
 
 
 @router.put("/requests/{request_id}", response_model=schemas.LeaveRequestResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.approve"])
 async def update_leave_request(
     request_id: UUID,
     request_data: schemas.LeaveRequestUpdate,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Aktualisiert einen Leave Request (HR only, nur pending)"""
+    """Aktualisiert einen Leave Request (benötigt: hr.approve, nur pending)"""
     leave_request = crud.update_leave_request(db, request_id, request_data)
     if not leave_request:
         raise HTTPException(
@@ -258,13 +258,13 @@ async def update_leave_request(
 
 
 @router.post("/requests/{request_id}/approve", response_model=schemas.LeaveRequestResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.approve"])
 async def approve_leave_request(
     request_id: UUID,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Genehmigt einen Leave Request (HR Manager/Admin only)"""
+    """Genehmigt einen Leave Request (benötigt: hr.approve)"""
     # Hole user ID aus user object
     if isinstance(user, dict):
         user_id = user.get("id")
@@ -287,14 +287,14 @@ async def approve_leave_request(
 
 
 @router.post("/requests/{request_id}/reject", response_model=schemas.LeaveRequestResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.approve"])
 async def reject_leave_request(
     request_id: UUID,
     reject_data: schemas.LeaveRequestReject,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Lehnt einen Leave Request ab (HR Manager/Admin only)"""
+    """Lehnt einen Leave Request ab (benötigt: hr.approve)"""
     # Hole user ID aus user object
     if isinstance(user, dict):
         user_id = user.get("id")
@@ -319,13 +319,13 @@ async def reject_leave_request(
 
 
 @router.delete("/requests/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
-@require_roles(["hr_admin"])
+@require_permissions(["hr.delete"])
 async def delete_leave_request(
     request_id: UUID,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Löscht einen Leave Request (HR Admin only, nur pending)"""
+    """Löscht einen Leave Request (benötigt: hr.delete oder *, nur pending)"""
     success = crud.delete_leave_request(db, request_id)
     if not success:
         raise HTTPException(
@@ -461,7 +461,7 @@ async def cancel_my_leave_request(
 # ============================================================================
 
 @router.get("/calendar", response_model=schemas.AbsenceCalendarListResponse)
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def get_absence_calendar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -471,7 +471,7 @@ async def get_absence_calendar(
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Holt Absence Calendar (Team-Abwesenheiten)"""
+    """Holt Absence Calendar (Team-Abwesenheiten, benötigt: hr.view)"""
     entries, total = crud.get_absence_calendar(
         db, skip, limit, date_from, date_to, employee_id
     )
@@ -484,11 +484,11 @@ async def get_absence_calendar(
 
 
 @router.get("/calendar/{target_date}", response_model=list[schemas.AbsenceCalendarResponse])
-@require_roles(["hr_admin", "hr_manager"])
+@require_permissions(["hr.view"])
 async def get_absences_for_date(
     target_date: date,
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    """Holt alle Abwesenheiten für ein bestimmtes Datum"""
+    """Holt alle Abwesenheiten für ein bestimmtes Datum (benötigt: hr.view)"""
     return crud.get_team_absences_for_date(db, target_date)
