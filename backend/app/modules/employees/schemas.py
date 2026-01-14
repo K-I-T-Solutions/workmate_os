@@ -174,3 +174,18 @@ class EmployeeListResponse(BaseModel):
     page: int
     page_size: int
     employees: list[EmployeeResponse]
+
+
+# ============================================================================
+# STATISTICS SCHEMAS
+# ============================================================================
+
+class EmployeeStatistics(BaseModel):
+    """Employee statistics for dashboard"""
+    total_employees: int
+    active_employees: int
+    by_department: dict[str, int] = Field(default_factory=dict)
+    by_employment_type: dict[str, int] = Field(default_factory=dict)
+
+    class Config:
+        from_attributes = True

@@ -492,3 +492,59 @@ async def get_absences_for_date(
 ):
     """Holt alle Abwesenheiten für ein bestimmtes Datum (benötigt: hr.view)"""
     return crud.get_team_absences_for_date(db, target_date)
+
+
+# ============================================================================
+# STATISTICS ENDPOINTS
+# ============================================================================
+
+@router.get("/statistics", response_model=schemas.LeaveStatistics)
+@require_permissions(["hr.view"])
+async def get_leave_statistics(
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """
+    Get leave request statistics for dashboard (benötigt: hr.view)
+
+    Returns counts by type, status, and summary statistics
+    """
+    from sqlalchemy import func
+    from app.modules.hr.leave.models import LeaveRequest
+
+    # Total counts
+    total = db.query(func.count(LeaveRequest.id)).scalar() or 0
+    pending = db.query(func.count(LeaveRequest.id)).filter(
+        LeaveRequest.status == "pending"
+    ).scalar() or 0
+    approved = db.query(func.count(LeaveRequest.id)).filter(
+        LeaveRequest.status == "approved"
+    ).scalar() or 0
+    rejected = db.query(func.count(LeaveRequest.id)).filter(
+        LeaveRequest.status == "rejected"
+    ).scalar() or 0
+
+    # By type
+    type_stats = db.query(
+        LeaveRequest.leave_type,
+        func.count(LeaveRequest.id).label("count")
+    ).group_by(LeaveRequest.leave_type).all()
+
+    by_type = {leave_type: count for leave_type, count in type_stats}
+
+    # By status
+    status_stats = db.query(
+        LeaveRequest.status,
+        func.count(LeaveRequest.id).label("count")
+    ).group_by(LeaveRequest.status).all()
+
+    by_status = {status: count for status, count in status_stats}
+
+    return schemas.LeaveStatistics(
+        total_requests=total,
+        pending_requests=pending,
+        approved_requests=approved,
+        rejected_requests=rejected,
+        by_type=by_type,
+        by_status=by_status
+    )

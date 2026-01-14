@@ -240,3 +240,19 @@ class TeamAbsenceSummary(BaseModel):
     date: date
     total_absent: int
     absent_employees: list[dict]  # {employee_id, name, leave_type}
+
+
+# ============================================================================
+# STATISTICS SCHEMAS
+# ============================================================================
+
+class LeaveStatistics(BaseModel):
+    """Leave request statistics for dashboard"""
+    total_requests: int
+    pending_requests: int
+    approved_requests: int
+    rejected_requests: int
+    by_type: dict[str, int] = Field(default_factory=dict)
+    by_status: dict[str, int] = Field(default_factory=dict)
+
+    model_config = {"from_attributes": True}

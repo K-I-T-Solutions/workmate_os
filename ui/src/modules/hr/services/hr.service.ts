@@ -96,30 +96,10 @@ export async function deleteEmployee(id: string): Promise<void> {
 
 /**
  * Get employee statistics
- * Note: This endpoint doesn't exist yet in the API, returns mock data
  */
 export async function getEmployeeStatistics(): Promise<EmployeeStatistics> {
-  // TODO: Implement in backend
-  // For now, fetch employees and calculate stats client-side
-  const response = await getEmployees({ limit: 500 }); // Backend max is 500
-
-  const stats: EmployeeStatistics = {
-    total_employees: response.total,
-    active_employees: response.items.filter(e => e.is_active || e.status === 'active').length,
-    by_department: {},
-    by_employment_type: {},
-  };
-
-  // Calculate department stats
-  response.items.forEach(emp => {
-    const deptName = emp.department?.name || 'Keine Abteilung';
-    stats.by_department[deptName] = (stats.by_department[deptName] || 0) + 1;
-
-    const empType = emp.employment_type || 'full_time';
-    stats.by_employment_type[empType] = (stats.by_employment_type[empType] || 0) + 1;
-  });
-
-  return stats;
+  const response = await apiClient.get('/api/employees/statistics');
+  return response.data;
 }
 
 // ============================================================================
@@ -255,43 +235,12 @@ export async function deleteLeaveRequest(id: string): Promise<void> {
 
 /**
  * Get leave request statistics
- * Note: This endpoint doesn't exist yet in the API, returns mock data
  */
 export async function getLeaveStatistics(
   filters?: LeaveRequestFilters
 ): Promise<LeaveStatistics> {
-  // TODO: Implement in backend at /api/hr/leave/statistics
-  // For now, fetch all requests and calculate stats client-side
-  try {
-    const response = await getLeaveRequests({ limit: 500 }); // Max allowed by backend
-
-    const stats: LeaveStatistics = {
-      total_requests: response.total,
-      pending_requests: response.items.filter(r => r.status === 'pending').length,
-      approved_requests: response.items.filter(r => r.status === 'approved').length,
-      rejected_requests: response.items.filter(r => r.status === 'rejected').length,
-      by_type: {} as Record<string, number>,
-      by_status: {} as Record<string, number>,
-    };
-
-    // Calculate by_type
-    response.items.forEach(req => {
-      stats.by_type[req.leave_type] = (stats.by_type[req.leave_type] || 0) + 1;
-      stats.by_status[req.status] = (stats.by_status[req.status] || 0) + 1;
-    });
-
-    return stats;
-  } catch (error) {
-    // Return empty stats if API fails
-    return {
-      total_requests: 0,
-      pending_requests: 0,
-      approved_requests: 0,
-      rejected_requests: 0,
-      by_type: {},
-      by_status: {},
-    };
-  }
+  const response = await apiClient.get('/api/hr/leave/statistics');
+  return response.data;
 }
 
 // ============================================================================

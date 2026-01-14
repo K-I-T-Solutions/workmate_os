@@ -256,6 +256,7 @@ async def get_current_user(
         full_name = user.employee_code
 
     result = {
+        "id": str(user.id),           # Employee UUID für approve/reject operations
         "preferred_username": full_name,
         "email": user.email,
         "employee_code": user.employee_code,
@@ -266,8 +267,8 @@ async def get_current_user(
         "permissions": permissions,   # Permissions-Liste aus DB (z.B. ["hr.view", "hr.approve"])
     }
 
-    logger.debug("✅ Authenticated as: %s (role: %s, permissions: %s)",
-                 result["email"], db_role_name, permissions)
+    logger.debug("✅ Authenticated as: %s (id: %s, role: %s, permissions: %s)",
+                 result["email"], user.id, db_role_name, permissions)
     return result
 
 
