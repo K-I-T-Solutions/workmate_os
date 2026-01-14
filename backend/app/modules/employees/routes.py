@@ -274,20 +274,22 @@ def get_employee_statistics(
     ).scalar() or 0
 
     # By department
+    dept_name_col = func.coalesce(Department.name, "Keine Abteilung")
     dept_stats = db.query(
-        func.coalesce(Department.name, "Keine Abteilung").label("dept_name"),
+        dept_name_col.label("dept_name"),
         func.count(Employee.id).label("count")
     ).outerjoin(Department, Employee.department_id == Department.id)\
-     .group_by(Department.name)\
+     .group_by(dept_name_col)\
      .all()
 
     by_department = {dept: count for dept, count in dept_stats}
 
     # By employment type
+    emp_type_col = func.coalesce(Employee.employment_type, "fulltime")
     type_stats = db.query(
-        func.coalesce(Employee.employment_type, "full_time").label("emp_type"),
+        emp_type_col.label("emp_type"),
         func.count(Employee.id).label("count")
-    ).group_by(Employee.employment_type).all()
+    ).group_by(emp_type_col).all()
 
     by_employment_type = {emp_type: count for emp_type, count in type_stats}
 
