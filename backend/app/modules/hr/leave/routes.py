@@ -13,6 +13,7 @@ from app.core.settings.database import get_db
 from app.core.auth.auth import get_current_user
 from app.core.auth.roles import require_permissions
 from app.modules.hr.enums import LeaveStatus
+from app.core.email import send_leave_request_notification, send_leave_request_approved, send_leave_request_rejected
 
 from . import crud, schemas
 
@@ -236,7 +237,60 @@ async def create_leave_request_for_employee(
             detail="employee_id is required"
         )
 
-    return crud.create_leave_request(db, request_data, request_data.employee_id)
+    try:
+        leave_request = crud.create_leave_request(db, request_data, request_data.employee_id)
+
+        # Send email notification to approvers
+        from app.modules.employees.models import Employee, Role
+        from app.core.auth.roles import check_permission
+
+        # Get the employee who requested leave
+        employee = db.query(Employee).filter(Employee.id == request_data.employee_id).first()
+
+        if employee:
+            # Find all employees with hr.approve permission
+            approver_emails = []
+            all_roles = db.query(Role).all()
+
+            for role in all_roles:
+                permissions = role.permissions_json or []
+                if check_permission(permissions, "hr.approve"):
+                    # Get employees with this role
+                    employees_with_role = db.query(Employee).filter(
+                        Employee.role_id == role.id,
+                        Employee.status == "active",
+                        Employee.email.isnot(None)
+                    ).all()
+
+                    for emp in employees_with_role:
+                        if emp.email and emp.email not in approver_emails:
+                            approver_emails.append(emp.email)
+
+            # Send notification if we have approvers
+            if approver_emails:
+                try:
+                    await send_leave_request_notification(
+                        db=db,
+                        request_id=str(leave_request.id),
+                        employee_name=f"{employee.first_name} {employee.last_name}",
+                        employee_email=employee.email,
+                        leave_type=leave_request.leave_type,
+                        start_date=leave_request.start_date.strftime("%d.%m.%Y"),
+                        end_date=leave_request.end_date.strftime("%d.%m.%Y"),
+                        total_days=str(leave_request.total_days),
+                        approver_emails=approver_emails,
+                        reason=leave_request.reason
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    print(f"[EmailService] Failed to send notification: {str(e)}")
+
+        return leave_request
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.put("/requests/{request_id}", response_model=schemas.LeaveRequestResponse)
@@ -283,6 +337,30 @@ async def approve_leave_request(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Leave request not found or cannot be approved"
         )
+
+    # Send approval email to employee
+    from app.modules.employees.models import Employee
+
+    try:
+        employee = db.query(Employee).filter(Employee.id == leave_request.employee_id).first()
+        approver = db.query(Employee).filter(Employee.id == user_id).first()
+
+        if employee and employee.email and approver:
+            await send_leave_request_approved(
+                db=db,
+                request_id=str(leave_request.id),
+                employee_name=f"{employee.first_name} {employee.last_name}",
+                employee_email=employee.email,
+                leave_type=leave_request.leave_type,
+                start_date=leave_request.start_date.strftime("%d.%m.%Y"),
+                end_date=leave_request.end_date.strftime("%d.%m.%Y"),
+                total_days=str(leave_request.total_days),
+                approver_name=f"{approver.first_name} {approver.last_name}"
+            )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"[EmailService] Failed to send approval email: {str(e)}")
+
     return leave_request
 
 
@@ -315,6 +393,30 @@ async def reject_leave_request(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Leave request not found or cannot be rejected"
         )
+
+    # Send rejection email to employee
+    from app.modules.employees.models import Employee
+
+    try:
+        employee = db.query(Employee).filter(Employee.id == leave_request.employee_id).first()
+        approver = db.query(Employee).filter(Employee.id == user_id).first()
+
+        if employee and employee.email and approver:
+            await send_leave_request_rejected(
+                db=db,
+                request_id=str(leave_request.id),
+                employee_name=f"{employee.first_name} {employee.last_name}",
+                employee_email=employee.email,
+                leave_type=leave_request.leave_type,
+                start_date=leave_request.start_date.strftime("%d.%m.%Y"),
+                end_date=leave_request.end_date.strftime("%d.%m.%Y"),
+                rejection_reason=reject_data.rejection_reason,
+                approver_name=f"{approver.first_name} {approver.last_name}"
+            )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"[EmailService] Failed to send rejection email: {str(e)}")
+
     return leave_request
 
 
@@ -389,7 +491,60 @@ async def create_my_leave_request(
             detail="Unable to identify user"
         )
 
-    return crud.create_leave_request(db, request_data, user_id)
+    try:
+        leave_request = crud.create_leave_request(db, request_data, user_id)
+
+        # Send email notification to approvers
+        from app.modules.employees.models import Employee, Role
+        from app.core.auth.roles import check_permission
+
+        # Get the employee who requested leave
+        employee = db.query(Employee).filter(Employee.id == user_id).first()
+
+        if employee:
+            # Find all employees with hr.approve permission
+            approver_emails = []
+            all_roles = db.query(Role).all()
+
+            for role in all_roles:
+                permissions = role.permissions_json or []
+                if check_permission(permissions, "hr.approve"):
+                    # Get employees with this role
+                    employees_with_role = db.query(Employee).filter(
+                        Employee.role_id == role.id,
+                        Employee.status == "active",
+                        Employee.email.isnot(None)
+                    ).all()
+
+                    for emp in employees_with_role:
+                        if emp.email and emp.email not in approver_emails:
+                            approver_emails.append(emp.email)
+
+            # Send notification if we have approvers
+            if approver_emails:
+                try:
+                    await send_leave_request_notification(
+                        db=db,
+                        request_id=str(leave_request.id),
+                        employee_name=f"{employee.first_name} {employee.last_name}",
+                        employee_email=employee.email,
+                        leave_type=leave_request.leave_type,
+                        start_date=leave_request.start_date.strftime("%d.%m.%Y"),
+                        end_date=leave_request.end_date.strftime("%d.%m.%Y"),
+                        total_days=str(leave_request.total_days),
+                        approver_emails=approver_emails,
+                        reason=leave_request.reason
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    print(f"[EmailService] Failed to send notification: {str(e)}")
+
+        return leave_request
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/my-balance", response_model=schemas.LeaveBalanceResponse)

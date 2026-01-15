@@ -35,17 +35,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { KitTopbar, KitDock } from "./components";
 import { WindowHost } from "./app-manager";
 import DashboardPage from "@/modules/dashboard/pages/DashboardPage.vue";
 import UserProfilePage from "./pages/UserProfilePage.vue";
 import SettingsPage from "./pages/SettingsPage.vue";
 import { useAuth } from "@/composables/useAuth";
+import { appManager } from "./app-manager/useAppManager";
 
 // Router
 const router = useRouter();
+const route = useRoute();
 
 // System page state
 type SystemPage = 'profile' | 'settings' | null;
@@ -53,6 +55,20 @@ const currentSystemPage = ref<SystemPage>(null);
 
 // Auth composable for logout
 const { logout } = useAuth();
+
+// Auto-open app windows when deeplinks are detected
+watch(
+  () => route.path,
+  (newPath) => {
+    // Detect HR module deeplinks
+    if (newPath.startsWith('/app/hr/')) {
+      appManager.openWindow('hr');
+    }
+    // Additional app deeplinks can be added here
+    // if (newPath.startsWith('/app/crm/')) appManager.openWindow('crm');
+  },
+  { immediate: true }
+);
 
 // Actions
 function openProfile() {

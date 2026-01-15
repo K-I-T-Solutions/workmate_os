@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Urlaubsantrag abgelehnt - WorkmateOS{% endblock %}
+
+{% block header_title %}✗ Urlaubsantrag abgelehnt{% endblock %}
+{% block header_subtitle %}Ihr Urlaubsantrag wurde nicht genehmigt{% endblock %}
+
+{% block content %}
+<p>Hallo <strong>{{ employee_name }}</strong>,</p>
+
+<p>Ihr Urlaubsantrag wurde von <strong>{{ approver_name }}</strong> leider abgelehnt.</p>
+
+<div class="info-box error">
+    <table class="details-table">
+        <tr>
+            <td>Art:</td>
+            <td><strong>{{ leave_type_label }}</strong></td>
+        </tr>
+        <tr>
+            <td>Zeitraum:</td>
+            <td>{{ start_date }} bis {{ end_date }}</td>
+        </tr>
+        <tr>
+            <td>Dauer:</td>
+            <td><strong>{{ total_days }} Tage</strong></td>
+        </tr>
+        <tr>
+            <td>Abgelehnt von:</td>
+            <td>{{ approver_name }}</td>
+        </tr>
+        <tr>
+            <td>Status:</td>
+            <td style="color: #ef4444;"><strong>✗ Abgelehnt</strong></td>
+        </tr>
+    </table>
+</div>
+
+{% if rejection_reason %}
+<div class="info-box">
+    <strong>Grund der Ablehnung:</strong>
+    <p style="margin: 10px 0 0 0;">{{ rejection_reason }}</p>
+</div>
+{% endif %}
+
+<p>Bei Fragen oder Unklarheiten wenden Sie sich bitte an <strong>{{ approver_name }}</strong> oder Ihre HR-Abteilung.</p>
+
+<div style="text-align: center;">
+    <a href="{{ workmate_url }}/app/hr/leave/requests/{{ request_id }}" class="button">Antrag ansehen</a>
+</div>
+
+<p style="text-align: center; margin-top: 10px;">
+    <a href="{{ workmate_url }}/app/hr/leave/requests" style="color: #666; font-size: 12px; text-decoration: underline;">Alle meine Anträge</a>
+</p>
+{% endblock %}

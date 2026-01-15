@@ -169,6 +169,8 @@ export interface LeaveRequest {
   start_date: string;
   end_date: string;
   total_days: number;
+  half_day_start: boolean;
+  half_day_end: boolean;
   reason?: string;
   status: LeaveStatus;
   approver_id?: string;
@@ -183,6 +185,8 @@ export interface LeaveRequestCreate {
   leave_type: LeaveType;
   start_date: string;
   end_date: string;
+  half_day_start?: boolean;
+  half_day_end?: boolean;
   reason?: string;
 }
 
@@ -196,11 +200,10 @@ export interface LeaveRequestUpdate {
 }
 
 export interface LeaveRequestApprove {
-  approver_id: string;
+  notes?: string;
 }
 
 export interface LeaveRequestReject {
-  approver_id: string;
   rejection_reason: string;
 }
 

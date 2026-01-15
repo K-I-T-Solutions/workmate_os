@@ -48,8 +48,48 @@ const routes = [
       },
       {
         path: "hr",
-        name: "hr",
         component: HRApp,
+        children: [
+          {
+            path: "",
+            redirect: "/app/hr/dashboard",
+          },
+          {
+            path: "dashboard",
+            name: "hr-dashboard",
+            meta: { view: "dashboard" },
+          },
+          {
+            path: "leave/requests",
+            name: "hr-leave-requests",
+            meta: { view: "leave" },
+          },
+          {
+            path: "leave/requests/:id",
+            name: "hr-leave-request-detail",
+            meta: { view: "leave", requestId: ':id' },
+          },
+          {
+            path: "leave/approvals",
+            name: "hr-leave-approvals",
+            meta: { view: "approvals" },
+          },
+          {
+            path: "my-requests",
+            name: "hr-my-requests",
+            meta: { view: "leave" },
+          },
+          {
+            path: "my-requests/:id",
+            name: "hr-my-request-detail",
+            meta: { view: "leave" },
+          },
+          {
+            path: "employees",
+            name: "hr-employees",
+            meta: { view: "employees" },
+          },
+        ],
       }
     ],
   },

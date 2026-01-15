@@ -1,0 +1,30 @@
+URLAUBSANTRAG ABGELEHNT ✗
+================================================================================
+
+Hallo {{ employee_name }},
+
+Ihr Urlaubsantrag wurde von {{ approver_name }} leider abgelehnt.
+
+Art:            {{ leave_type_label }}
+Zeitraum:       {{ start_date }} bis {{ end_date }}
+Dauer:          {{ total_days }} Tage
+Abgelehnt von:  {{ approver_name }}
+Status:         ✗ ABGELEHNT
+
+{% if rejection_reason %}
+GRUND DER ABLEHNUNG:
+{{ rejection_reason }}
+{% endif %}
+
+Bei Fragen oder Unklarheiten wenden Sie sich bitte an {{ approver_name }}
+oder Ihre HR-Abteilung.
+
+Antrag ansehen:      {{ workmate_url }}/app/hr/leave/requests/{{ request_id }}
+Alle meine Anträge:  {{ workmate_url }}/app/hr/leave/requests
+
+================================================================================
+Mit freundlichen Grüßen
+Ihr WorkmateOS System
+
+Diese E-Mail wurde automatisch generiert.
+Bitte antworten Sie nicht direkt auf diese E-Mail.

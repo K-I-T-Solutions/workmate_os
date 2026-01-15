@@ -1,25 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import HRDashboardPage from './pages/HRDashboardPage.vue';
 import LeaveManagementPage from './pages/LeaveManagementPage.vue';
 import LeaveApprovalsPage from './pages/LeaveApprovalsPage.vue';
 import EmployeeListPage from './pages/EmployeeListPage.vue';
 
-// Props for deep-linking from other apps (if needed in future)
-const props = defineProps<{
-  initialView?: string;
-}>();
+const route = useRoute();
+const router = useRouter();
 
-// Current view state
-const currentView = ref(props.initialView || 'dashboard');
+// Get current view from route meta
+const currentView = computed(() => {
+  return (route.meta.view as string) || 'dashboard';
+});
 
 // Navigation tabs
 const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'leave', label: 'Urlaubsverwaltung', icon: '🌴' },
-  { id: 'approvals', label: 'Genehmigungen', icon: '✅' },
-  { id: 'employees', label: 'Mitarbeiter', icon: '👥' },
+  { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/app/hr/dashboard' },
+  { id: 'leave', label: 'Urlaubsverwaltung', icon: '🌴', path: '/app/hr/leave/requests' },
+  { id: 'approvals', label: 'Genehmigungen', icon: '✅', path: '/app/hr/leave/approvals' },
+  { id: 'employees', label: 'Mitarbeiter', icon: '👥', path: '/app/hr/employees' },
 ];
+
+function navigateTo(path: string) {
+  router.push(path);
+}
 </script>
 
 <template>
@@ -30,7 +35,7 @@ const tabs = [
         <button
           v-for="tab in tabs"
           :key="tab.id"
-          @click="currentView = tab.id"
+          @click="navigateTo(tab.path)"
           :class="[
             'px-4 py-2 rounded-lg transition-colors',
             currentView === tab.id

@@ -34,9 +34,7 @@ async function handleApprove(request: LeaveRequest) {
   }
 
   try {
-    await approveLeaveRequest(request.id, {
-      approver_id: 'current-user-id', // TODO: Get from auth
-    });
+    await approveLeaveRequest(request.id, {});
     await loadPendingRequests();
   } catch (error) {
     console.error('Failed to approve request:', error);
@@ -58,7 +56,6 @@ async function handleReject() {
 
   try {
     await rejectLeaveRequest(selectedRequest.value.id, {
-      approver_id: 'current-user-id', // TODO: Get from auth
       rejection_reason: rejectionReason.value,
     });
     showRejectDialog.value = false;
@@ -134,6 +131,14 @@ const formatDate = (date: string): string => {
               </span>
               <span>{{ formatDate(request.start_date) }} - {{ formatDate(request.end_date) }}</span>
               <span class="text-white font-semibold">{{ request.total_days }} Tage</span>
+            </div>
+            <div v-if="request.half_day_start || request.half_day_end" class="flex gap-2 mt-2">
+              <span v-if="request.half_day_start" class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+                ½ Tag Start
+              </span>
+              <span v-if="request.half_day_end" class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+                ½ Tag Ende
+              </span>
             </div>
           </div>
 

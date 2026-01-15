@@ -252,9 +252,50 @@ def create_leave_request(
     employee_id: UUID
 ) -> models.LeaveRequest:
     """Erstellt einen neuen Leave Request"""
+    from decimal import Decimal
+    from datetime import timedelta
+
+    # Auto-calculate total_days if not provided
+    data = request_data.model_dump(exclude={"employee_id"})
+    if data.get("total_days") is None:
+        # Calculate business days (weekdays only, excluding weekends)
+        start = request_data.start_date
+        end = request_data.end_date
+
+        business_days = 0
+        current = start
+        while current <= end:
+            # Monday=0, Sunday=6 -> Count Monday-Friday only
+            if current.weekday() < 5:
+                business_days += 1
+            current += timedelta(days=1)
+
+        # Validate that there is at least one business day
+        if business_days == 0:
+            raise ValueError(
+                "Der gewählte Zeitraum enthält keine Werktage. "
+                "Urlaubsanträge müssen mindestens einen Werktag (Mo-Fr) umfassen."
+            )
+
+        total = Decimal(str(business_days))
+
+        # Adjust for half days
+        if request_data.half_day_start:
+            total -= Decimal("0.5")
+        if request_data.half_day_end:
+            total -= Decimal("0.5")
+
+        # Final validation
+        if total <= 0:
+            raise ValueError(
+                "Der berechnete Urlaubsanspruch muss größer als 0 sein."
+            )
+
+        data["total_days"] = total
+
     leave_request = models.LeaveRequest(
         employee_id=employee_id,
-        **request_data.model_dump(exclude={"employee_id"})
+        **data
     )
     db.add(leave_request)
     db.commit()

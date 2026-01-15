@@ -121,7 +121,7 @@ class LeaveRequestBase(BaseModel):
     leave_type: str = Field(..., description="Type of leave")
     start_date: date = Field(..., description="Start date")
     end_date: date = Field(..., description="End date")
-    total_days: Decimal = Field(..., gt=0, description="Total days")
+    total_days: Optional[Decimal] = Field(None, gt=0, description="Total days (auto-calculated if not provided)")
     half_day_start: bool = Field(default=False)
     half_day_end: bool = Field(default=False)
     reason: Optional[str] = Field(None, max_length=1000)

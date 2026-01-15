@@ -1,0 +1,28 @@
+NEUER URLAUBSANTRAG - GENEHMIGUNG ERFORDERLICH
+================================================================================
+
+Hallo,
+
+{{ employee_name }} ({{ employee_email }}) hat einen neuen Urlaubsantrag gestellt:
+
+Mitarbeiter: {{ employee_name }}
+E-Mail:      {{ employee_email }}
+Art:         {{ leave_type_label }}
+Zeitraum:    {{ start_date }} bis {{ end_date }}
+Dauer:       {{ total_days }} Tage
+{% if reason %}
+Begründung:  {{ reason }}
+{% endif %}
+
+Bitte überprüfen Sie den Antrag im WorkmateOS HR-Modul und genehmigen oder
+lehnen Sie ihn ab.
+
+Antrag direkt öffnen: {{ workmate_url }}/app/hr/leave/requests/{{ request_id }}
+Alle Anträge ansehen:  {{ workmate_url }}/app/hr/leave/requests
+
+================================================================================
+Mit freundlichen Grüßen
+Ihr WorkmateOS System
+
+Diese E-Mail wurde automatisch generiert.
+Bitte antworten Sie nicht direkt auf diese E-Mail.
