@@ -207,7 +207,33 @@ def update_role(
     update_data = role_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_role, field, value)
-    
+
     db.commit()
     db.refresh(db_role)
     return db_role
+
+
+# ============================================================================
+# ADMIN / USER MANAGEMENT OPERATIONS
+# ============================================================================
+
+def update_status(db: Session, employee_id: UUID, status: str) -> Optional[Employee]:
+    """
+    Update employee status
+
+    Args:
+        db: Database session
+        employee_id: UUID of employee to update
+        status: New status (active, inactive, on_leave)
+
+    Returns:
+        Updated employee or None if not found
+    """
+    employee = get_employee(db, employee_id)
+    if not employee:
+        return None
+
+    employee.status = status
+    db.commit()
+    db.refresh(employee)
+    return employee

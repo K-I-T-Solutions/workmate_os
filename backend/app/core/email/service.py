@@ -308,3 +308,42 @@ async def send_leave_request_rejected(
         body=text,
         html_body=html
     )
+
+
+async def send_password_reset_notification(
+    db: Session,
+    employee_name: str,
+    employee_email: str,
+    admin_name: str,
+    reset_date: str
+) -> bool:
+    """
+    Send notification email when an employee's password is reset by an admin.
+
+    Args:
+        db: Database session
+        employee_name: Name of the employee whose password was reset
+        employee_email: Email of the employee
+        admin_name: Name of the administrator who reset the password
+        reset_date: Date/time when password was reset
+
+    Returns:
+        bool: True if email was sent successfully
+    """
+    email_service = EmailService(db)
+
+    # Render templates
+    text, html = email_service._render_template('password_reset_notification', {
+        'employee_name': employee_name,
+        'admin_name': admin_name,
+        'reset_date': reset_date
+    })
+
+    subject = "Ihr Passwort wurde zurückgesetzt"
+
+    return await email_service.send_email(
+        to_emails=[employee_email],
+        subject=subject,
+        body=text,
+        html_body=html
+    )

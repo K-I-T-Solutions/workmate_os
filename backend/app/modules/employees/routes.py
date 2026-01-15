@@ -4,10 +4,14 @@ REST endpoints for Employee, Department, Role management
 """
 from typing import Optional
 from uuid import UUID
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
+from app.core.email.service import send_password_reset_notification
 from app.modules.employees import crud, schemas
 
 # Create routers
@@ -22,6 +26,7 @@ role_router = APIRouter(prefix="/roles", tags=["Roles"])
 # ============================================================================
 
 @employee_router.get("", response_model=schemas.EmployeeListResponse)
+@require_permissions(["admin.employees.view", "admin.*"])
 def list_employees(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -29,7 +34,8 @@ def list_employees(
     department_id: Optional[UUID] = Query(None),
     role_id: Optional[UUID] = Query(None),
     status: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Get list of employees with filtering and pagination
@@ -62,8 +68,10 @@ def list_employees(
 
 
 @employee_router.get("/statistics", response_model=schemas.EmployeeStatistics)
+@require_permissions(["admin.employees.view", "admin.*"])
 def get_employee_statistics(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Get employee statistics for dashboard
@@ -108,9 +116,11 @@ def get_employee_statistics(
 
 
 @employee_router.get("/{employee_id}", response_model=schemas.EmployeeResponse)
+@require_permissions(["admin.employees.view", "admin.*"])
 def get_employee(
     employee_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """Get employee by ID"""
     employee = crud.get_employee(db, employee_id)
@@ -120,9 +130,11 @@ def get_employee(
 
 
 @employee_router.get("/code/{employee_code}", response_model=schemas.EmployeeResponse)
+@require_permissions(["admin.employees.view", "admin.*"])
 def get_employee_by_code(
     employee_code: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """Get employee by employee code (e.g. KIT-0001)"""
     employee = crud.get_employee_by_code(db, employee_code)
@@ -132,9 +144,11 @@ def get_employee_by_code(
 
 
 @employee_router.post("", response_model=schemas.EmployeeResponse, status_code=201)
+@require_permissions(["admin.employees.write", "admin.*"])
 def create_employee(
     employee: schemas.EmployeeCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Create new employee
@@ -163,10 +177,12 @@ def create_employee(
 
 
 @employee_router.put("/{employee_id}", response_model=schemas.EmployeeResponse)
+@require_permissions(["admin.employees.write", "admin.*"])
 def update_employee(
     employee_id: UUID,
     employee_update: schemas.EmployeeUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """Update employee by ID"""
     # Check if email is being changed and already exists
@@ -188,9 +204,11 @@ def update_employee(
 
 
 @employee_router.delete("/{employee_id}", status_code=204)
+@require_permissions(["admin.employees.delete", "admin.*"])
 def delete_employee(
     employee_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Soft delete employee (sets status to 'inactive')
@@ -199,6 +217,109 @@ def delete_employee(
     if not success:  # bool ist ok
         raise HTTPException(status_code=404, detail="Employee not found")
     return None
+
+
+# ============================================================================
+# ADMIN / USER MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@employee_router.post("/{employee_id}/reset-password", status_code=200)
+@require_permissions(["admin.employees.write", "admin.*"])
+async def reset_employee_password(
+    employee_id: UUID,
+    password_reset: schemas.PasswordResetRequest,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Reset employee password (Admin only)
+
+    Requires permission: admin.employees.write or admin.*
+
+    Args:
+        employee_id: UUID of employee
+        password_reset: Password reset data (new password, send notification flag)
+        db: Database session
+        user: Current authenticated user
+
+    Returns:
+        Success message
+    """
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    employee = crud.get_employee(db, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Hash new password
+    hashed_password = pwd_context.hash(password_reset.new_password)
+    employee.password_hash = hashed_password
+    db.commit()
+
+    # Send email notification if requested
+    if password_reset.send_notification:
+        try:
+            # Get admin name
+            admin_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() or user.get('email', 'Administrator')
+
+            # Get employee name
+            employee_name = f"{employee.first_name or ''} {employee.last_name or ''}".strip() or employee.email
+
+            # Format reset date
+            reset_date = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+            # Send email
+            await send_password_reset_notification(
+                db=db,
+                employee_name=employee_name,
+                employee_email=employee.email,
+                admin_name=admin_name,
+                reset_date=reset_date
+            )
+        except Exception as e:
+            # Log error but don't fail the password reset
+            print(f"[PasswordReset] Failed to send email notification: {str(e)}")
+
+    return {"success": True, "message": "Password reset successfully"}
+
+
+@employee_router.patch("/{employee_id}/status", response_model=schemas.EmployeeResponse)
+@require_permissions(["admin.employees.write", "admin.*"])
+def update_employee_status(
+    employee_id: UUID,
+    status_update: schemas.EmployeeStatusUpdate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Update employee status (active, inactive, on_leave)
+
+    Requires permission: admin.employees.write or admin.*
+
+    Args:
+        employee_id: UUID of employee
+        status_update: Status update data (status, optional reason)
+        db: Database session
+        user: Current authenticated user
+
+    Returns:
+        Updated employee
+    """
+    # Prevent self-deactivation
+    user_id = user.get('id') if isinstance(user, dict) else getattr(user, 'id', None)
+
+    if str(employee_id) == str(user_id) and status_update.status == 'inactive':
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot deactivate your own account"
+        )
+
+    employee = crud.update_status(db, employee_id, status_update.status)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    return employee
 
 
 # ============================================================================
