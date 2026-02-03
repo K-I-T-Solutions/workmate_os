@@ -27,7 +27,6 @@ services:
   - type: web
     name: workmate-ui
     runtime: static
-    plan: free
     rootDir: ui
     buildCommand: npm install -g pnpm && pnpm install && pnpm build
     staticPublishPath: dist
