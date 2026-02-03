@@ -3,12 +3,9 @@ services:
   - type: web
     name: workmate-api
     runtime: python
-    region: frankfurt
-    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /system/health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -19,9 +16,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
-        value: "3.13"
-      - key: ENVIRONMENT
-        value: production
+        value: "3.11"
 
   # Frontend - Vue 3 + Vite
   - type: web
@@ -30,13 +25,6 @@ services:
     rootDir: ui
     buildCommand: npm install -g pnpm && pnpm install && pnpm build
     staticPublishPath: dist
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=31536000
-      - path: /index.html
-        name: Cache-Control
-        value: no-cache
     routes:
       - type: rewrite
         source: /*
@@ -47,7 +35,6 @@ services:
 
 databases:
   - name: workmate-db
-    region: frankfurt
     plan: free
     databaseName: workmate_os
     user: workmate
