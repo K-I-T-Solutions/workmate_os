@@ -28,7 +28,7 @@ const emit = defineEmits<{
 }>();
 
 // Composables
-const { currentEntry, loading, error, loadEntry, deleteEntry } = useTimeTracking();
+const { currentEntry, loading, error, loadEntry, deleteEntry, approveEntry, rejectEntry } = useTimeTracking();
 const { openWindow } = useAppManager();
 
 // State
@@ -126,6 +126,17 @@ async function handleDelete() {
   }
 }
 
+// Approval Actions
+async function handleApprove() {
+  if (!currentEntry.value) return;
+  await approveEntry(currentEntry.value.id);
+}
+
+async function handleReject() {
+  if (!currentEntry.value) return;
+  await rejectEntry(currentEntry.value.id);
+}
+
 // Cross-App Navigation
 function openProject() {
   if (!currentEntry.value?.project_id) return;
@@ -203,6 +214,26 @@ function formatDateTime(dateString: string): string {
           </div>
         </div>
         <div class="flex gap-2">
+          <!-- Approve/Reject -->
+          <template v-if="currentEntry.end_time && !currentEntry.is_invoiced">
+            <button
+              v-if="!currentEntry.is_approved"
+              @click="handleApprove"
+              class="px-3 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/30 transition text-sm font-medium flex items-center gap-1.5"
+            >
+              <CheckCircle :size="16" />
+              Genehmigen
+            </button>
+            <button
+              v-else
+              @click="handleReject"
+              class="kit-btn-ghost text-sm"
+            >
+              <XCircle :size="16" />
+              Ablehnen
+            </button>
+          </template>
+
           <button
             v-if="currentEntry.end_time !== null"
             @click="emit('edit', currentEntry.id)"

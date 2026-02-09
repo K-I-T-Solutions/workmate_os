@@ -3,8 +3,11 @@ from datetime import datetime
 from typing import Optional
 from decimal import Decimal
 import uuid
-from pydantic import BaseModel
 
+from pydantic import BaseModel, ConfigDict
+
+
+# ─── Time Entry Schemas ──────────────────────────────────────
 
 class TimeEntryBase(BaseModel):
     employee_id: uuid.UUID
@@ -39,5 +42,42 @@ class TimeEntryResponse(TimeEntryBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ─── Statistics Schemas ──────────────────────────────────────
+
+class ProjectHours(BaseModel):
+    project_id: str
+    hours: float
+
+
+class TaskTypeHours(BaseModel):
+    task_type: str
+    hours: float
+
+
+class TimeTrackingStatsResponse(BaseModel):
+    total_hours_today: float
+    total_hours_week: float
+    total_hours_month: float
+    total_entries: int
+    billable_hours: float
+    non_billable_hours: float
+    hours_by_project: list[ProjectHours]
+    hours_by_task_type: list[TaskTypeHours]
+
+
+# ─── Weekly Summary Schemas ──────────────────────────────────
+
+class DaySummary(BaseModel):
+    date: str
+    hours: float
+    entries_count: int
+
+
+class WeeklySummaryResponse(BaseModel):
+    employee_id: uuid.UUID
+    week: str
+    total_hours: float
+    daily_breakdown: list[DaySummary]
