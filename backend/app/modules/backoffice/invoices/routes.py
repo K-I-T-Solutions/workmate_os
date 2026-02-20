@@ -23,6 +23,8 @@ import os
 from io import BytesIO
 
 from app.core.settings.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 from app.core.errors import ErrorCode, get_error_detail
 
 logger = logging.getLogger(__name__)
@@ -429,10 +431,12 @@ def recalculate_totals(
 # ============================================================================
 
 @router.delete("/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permissions(["backoffice.invoices.delete", "backoffice.*"])
 def delete_invoice(
     invoice_id: uuid.UUID,
     db: Session = Depends(get_db),
-    ctx: RequestContext = Depends()
+    ctx: RequestContext = Depends(),
+    user: dict = Depends(get_current_user)
 ):
     """
     Invoice löschen.
@@ -452,10 +456,12 @@ def delete_invoice(
 
 
 @router.post("/{invoice_id}/restore", response_model=schemas.InvoiceResponse)
+@require_permissions(["backoffice.invoices.write", "backoffice.*"])
 def restore_invoice(
     invoice_id: uuid.UUID,
     db: Session = Depends(get_db),
-    ctx: RequestContext = Depends()
+    ctx: RequestContext = Depends(),
+    user: dict = Depends(get_current_user)
 ):
     """
     Stellt eine gelöschte Invoice wieder her (Restore).
@@ -490,9 +496,11 @@ def restore_invoice(
 # ============================================================================
 
 @router.get("/{invoice_id}/pdf")
+@require_permissions(["backoffice.invoices.view", "backoffice.*"])
 def download_invoice_pdf(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     PDF herunterladen.
@@ -557,9 +565,11 @@ def download_invoice_pdf(
 # ============================================================================
 
 @router.get("/{invoice_id}/xrechnung")
+@require_permissions(["backoffice.invoices.export", "backoffice.*"])
 def download_xrechnung_xml(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     XRechnung-XML herunterladen (EN16931).
@@ -625,9 +635,11 @@ def download_xrechnung_xml(
 
 
 @router.get("/{invoice_id}/zugferd")
+@require_permissions(["backoffice.invoices.export", "backoffice.*"])
 def download_zugferd_pdf(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     ZUGFeRD-PDF herunterladen (Hybrid-PDF mit eingebetteter XML).
@@ -712,9 +724,11 @@ def download_zugferd_pdf(
 
 
 @router.post("/{invoice_id}/regenerate-pdf", response_model=schemas.InvoiceResponse)
+@require_permissions(["backoffice.invoices.write", "backoffice.*"])
 def regenerate_pdf(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     PDF neu generieren (z.B. nach Template-Änderung).
@@ -764,9 +778,11 @@ def regenerate_pdf(
 # ============================================================================
 
 @router.post("/bulk/status-update", response_model=schemas.BulkUpdateResponse)
+@require_permissions(["backoffice.invoices.approve", "backoffice.*"])
 def bulk_update_status(
     data: schemas.BulkStatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Status für mehrere Invoices gleichzeitig ändern.
@@ -795,9 +811,11 @@ def bulk_update_status(
 
 
 @router.post("/{invoice_id}/validate-xrechnung")
+@require_permissions(["backoffice.invoices.view", "backoffice.*"])
 def validate_xrechnung_endpoint(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Validiert XRechnung-XML gegen EN16931 Standard.
@@ -867,10 +885,12 @@ def validate_xrechnung_endpoint(
 # ============================================================================
 
 @router.post("/{invoice_id}/payments", response_model=schemas.PaymentResponse, status_code=status.HTTP_201_CREATED)
+@require_permissions(["backoffice.invoices.write", "backoffice.*"])
 def add_payment(
     invoice_id: uuid.UUID,
     data: schemas.PaymentCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Zahlung zu Invoice hinzufügen.
@@ -886,9 +906,11 @@ def add_payment(
 
 
 @router.get("/{invoice_id}/payments", response_model=List[schemas.PaymentResponse])
+@require_permissions(["backoffice.invoices.view", "backoffice.*"])
 def list_invoice_payments(
     invoice_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """Liste aller Payments für eine Invoice."""
     # Prüfe ob Invoice existiert
@@ -903,9 +925,11 @@ def list_invoice_payments(
 
 
 @router.get("/payments/{payment_id}", response_model=schemas.PaymentResponse)
+@require_permissions(["backoffice.invoices.view", "backoffice.*"])
 def get_payment(
     payment_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """Einzelnes Payment abrufen."""
     payment = payments_crud.get_payment(db, payment_id)
@@ -918,10 +942,12 @@ def get_payment(
 
 
 @router.patch("/payments/{payment_id}", response_model=schemas.PaymentResponse)
+@require_permissions(["backoffice.invoices.write", "backoffice.*"])
 def update_payment(
     payment_id: uuid.UUID,
     data: schemas.PaymentUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """Payment aktualisieren."""
     payment = payments_crud.update_payment(db, payment_id, data)
@@ -934,9 +960,11 @@ def update_payment(
 
 
 @router.delete("/payments/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permissions(["backoffice.invoices.delete", "backoffice.*"])
 def delete_payment(
     payment_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """Payment löschen."""
     success = payments_crud.delete_payment(db, payment_id)
@@ -953,8 +981,10 @@ def delete_payment(
 # ============================================================================
 
 @router.get("/retention/report")
+@require_permissions(["backoffice.invoices.view", "backoffice.*"])
 def get_retention_report_endpoint(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Retention Policy Report.
@@ -979,9 +1009,11 @@ def get_retention_report_endpoint(
 
 
 @router.post("/retention/cleanup")
+@require_permissions(["backoffice.invoices.delete", "backoffice.*"])
 def execute_retention_cleanup_endpoint(
     dry_run: bool = Query(default=True, description="Nur simulieren (kein echtes Löschen)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
     """
     Führt Retention Policy Cleanup aus.

@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 from app.modules.reminders import crud, schemas
 
 router = APIRouter(prefix="/reminders", tags=["Reminders"])
@@ -28,6 +30,7 @@ def calculate_days_until_due(due_date: Optional[date]) -> Optional[int]:
 # ============================================================================
 
 @router.get("", response_model=schemas.ReminderListResponse)
+@require_permissions(["reminders.view", "reminders.*"])
 def list_reminders(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -35,7 +38,8 @@ def list_reminders(
     status: Optional[str] = Query(None, description="open, done, overdue"),
     priority: Optional[str] = Query(None, description="low, medium, high, critical"),
     overdue_only: bool = Query(False, description="Show only overdue reminders"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Get list of reminders with filtering and pagination
@@ -73,9 +77,11 @@ def list_reminders(
 
 
 @router.get("/{reminder_id}", response_model=schemas.ReminderResponse)
+@require_permissions(["reminders.view", "reminders.*"])
 def get_reminder(
     reminder_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Get reminder by ID"""
     reminder = crud.get_reminder(db, reminder_id)
@@ -91,9 +97,11 @@ def get_reminder(
 
 
 @router.post("", response_model=schemas.ReminderResponse, status_code=201)
+@require_permissions(["reminders.write", "reminders.*"])
 def create_reminder(
     reminder: schemas.ReminderCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Create new reminder
@@ -113,10 +121,12 @@ def create_reminder(
 
 
 @router.put("/{reminder_id}", response_model=schemas.ReminderResponse)
+@require_permissions(["reminders.write", "reminders.*"])
 def update_reminder(
     reminder_id: UUID,
     reminder_update: schemas.ReminderUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Update reminder"""
     reminder = crud.update_reminder(db, reminder_id, reminder_update)
@@ -126,9 +136,11 @@ def update_reminder(
 
 
 @router.post("/{reminder_id}/mark-done", response_model=schemas.ReminderResponse)
+@require_permissions(["reminders.write", "reminders.*"])
 def mark_reminder_done(
     reminder_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Mark reminder as done"""
     reminder = crud.mark_as_done(db, reminder_id)
@@ -138,9 +150,11 @@ def mark_reminder_done(
 
 
 @router.delete("/{reminder_id}", status_code=204)
+@require_permissions(["reminders.delete", "reminders.*"])
 def delete_reminder(
     reminder_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Delete reminder"""
     success = crud.delete_reminder(db, reminder_id)

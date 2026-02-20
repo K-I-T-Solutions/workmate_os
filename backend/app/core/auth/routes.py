@@ -10,7 +10,7 @@ from typing import Optional
 
 from app.core.settings.database import get_db
 from app.core.auth.service import AuthService
-from app.core.auth.zitadel import ZitadelAuth
+from app.core.auth.keycloak import KeycloakAuth
 from app.modules.employees.models import Employee
 from app.core.errors import ErrorCode, get_error_detail
 from sqlalchemy import select
@@ -200,13 +200,13 @@ async def oidc_login(
     db: Session = Depends(get_db)
 ):
     """
-    Authenticate user with Zitadel OIDC token (SSO)
+    Authenticate user with Keycloak OIDC token (SSO)
     Returns JWT access token compatible with existing frontend
     """
-    # Verify Zitadel token
-    zitadel_payload = await ZitadelAuth.verify_token(request.id_token)
+    # Verify Keycloak token
+    keycloak_payload = await KeycloakAuth.verify_token(request.id_token)
 
-    if not zitadel_payload:
+    if not keycloak_payload:
         logger.debug("[DEBUG OIDC] Token verification failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -214,23 +214,27 @@ async def oidc_login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    logger.debug("[DEBUG OIDC] Token verified, payload: %s", zitadel_payload)
+    logger.debug("[DEBUG OIDC] Token verified, payload: %s", keycloak_payload)
 
-    # Fetch user info from UserInfo endpoint if access_token provided
-    user_info = None
+    # Decode access token to get realm_access.roles (ID token doesn't contain roles)
+    combined_payload = {**keycloak_payload}
     if request.access_token:
-        user_info = await ZitadelAuth.get_user_info(request.access_token)
-        logger.debug("[DEBUG OIDC] UserInfo fetched: %s", user_info)
+        access_payload = await KeycloakAuth.decode_access_token(request.access_token)
+        if access_payload:
+            # Merge role claims from access token
+            for key in ("realm_access", "resource_access"):
+                if key in access_payload:
+                    combined_payload[key] = access_payload[key]
 
-    # Merge user_info into payload (userinfo takes priority)
-    combined_payload = {**zitadel_payload}
-    if user_info:
-        combined_payload.update(user_info)
+        # Also fetch userinfo for profile data
+        user_info = await KeycloakAuth.get_user_info(request.access_token)
+        if user_info:
+            combined_payload.update(user_info)
 
     logger.debug("[DEBUG OIDC] Combined payload: %s", combined_payload)
 
-    # Get or create user from Zitadel data
-    employee = ZitadelAuth.get_or_create_user(db, combined_payload)
+    # Get or create user from Keycloak data
+    employee = KeycloakAuth.get_or_create_user(db, combined_payload)
 
     logger.debug("[DEBUG OIDC] Employee result: %s", employee)
 

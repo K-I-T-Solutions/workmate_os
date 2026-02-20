@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 from app.modules.backoffice.time_tracking import crud, schemas
 
 router = APIRouter(prefix="/backoffice/time-tracking", tags=["Backoffice Time Tracking"])
@@ -15,19 +17,23 @@ router = APIRouter(prefix="/backoffice/time-tracking", tags=["Backoffice Time Tr
 # ─── Statistics (VOR /{entry_id} um Route-Konflikte zu vermeiden) ───
 
 @router.get("/stats", response_model=schemas.TimeTrackingStatsResponse)
+@require_permissions(["backoffice.time_tracking.view", "backoffice.*"])
 def get_stats(
     employee_id: Optional[UUID] = Query(None, description="Filter nach Mitarbeiter"),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Aggregierte Zeiterfassungs-Statistiken."""
     return crud.get_stats(db, employee_id=employee_id)
 
 
 @router.get("/summary", response_model=schemas.WeeklySummaryResponse)
+@require_permissions(["backoffice.time_tracking.view", "backoffice.*"])
 def get_weekly_summary(
     employee_id: UUID = Query(..., description="Mitarbeiter-ID"),
     week: str = Query(..., description="ISO-Woche, z.B. 2026-W06"),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Wochen-Zusammenfassung mit tageweiser Aufschluesselung."""
     try:
@@ -45,6 +51,7 @@ def get_weekly_summary(
 # ─── CRUD Endpoints ─────────────────────────────────────────
 
 @router.get("/", response_model=list[schemas.TimeEntryResponse])
+@require_permissions(["backoffice.time_tracking.view", "backoffice.*"])
 def list_entries(
     skip: int = Query(0, ge=0, description="Eintraege ueberspringen"),
     limit: int = Query(50, ge=1, le=100, description="Max. Anzahl Eintraege"),
@@ -58,6 +65,7 @@ def list_entries(
     is_invoiced: Optional[bool] = Query(None, description="Filter nach Abrechnung"),
     search: Optional[str] = Query(None, description="Suche in Notizen"),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Time Entries auflisten mit Filtern und Pagination."""
     return crud.get_entries(
@@ -77,7 +85,8 @@ def list_entries(
 
 
 @router.get("/{entry_id}", response_model=schemas.TimeEntryResponse)
-def get_entry(entry_id: UUID, db: Session = Depends(get_db)):
+@require_permissions(["backoffice.time_tracking.view", "backoffice.*"])
+def get_entry(entry_id: UUID, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """Einzelnen Time Entry laden."""
     entry = crud.get_entry(db, entry_id)
     if not entry:
@@ -86,13 +95,15 @@ def get_entry(entry_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=schemas.TimeEntryResponse, status_code=status.HTTP_201_CREATED)
-def create_entry(data: schemas.TimeEntryCreate, db: Session = Depends(get_db)):
+@require_permissions(["backoffice.time_tracking.write", "backoffice.*"])
+def create_entry(data: schemas.TimeEntryCreate, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """Neuen Time Entry erstellen."""
     return crud.create_entry(db, data)
 
 
 @router.put("/{entry_id}", response_model=schemas.TimeEntryResponse)
-def update_entry(entry_id: UUID, data: schemas.TimeEntryUpdate, db: Session = Depends(get_db)):
+@require_permissions(["backoffice.time_tracking.write", "backoffice.*"])
+def update_entry(entry_id: UUID, data: schemas.TimeEntryUpdate, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """Time Entry aktualisieren."""
     entry = crud.update_entry(db, entry_id, data)
     if not entry:
@@ -101,7 +112,8 @@ def update_entry(entry_id: UUID, data: schemas.TimeEntryUpdate, db: Session = De
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_entry(entry_id: UUID, db: Session = Depends(get_db)):
+@require_permissions(["backoffice.time_tracking.delete", "backoffice.*"])
+def delete_entry(entry_id: UUID, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """Time Entry loeschen."""
     ok = crud.delete_entry(db, entry_id)
     if not ok:
@@ -112,7 +124,8 @@ def delete_entry(entry_id: UUID, db: Session = Depends(get_db)):
 # ─── Approval Endpoints ─────────────────────────────────────
 
 @router.put("/{entry_id}/approve", response_model=schemas.TimeEntryResponse)
-def approve_entry(entry_id: UUID, db: Session = Depends(get_db)):
+@require_permissions(["backoffice.time_tracking.approve", "backoffice.*"])
+def approve_entry(entry_id: UUID, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """Time Entry genehmigen."""
     entry = crud.approve_entry(db, entry_id)
     if not entry:
@@ -121,7 +134,8 @@ def approve_entry(entry_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.put("/{entry_id}/reject", response_model=schemas.TimeEntryResponse)
-def reject_entry(entry_id: UUID, db: Session = Depends(get_db)):
+@require_permissions(["backoffice.time_tracking.approve", "backoffice.*"])
+def reject_entry(entry_id: UUID, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     """Genehmigung zurueckziehen."""
     entry = crud.reject_entry(db, entry_id)
     if not entry:

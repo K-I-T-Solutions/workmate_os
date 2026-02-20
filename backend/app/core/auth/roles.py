@@ -7,7 +7,6 @@ from datetime import datetime
 
 from app.core.auth.auth import get_current_user
 from app.core.settings.database import get_db, SessionLocal
-from app.core.audit.audit import AuditLog
 from app.core.errors import ErrorCode, get_error_detail
 
 # 🔁 Rollen-Aliases (Legacy Support)
@@ -107,6 +106,7 @@ def require_permissions(required_permissions: Union[str, List[str]]):
             # 🚫 Zugriff verweigert → Audit-Eintrag + HTTP 403
             if not allowed:
                 try:
+                    from app.core.audit.audit import AuditLog
                     if not db:
                         db = SessionLocal()
                     log = AuditLog(
@@ -187,6 +187,7 @@ def require_roles(allowed_roles: Union[str, List[str]]):
             # 🚫 Zugriff verweigert → Audit-Eintrag + HTTP 403
             if not allowed:
                 try:
+                    from app.core.audit.audit import AuditLog
                     if not db:
                         db = SessionLocal()
                     log = AuditLog(

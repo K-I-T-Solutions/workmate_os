@@ -1,16 +1,21 @@
 /**
- * Zitadel OIDC Service
+ * Keycloak OIDC Service
  * Handles OAuth2 Authorization Code Flow with PKCE
  */
 
-const ZITADEL_ISSUER = import.meta.env.VITE_ZITADEL_ISSUER || 'https://auth.intern.phudevelopement.xyz';
-const ZITADEL_CLIENT_ID = import.meta.env.VITE_ZITADEL_CLIENT_ID || '';
+const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'https://login.intern.phudevelopement.xyz';
+const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'kit';
+const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || '';
 const REDIRECT_URI = `${window.location.origin}/auth/callback`;
 
+// Keycloak OIDC endpoints
+const AUTH_ENDPOINT = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth`;
+const TOKEN_ENDPOINT = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+
 // Storage keys
-const STATE_KEY = 'zitadel_oauth_state';
-const VERIFIER_KEY = 'zitadel_code_verifier';
-const REDIRECT_KEY = 'zitadel_redirect_after_login';
+const STATE_KEY = 'keycloak_oauth_state';
+const VERIFIER_KEY = 'keycloak_code_verifier';
+const REDIRECT_KEY = 'keycloak_redirect_after_login';
 
 /**
  * Generate a random string for OAuth state and PKCE
@@ -44,9 +49,9 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 /**
- * Initiate Zitadel SSO login
+ * Initiate Keycloak SSO login
  */
-export async function initiateZitadelLogin(redirectAfterLogin?: string): Promise<void> {
+export async function initiateKeycloakLogin(redirectAfterLogin?: string): Promise<void> {
   // Generate state and PKCE verifier
   const state = generateRandomString(16);
   const codeVerifier = generateCodeVerifier();
@@ -60,8 +65,8 @@ export async function initiateZitadelLogin(redirectAfterLogin?: string): Promise
   }
 
   // Build authorization URL
-  const authUrl = new URL(`${ZITADEL_ISSUER}/oauth/v2/authorize`);
-  authUrl.searchParams.set('client_id', ZITADEL_CLIENT_ID);
+  const authUrl = new URL(AUTH_ENDPOINT);
+  authUrl.searchParams.set('client_id', KEYCLOAK_CLIENT_ID);
   authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('scope', 'openid profile email');
@@ -69,14 +74,14 @@ export async function initiateZitadelLogin(redirectAfterLogin?: string): Promise
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
 
-  // Redirect to Zitadel
+  // Redirect to Keycloak
   window.location.href = authUrl.toString();
 }
 
 /**
  * Handle OAuth callback and exchange code for token
  */
-export async function handleZitadelCallback(
+export async function handleKeycloakCallback(
   code: string,
   state: string
 ): Promise<{ id_token: string; access_token: string } | null> {
@@ -96,15 +101,14 @@ export async function handleZitadelCallback(
 
   try {
     // Exchange authorization code for tokens
-    const tokenUrl = `${ZITADEL_ISSUER}/oauth/v2/token`;
-    const response = await fetch(tokenUrl, {
+    const response = await fetch(TOKEN_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: ZITADEL_CLIENT_ID,
+        client_id: KEYCLOAK_CLIENT_ID,
         code,
         redirect_uri: REDIRECT_URI,
         code_verifier: codeVerifier,

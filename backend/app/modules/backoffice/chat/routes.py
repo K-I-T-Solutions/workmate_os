@@ -1,6 +1,4 @@
 # app/modules/backoffice/chat/routes.py
-from __future__ import annotations
-
 import uuid
 from typing import Dict, Set
 
@@ -15,6 +13,8 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 
 from . import crud
 from .schemas import ChatMessageCreate, ChatMessageRead
@@ -68,11 +68,13 @@ manager = ConnectionManager()
     "/projects/{project_id}/messages",
     response_model=list[ChatMessageRead],
 )
+@require_permissions(["backoffice.chat.view", "backoffice.*"])
 def list_project_messages(
     project_id: uuid.UUID,
     db: Session = Depends(get_db),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    user: dict = Depends(get_current_user),
 ):
     """
     Liefert die letzten Nachrichten eines Projekts
@@ -98,10 +100,12 @@ def list_project_messages(
     response_model=ChatMessageRead,
     status_code=status.HTTP_201_CREATED,
 )
+@require_permissions(["backoffice.chat.write", "backoffice.*"])
 async def create_project_message(
     project_id: uuid.UUID,
     payload: ChatMessageCreate,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Erstellt eine neue Nachricht + broadcastet sie live an alle WS-Clients.
@@ -144,8 +148,41 @@ async def project_chat_websocket(
 ):
     """
     Live-Kommunikation für Projekt-Chats.
-    v0.1: Keine Auth, nur Echo + Push von REST-Nachrichten.
+    Token-Validierung via Query-Parameter: ?token=<JWT>
     """
+    # Token-Validierung für WebSocket
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="Missing authentication token")
+        return
+
+    try:
+        import jwt as pyjwt
+        # Validate token structure (full validation via get_current_user is not available for WS)
+        header = pyjwt.get_unverified_header(token)
+        alg = header.get("alg")
+
+        if alg == "HS256":
+            from app.core.auth.service import SECRET_KEY, ALGORITHM
+            pyjwt.decode(token, key=SECRET_KEY, algorithms=[ALGORITHM], options={"verify_aud": False})
+        elif alg == "RS256":
+            from app.core.auth.auth import get_jwks, OIDC_ISSUER
+            from jwt.algorithms import RSAAlgorithm
+            keys = get_jwks()
+            kid = header.get("kid")
+            key_data = keys.get(kid)
+            if not key_data:
+                keys = get_jwks(force_refresh=True)
+                key_data = keys.get(kid)
+            if not key_data:
+                raise ValueError("Unknown key ID")
+            public_key = RSAAlgorithm.from_jwk(key_data)
+            pyjwt.decode(token, key=public_key, algorithms=["RS256"], options={"verify_aud": False}, issuer=OIDC_ISSUER)
+        else:
+            raise ValueError(f"Unsupported algorithm: {alg}")
+    except Exception:
+        await websocket.close(code=4003, reason="Invalid or expired token")
+        return
 
     await manager.connect(project_id, websocket)
 
@@ -153,7 +190,6 @@ async def project_chat_websocket(
         while True:
             msg = await websocket.receive_text()
 
-            # Für v0.1: Echo
             await websocket.send_json({
                 "event": "pong",
                 "raw": msg,

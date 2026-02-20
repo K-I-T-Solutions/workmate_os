@@ -8,6 +8,8 @@ from typing import Optional
 import uuid
 
 from app.core.settings.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 from app.modules.backoffice.products import crud, schemas
 
 
@@ -19,6 +21,7 @@ router = APIRouter(prefix="/backoffice/products", tags=["Backoffice Products"])
 # ============================================================================
 
 @router.get("", response_model=schemas.ProductListResponse)
+@require_permissions(["backoffice.products.view", "backoffice.*"])
 def list_products(
     skip: int = Query(0, ge=0, description="Offset für Pagination"),
     limit: int = Query(100, ge=1, le=500, description="Max Anzahl Ergebnisse"),
@@ -26,7 +29,8 @@ def list_products(
     is_active: Optional[bool] = Query(None, description="Filter nach Aktiv/Inaktiv"),
     is_service: Optional[bool] = Query(None, description="Filter nach Dienstleistung/Produkt"),
     search: Optional[str] = Query(None, description="Suche in Name, Beschreibung, SKU"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Liste aller Products mit Pagination und Filtern.
@@ -72,9 +76,11 @@ def list_products(
 # ============================================================================
 
 @router.get("/{product_id}", response_model=schemas.ProductResponse)
+@require_permissions(["backoffice.products.view", "backoffice.*"])
 def get_product(
     product_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Einzelnes Product abrufen."""
     product = crud.get_product(db, product_id)
@@ -87,9 +93,11 @@ def get_product(
 
 
 @router.get("/by-sku/{sku}", response_model=schemas.ProductResponse)
+@require_permissions(["backoffice.products.view", "backoffice.*"])
 def get_product_by_sku(
     sku: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Product nach SKU abrufen."""
     product = crud.get_product_by_sku(db, sku)
@@ -110,9 +118,11 @@ def get_product_by_sku(
     response_model=schemas.ProductResponse,
     status_code=status.HTTP_201_CREATED
 )
+@require_permissions(["backoffice.products.write", "backoffice.*"])
 def create_product(
     data: schemas.ProductCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Neues Product erstellen.
@@ -130,10 +140,12 @@ def create_product(
 # ============================================================================
 
 @router.patch("/{product_id}", response_model=schemas.ProductResponse)
+@require_permissions(["backoffice.products.write", "backoffice.*"])
 def update_product(
     product_id: uuid.UUID,
     data: schemas.ProductUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Product aktualisieren (Partial Update).
@@ -156,9 +168,11 @@ def update_product(
 # ============================================================================
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permissions(["backoffice.products.delete", "backoffice.*"])
 def delete_product(
     product_id: uuid.UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Product löschen.

@@ -12,7 +12,7 @@ import {
   Shield,
 } from 'lucide-vue-next';
 import { WorkmateAssets } from '@/services/assets';
-import { initiateZitadelLogin } from '@/services/zitadel';
+import { initiateKeycloakLogin } from '@/services/keycloak';
 
 // Router
 const router = useRouter();
@@ -67,7 +67,7 @@ function togglePasswordVisibility() {
 
 async function handleSSOLogin() {
   const redirect = route.query.redirect as string || '/app';
-  await initiateZitadelLogin(redirect);
+  await initiateKeycloakLogin(redirect);
 }
 
 // Focus email input on mount

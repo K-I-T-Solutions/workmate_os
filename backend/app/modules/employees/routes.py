@@ -327,19 +327,23 @@ def update_employee_status(
 # ============================================================================
 
 @department_router.get("", response_model=list[schemas.DepartmentResponse])
+@require_permissions(["admin.departments.view", "admin.*"])
 def list_departments(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Get list of all departments"""
     return crud.get_departments(db, skip=skip, limit=limit)
 
 
 @department_router.get("/{department_id}", response_model=schemas.DepartmentResponse)
+@require_permissions(["admin.departments.view", "admin.*"])
 def get_department(
     department_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Get department by ID"""
     department = crud.get_department(db, department_id)
@@ -349,19 +353,23 @@ def get_department(
 
 
 @department_router.post("", response_model=schemas.DepartmentResponse, status_code=201)
+@require_permissions(["admin.departments.write", "admin.*"])
 def create_department(
     department: schemas.DepartmentCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Create new department"""
     return crud.create_department(db, department)
 
 
 @department_router.put("/{department_id}", response_model=schemas.DepartmentResponse)
+@require_permissions(["admin.departments.write", "admin.*"])
 def update_department(
     department_id: UUID,
     department_update: schemas.DepartmentUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Update department by ID"""
     department = crud.update_department(db, department_id, department_update)
@@ -375,19 +383,23 @@ def update_department(
 # ============================================================================
 
 @role_router.get("", response_model=list[schemas.RoleResponse])
+@require_permissions(["admin.roles.view", "admin.*"])
 def list_roles(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Get list of all roles"""
     return crud.get_roles(db, skip=skip, limit=limit)
 
 
 @role_router.get("/{role_id}", response_model=schemas.RoleResponse)
+@require_permissions(["admin.roles.view", "admin.*"])
 def get_role(
     role_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Get role by ID"""
     role = crud.get_role(db, role_id)
@@ -397,19 +409,23 @@ def get_role(
 
 
 @role_router.post("", response_model=schemas.RoleResponse, status_code=201)
+@require_permissions(["admin.roles.write", "admin.*"])
 def create_role(
     role: schemas.RoleCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Create new role"""
     return crud.create_role(db, role)
 
 
 @role_router.put("/{role_id}", response_model=schemas.RoleResponse)
+@require_permissions(["admin.roles.write", "admin.*"])
 def update_role(
     role_id: UUID,
     role_update: schemas.RoleUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """Update role by ID"""
     role = crud.update_role(db, role_id, role_update)
