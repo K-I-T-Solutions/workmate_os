@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useTimeTracking } from '../../composables/useTimeTracking';
-import type { TimeEntryFilters } from '../../composables/useTimeTracking';
+import type { TimeEntryFilters, TaskType } from '../../types/timeEntry';
 import {
   ChevronLeft,
   Plus,
@@ -11,6 +11,8 @@ import {
   Calendar,
   X,
   Filter,
+  ChevronRight,
+  Search,
 } from 'lucide-vue-next';
 
 // Props & Emits
@@ -32,6 +34,14 @@ const {
 // ─── FILTER STATE ─────────────────────────────────────────
 const startDate = ref('');
 const endDate = ref('');
+const taskTypeFilter = ref('');
+const billableFilter = ref('');
+const approvedFilter = ref('');
+const searchQuery = ref('');
+
+// Pagination
+const currentPage = ref(1);
+const pageSize = 50;
 
 // ─── LIFECYCLE ────────────────────────────────────────────
 onMounted(() => {
@@ -40,7 +50,7 @@ onMounted(() => {
 
 // ─── COMPUTED ─────────────────────────────────────────────
 const hasFilters = computed(() => {
-  return !!(startDate.value || endDate.value);
+  return !!(startDate.value || endDate.value || taskTypeFilter.value || billableFilter.value || approvedFilter.value || searchQuery.value);
 });
 
 const totalMinutes = computed(() => {
@@ -51,17 +61,28 @@ const totalHours = computed(() => {
   return (totalMinutes.value / 60).toFixed(2);
 });
 
+const hasNextPage = computed(() => entries.value.length === pageSize);
+
 // ─── ACTIONS ──────────────────────────────────────────────
 async function applyFilters() {
-  const filters: TimeEntryFilters = {};
+  currentPage.value = 1;
+  await fetchEntries();
+}
 
-  if (startDate.value) {
-    filters.startDate = startDate.value;
-  }
+async function fetchEntries() {
+  const filters: TimeEntryFilters = {
+    skip: (currentPage.value - 1) * pageSize,
+    limit: pageSize,
+  };
 
-  if (endDate.value) {
-    filters.endDate = endDate.value;
-  }
+  if (startDate.value) filters.start_date = startDate.value;
+  if (endDate.value) filters.end_date = endDate.value;
+  if (taskTypeFilter.value) filters.task_type = taskTypeFilter.value as TaskType;
+  if (billableFilter.value === 'true') filters.billable = true;
+  if (billableFilter.value === 'false') filters.billable = false;
+  if (approvedFilter.value === 'true') filters.is_approved = true;
+  if (approvedFilter.value === 'false') filters.is_approved = false;
+  if (searchQuery.value) filters.search = searchQuery.value;
 
   await loadEntries(filters);
 }
@@ -69,7 +90,23 @@ async function applyFilters() {
 function clearFilters() {
   startDate.value = '';
   endDate.value = '';
+  taskTypeFilter.value = '';
+  billableFilter.value = '';
+  approvedFilter.value = '';
+  searchQuery.value = '';
   applyFilters();
+}
+
+function nextPage() {
+  currentPage.value++;
+  fetchEntries();
+}
+
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+    fetchEntries();
+  }
 }
 
 // Delete confirmation
@@ -141,12 +178,26 @@ function getStatusLabel(entry: any): string {
 
     <!-- Filters -->
     <div class="rounded-lg border border-white/10 bg-white/5 p-4">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <!-- Search -->
+      <div class="mb-3">
+        <div class="relative">
+          <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+          <input
+            v-model="searchQuery"
+            @input="applyFilters"
+            type="text"
+            placeholder="In Notizen suchen..."
+            class="kit-input pl-9"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <!-- Start Date -->
         <div>
           <label class="kit-label flex items-center gap-1">
             <Calendar :size="14" />
-            Von Datum
+            Von
           </label>
           <input
             v-model="startDate"
@@ -160,7 +211,7 @@ function getStatusLabel(entry: any): string {
         <div>
           <label class="kit-label flex items-center gap-1">
             <Calendar :size="14" />
-            Bis Datum
+            Bis
           </label>
           <input
             v-model="endDate"
@@ -168,6 +219,41 @@ function getStatusLabel(entry: any): string {
             type="date"
             class="kit-input"
           />
+        </div>
+
+        <!-- Task Type -->
+        <div>
+          <label class="kit-label">Aufgabentyp</label>
+          <select v-model="taskTypeFilter" @change="applyFilters" class="kit-input">
+            <option value="">Alle</option>
+            <option value="development">Entwicklung</option>
+            <option value="meeting">Meeting</option>
+            <option value="support">Support</option>
+            <option value="documentation">Dokumentation</option>
+            <option value="testing">Testing</option>
+            <option value="planning">Planung</option>
+            <option value="other">Sonstiges</option>
+          </select>
+        </div>
+
+        <!-- Billable -->
+        <div>
+          <label class="kit-label">Abrechenbar</label>
+          <select v-model="billableFilter" @change="applyFilters" class="kit-input">
+            <option value="">Alle</option>
+            <option value="true">Ja</option>
+            <option value="false">Nein</option>
+          </select>
+        </div>
+
+        <!-- Approved -->
+        <div>
+          <label class="kit-label">Genehmigung</label>
+          <select v-model="approvedFilter" @change="applyFilters" class="kit-input">
+            <option value="">Alle</option>
+            <option value="true">Genehmigt</option>
+            <option value="false">Offen</option>
+          </select>
         </div>
       </div>
 
@@ -292,6 +378,31 @@ function getStatusLabel(entry: any): string {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="entries.length > 0" class="flex items-center justify-between">
+      <span class="text-sm text-white/50">Seite {{ currentPage }}</span>
+      <div class="flex gap-2">
+        <button
+          @click="prevPage"
+          :disabled="currentPage <= 1"
+          class="kit-btn-ghost"
+          :class="{ 'opacity-40 cursor-not-allowed': currentPage <= 1 }"
+        >
+          <ChevronLeft :size="18" />
+          Zurück
+        </button>
+        <button
+          @click="nextPage"
+          :disabled="!hasNextPage"
+          class="kit-btn-ghost"
+          :class="{ 'opacity-40 cursor-not-allowed': !hasNextPage }"
+        >
+          Weiter
+          <ChevronRight :size="18" />
+        </button>
       </div>
     </div>
 

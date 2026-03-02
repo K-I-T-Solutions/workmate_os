@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.core.settings.database import get_db
-from app.modules.employees.models import Employee
 from app.core.errors import ErrorCode, get_error_detail
 
 logger = logging.getLogger(__name__)
@@ -21,10 +20,11 @@ logger = logging.getLogger(__name__)
 # ============================================================
 # ⚙️ Keycloak / OpenID Konfiguration
 # ============================================================
-KEYCLOAK_INTERNAL = "http://keycloak:8080"
-OIDC_ISSUER = "https://login.workmate.test/realms/kit"
-CLIENT_ID = "workmate-ui"
-JWKS_URI = f"{KEYCLOAK_INTERNAL}/realms/kit/protocol/openid-connect/certs"
+from app.core.settings.config import settings
+
+OIDC_ISSUER = settings.KEYCLOAK_ISSUER
+CLIENT_ID = settings.KEYCLOAK_CLIENT_ID
+JWKS_URI = settings.KEYCLOAK_JWKS_URI
 
 auth_scheme = HTTPBearer(auto_error=False)
 _JWKS_CACHE = None
@@ -130,10 +130,10 @@ async def get_current_user(
                 )
 
         # ============================================================
-        # Option 2: RS256 Token (Keycloak/Zitadel)
+        # Option 2: RS256 Token (Keycloak)
         # ============================================================
         elif alg == "RS256":
-            logger.debug("🔑 [Auth] Validating RS256 token (Keycloak/Zitadel)")
+            logger.debug("🔑 [Auth] Validating RS256 token (Keycloak)")
 
             # Try to get key from cache
             keys = get_jwks()
@@ -197,17 +197,26 @@ async def get_current_user(
         )
 
     # ============================================================
-    # 🧭 Benutzer in DB finden
+    # 🧭 Benutzer in DB finden (mit eager loading der Rolle)
     # ============================================================
+    from sqlalchemy.orm import joinedload
+    from app.modules.employees.models import Employee
+
     email = decoded.get("email")
     username = decoded.get("preferred_username")
     user = None
 
     if email:
-        user = db.scalar(select(Employee).where(Employee.email == email))
+        user = db.scalar(
+            select(Employee)
+            .options(joinedload(Employee.role), joinedload(Employee.department))
+            .where(Employee.email == email)
+        )
     if not user and username:
         user = db.scalar(
-            select(Employee).where(
+            select(Employee)
+            .options(joinedload(Employee.role), joinedload(Employee.department))
+            .where(
                 (Employee.first_name.ilike(username))
                 | (Employee.last_name.ilike(username))
                 | (Employee.employee_code.ilike(f"%{username}%"))
@@ -221,28 +230,26 @@ async def get_current_user(
         )
 
     # ============================================================
-    # 🧩 Rolle ableiten
+    # 🧩 Rolle und Permissions aus Datenbank laden
     # ============================================================
-    # Department kann ein Objekt oder None sein
+    # Primär: Verwende die Rolle aus der Datenbank
+    if user.role and hasattr(user.role, 'name'):
+        db_role_name = user.role.name
+        permissions = user.role.permissions_json if hasattr(user.role, 'permissions_json') else []
+    else:
+        # Fallback: Keine Rolle in DB → Employee mit Basis-Permissions
+        db_role_name = "Employee"
+        permissions = ["hr.view_own", "hr.request", "documents.view_own"]
+
+    # Department name für Anzeige
     dept_name = ""
     if user.department:
         if hasattr(user.department, 'name'):
-            dept_name = (user.department.name or "").lower()
+            dept_name = user.department.name or ""
         elif hasattr(user.department, 'code'):
-            dept_name = (user.department.code or "").lower()
+            dept_name = user.department.code or ""
         elif isinstance(user.department, str):
-            dept_name = user.department.lower()
-
-    if dept_name in ("backoffice", "hr"):
-        role = "hr"
-    elif dept_name == "management":
-        role = "management"
-    elif dept_name == "support":
-        role = "support"
-    elif dept_name in ("facility", "security"):
-        role = "admin"
-    else:
-        role = "employee"
+            dept_name = user.department
 
     # Build full name
     full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
@@ -250,16 +257,19 @@ async def get_current_user(
         full_name = user.employee_code
 
     result = {
+        "id": str(user.id),           # Employee UUID für approve/reject operations
         "preferred_username": full_name,
         "email": user.email,
         "employee_code": user.employee_code,
         "first_name": user.first_name,
         "last_name": user.last_name,
         "department": dept_name,
-        "role": role,
+        "role": db_role_name,         # Rollenname aus DB (z.B. "Manager", "Admin")
+        "permissions": permissions,   # Permissions-Liste aus DB (z.B. ["hr.view", "hr.approve"])
     }
 
-    logger.debug("✅ Authenticated as: %s", result)
+    logger.debug("✅ Authenticated as: %s (id: %s, role: %s, permissions: %s)",
+                 result["email"], user.id, db_role_name, permissions)
     return result
 
 

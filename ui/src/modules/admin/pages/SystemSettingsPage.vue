@@ -177,6 +177,63 @@
           <span>E-Mail-Verifizierung erforderlich</span>
         </label>
       </div>
+
+      <!-- Email Configuration -->
+      <h3 class="form-section-title">
+        <Mail :size="18" />
+        E-Mail-Konfiguration (SMTP)
+      </h3>
+
+      <div class="form-field">
+        <label class="checkbox-label">
+          <input v-model="settings.email_enabled" type="checkbox" />
+          <span>E-Mail-Versand aktivieren</span>
+        </label>
+      </div>
+
+      <div class="form-field">
+        <label>SMTP-Host</label>
+        <input v-model="settings.smtp_host" type="text" placeholder="smtp.gmail.com" :disabled="!settings.email_enabled" />
+      </div>
+
+      <div class="form-field">
+        <label>SMTP-Port</label>
+        <input v-model.number="settings.smtp_port" type="number" min="1" max="65535" :disabled="!settings.email_enabled" />
+      </div>
+
+      <div class="form-field">
+        <label>SMTP-Benutzername</label>
+        <input v-model="settings.smtp_username" type="text" placeholder="noreply@example.com" :disabled="!settings.email_enabled" />
+      </div>
+
+      <div class="form-field">
+        <label>SMTP-Passwort</label>
+        <input v-model="settings.smtp_password" type="password" placeholder="••••••••" :disabled="!settings.email_enabled" />
+      </div>
+
+      <div class="form-field">
+        <label>Absender E-Mail</label>
+        <input v-model="settings.smtp_from_email" type="email" placeholder="noreply@example.com" :disabled="!settings.email_enabled" />
+      </div>
+
+      <div class="form-field">
+        <label>Absender Name</label>
+        <input v-model="settings.smtp_from_name" type="text" placeholder="WorkmateOS" :disabled="!settings.email_enabled" />
+      </div>
+
+      <div class="form-field">
+        <label class="checkbox-label">
+          <input v-model="settings.smtp_use_tls" type="checkbox" :disabled="!settings.email_enabled" />
+          <span>TLS verwenden (Port 587)</span>
+        </label>
+      </div>
+
+      <div class="form-field">
+        <label class="checkbox-label">
+          <input v-model="settings.smtp_use_ssl" type="checkbox" :disabled="!settings.email_enabled" />
+          <span>SSL verwenden (Port 465)</span>
+        </label>
+      </div>
     </div>
 
     <!-- Success Message -->
@@ -189,7 +246,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Building2, Globe, Clock, Settings, Save, CheckCircle } from 'lucide-vue-next';
+import { Building2, Globe, Clock, Settings, Save, CheckCircle, Mail } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
 
 // State
@@ -224,6 +281,17 @@ const settings = ref({
   maintenance_mode: false,
   allow_registration: false,
   require_email_verification: true,
+
+  // Email Configuration
+  email_enabled: false,
+  smtp_host: '',
+  smtp_port: 587,
+  smtp_username: '',
+  smtp_password: '',
+  smtp_from_email: '',
+  smtp_from_name: 'WorkmateOS',
+  smtp_use_tls: true,
+  smtp_use_ssl: false,
 });
 
 const saving = ref(false);

@@ -56,6 +56,19 @@ class SystemSettings(Base, UUIDMixin):
     require_email_verification = Column(Boolean, nullable=False, default=True)
 
     # ========================================================================
+    # Email Configuration (SMTP)
+    # ========================================================================
+    email_enabled = Column(Boolean, nullable=False, default=False)
+    smtp_host = Column(String(200), default="")
+    smtp_port = Column(Integer, default=587)
+    smtp_username = Column(String(200), default="")
+    smtp_password = Column(String(200), default="")  # Should be encrypted in production
+    smtp_from_email = Column(String(200), default="")
+    smtp_from_name = Column(String(200), default="WorkmateOS")
+    smtp_use_tls = Column(Boolean, nullable=False, default=True)
+    smtp_use_ssl = Column(Boolean, nullable=False, default=False)
+
+    # ========================================================================
     # Timestamps
     # ========================================================================
     created_at = Column(DateTime, server_default=func.now(), nullable=False)

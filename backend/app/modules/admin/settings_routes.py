@@ -7,14 +7,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
+from app.core.auth.roles import require_permissions, get_current_user
 from app.modules.admin import schemas, service
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 
 @router.get("", response_model=schemas.SystemSettingsResponse)
+@require_permissions(["admin.settings.view", "admin.*"])
 async def get_settings(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
 ):
     """
     Get system settings.
@@ -34,9 +37,11 @@ async def get_settings(
 
 
 @router.put("", response_model=schemas.SystemSettingsResponse)
+@require_permissions(["admin.settings.update", "admin.*"])
 async def update_settings(
     settings_update: schemas.SystemSettingsUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
 ):
     """
     Update system settings.

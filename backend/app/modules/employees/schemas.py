@@ -174,3 +174,34 @@ class EmployeeListResponse(BaseModel):
     page: int
     page_size: int
     employees: list[EmployeeResponse]
+
+
+# ============================================================================
+# STATISTICS SCHEMAS
+# ============================================================================
+
+class EmployeeStatistics(BaseModel):
+    """Employee statistics for dashboard"""
+    total_employees: int
+    active_employees: int
+    by_department: dict[str, int] = Field(default_factory=dict)
+    by_employment_type: dict[str, int] = Field(default_factory=dict)
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# ADMIN / USER MANAGEMENT SCHEMAS
+# ============================================================================
+
+class PasswordResetRequest(BaseModel):
+    """Password reset request for admin"""
+    new_password: str = Field(..., min_length=8, max_length=128, description="New password (min 8 characters)")
+    send_notification: bool = Field(default=True, description="Send email notification to employee")
+
+
+class EmployeeStatusUpdate(BaseModel):
+    """Update employee status"""
+    status: str = Field(..., pattern="^(active|inactive|on_leave)$", description="New status: active, inactive, or on_leave")
+    reason: Optional[str] = Field(None, max_length=500, description="Optional reason for status change")

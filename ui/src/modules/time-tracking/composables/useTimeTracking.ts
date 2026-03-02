@@ -3,16 +3,15 @@
  * Verwaltet Zeiterfassung, Timer und Time Entries
  */
 
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import { timeTrackingService } from '../services/timeTracking.service';
-import type { TimeEntry, TimeEntryCreateRequest, TimeEntryUpdateRequest, RunningTimer } from '../types/timeEntry';
-
-export interface TimeEntryFilters {
-  projectId?: string;
-  employeeId?: string;
-  startDate?: string;
-  endDate?: string;
-}
+import type {
+  TimeEntry,
+  TimeEntryCreateRequest,
+  TimeEntryUpdateRequest,
+  TimeEntryFilters,
+  RunningTimer,
+} from '../types/timeEntry';
 
 export function useTimeTracking() {
   // ─── STATE ────────────────────────────────────────────────
@@ -167,37 +166,14 @@ export function useTimeTracking() {
   // ─── CRUD ACTIONS ─────────────────────────────────────────
 
   /**
-   * Time Entries laden
+   * Time Entries laden (server-seitige Filterung)
    */
   async function loadEntries(filters?: TimeEntryFilters) {
     loading.value = true;
     error.value = null;
 
     try {
-      const response = await timeTrackingService.getTimeEntries();
-
-      // Client-seitige Filterung
-      let filtered = response;
-
-      if (filters?.projectId) {
-        filtered = filtered.filter((e) => e.project_id === filters.projectId);
-      }
-
-      if (filters?.employeeId) {
-        filtered = filtered.filter((e) => e.employee_id === filters.employeeId);
-      }
-
-      // Date filtering
-      if (filters?.startDate || filters?.endDate) {
-        filtered = filtered.filter((e) => {
-          const entryDate = new Date(e.start_time).toISOString().split('T')[0];
-          if (filters.startDate && entryDate < filters.startDate) return false;
-          if (filters.endDate && entryDate > filters.endDate) return false;
-          return true;
-        });
-      }
-
-      entries.value = filtered;
+      entries.value = await timeTrackingService.getTimeEntries(filters);
 
       // Check for running timer
       checkForRunningTimer();
@@ -310,6 +286,64 @@ export function useTimeTracking() {
     }
   }
 
+  // ─── APPROVAL ACTIONS ──────────────────────────────────────
+
+  /**
+   * Entry genehmigen
+   */
+  async function approveEntry(id: string): Promise<TimeEntry | null> {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const updated = await timeTrackingService.approveEntry(id);
+
+      const index = entries.value.findIndex((e) => e.id === id);
+      if (index !== -1) {
+        entries.value[index] = updated;
+      }
+      if (currentEntry.value?.id === id) {
+        currentEntry.value = updated;
+      }
+
+      return updated;
+    } catch (e: any) {
+      error.value = e.message || 'Fehler beim Genehmigen';
+      console.error('Error approving entry:', e);
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Genehmigung zurückziehen
+   */
+  async function rejectEntry(id: string): Promise<TimeEntry | null> {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const updated = await timeTrackingService.rejectEntry(id);
+
+      const index = entries.value.findIndex((e) => e.id === id);
+      if (index !== -1) {
+        entries.value[index] = updated;
+      }
+      if (currentEntry.value?.id === id) {
+        currentEntry.value = updated;
+      }
+
+      return updated;
+    } catch (e: any) {
+      error.value = e.message || 'Fehler beim Ablehnen';
+      console.error('Error rejecting entry:', e);
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   // ─── HELPER FUNCTIONS ─────────────────────────────────────
 
   /**
@@ -400,6 +434,10 @@ export function useTimeTracking() {
     createEntry,
     updateEntry,
     deleteEntry,
+
+    // Approval Actions
+    approveEntry,
+    rejectEntry,
 
     // Utils
     clearError,

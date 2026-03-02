@@ -198,6 +198,7 @@ class InvoiceUpdate(BaseModel):
     welche Felder je nach Invoice-Status geändert werden dürfen.
     """
     # Financial fields (immutable after sent)
+    invoice_number: Optional[str] = Field(None, min_length=1, max_length=50)
     customer_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
     issued_date: Optional[date] = None

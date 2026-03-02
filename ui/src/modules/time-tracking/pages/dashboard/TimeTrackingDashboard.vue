@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useTimeTracking } from '../../composables/useTimeTracking';
+import { useTimeTrackingStats } from '../../composables/useTimeTrackingStats';
 import {
   Clock,
   Play,
@@ -10,6 +11,7 @@ import {
   Calendar,
   ArrowRight,
   X,
+  DollarSign,
 } from 'lucide-vue-next';
 
 // Props & Emits
@@ -31,6 +33,8 @@ const {
   cancelTimer,
 } = useTimeTracking();
 
+const { stats, loading: statsLoading, fetchStats } = useTimeTrackingStats();
+
 // State
 const showStopModal = ref(false);
 const stopNote = ref('');
@@ -38,27 +42,10 @@ const stopNote = ref('');
 // Lifecycle
 onMounted(() => {
   loadEntries();
+  fetchStats();
 });
 
 // Computed
-const todayEntries = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
-  return entries.value.filter((e) => {
-    const entryDate = new Date(e.start_time).toISOString().split('T')[0];
-    return entryDate === today;
-  });
-});
-
-const todayTotalMinutes = computed(() => {
-  return todayEntries.value.reduce((sum, e) => {
-    return sum + (e.duration_minutes || 0);
-  }, 0);
-});
-
-const todayTotalHours = computed(() => {
-  return (todayTotalMinutes.value / 60).toFixed(2);
-});
-
 const recentEntries = computed(() => {
   return [...entries.value]
     .filter(e => e.end_time !== null)
@@ -81,6 +68,7 @@ async function confirmStop() {
     showStopModal.value = false;
     stopNote.value = '';
     await loadEntries();
+    await fetchStats();
   }
 }
 
@@ -177,30 +165,46 @@ function formatDate(dateString: string): string {
       </div>
     </div>
 
-    <!-- Today Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="flex items-center gap-2 mb-2">
           <Clock :size="16" class="text-blue-300" />
-          <span class="text-sm text-white/60">Heute erfasst</span>
+          <span class="text-sm text-white/60">Heute</span>
         </div>
-        <div class="text-2xl font-bold text-white">{{ todayTotalHours }}h</div>
+        <div class="text-2xl font-bold text-white">{{ stats?.total_hours_today ?? '-' }}h</div>
       </div>
 
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="flex items-center gap-2 mb-2">
           <TrendingUp :size="16" class="text-emerald-300" />
-          <span class="text-sm text-white/60">Einträge heute</span>
+          <span class="text-sm text-white/60">Diese Woche</span>
         </div>
-        <div class="text-2xl font-bold text-white">{{ todayEntries.length }}</div>
+        <div class="text-2xl font-bold text-white">{{ stats?.total_hours_week ?? '-' }}h</div>
       </div>
 
       <div class="rounded-lg border border-white/10 bg-white/5 p-4">
         <div class="flex items-center gap-2 mb-2">
           <Calendar :size="16" class="text-orange-300" />
-          <span class="text-sm text-white/60">Gesamt-Einträge</span>
+          <span class="text-sm text-white/60">Dieser Monat</span>
         </div>
-        <div class="text-2xl font-bold text-white">{{ entries.length }}</div>
+        <div class="text-2xl font-bold text-white">{{ stats?.total_hours_month ?? '-' }}h</div>
+      </div>
+
+      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <DollarSign :size="16" class="text-emerald-300" />
+          <span class="text-sm text-white/60">Abrechenbar</span>
+        </div>
+        <div class="text-2xl font-bold text-emerald-200">{{ stats?.billable_hours ?? '-' }}h</div>
+      </div>
+
+      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <Clock :size="16" class="text-white/40" />
+          <span class="text-sm text-white/60">Intern</span>
+        </div>
+        <div class="text-2xl font-bold text-white/60">{{ stats?.non_billable_hours ?? '-' }}h</div>
       </div>
     </div>
 

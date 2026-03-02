@@ -1,0 +1,24 @@
+URLAUBSANTRAG GENEHMIGT ✓
+================================================================================
+
+Hallo {{ employee_name }},
+
+Gute Nachrichten! Ihr Urlaubsantrag wurde von {{ approver_name }} genehmigt.
+
+Art:            {{ leave_type_label }}
+Zeitraum:       {{ start_date }} bis {{ end_date }}
+Dauer:          {{ total_days }} Tage
+Genehmigt von:  {{ approver_name }}
+Status:         ✓ GENEHMIGT
+
+Ihr Urlaubsantrag ist damit bestätigt. Wir wünschen Ihnen eine erholsame Zeit!
+
+Antrag ansehen:      {{ workmate_url }}/app/hr/leave/requests/{{ request_id }}
+Alle meine Anträge:  {{ workmate_url }}/app/hr/leave/requests
+
+================================================================================
+Mit freundlichen Grüßen
+Ihr WorkmateOS System
+
+Diese E-Mail wurde automatisch generiert.
+Bitte antworten Sie nicht direkt auf diese E-Mail.

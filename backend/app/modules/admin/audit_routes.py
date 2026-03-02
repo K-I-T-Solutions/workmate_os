@@ -10,6 +10,7 @@ from datetime import datetime
 from uuid import UUID
 
 from app.core.settings.database import get_db
+from app.core.auth.roles import require_permissions, get_current_user
 from app.modules.backoffice.invoices import schemas as invoice_schemas
 from app.modules.admin import service
 
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/api/audit-logs", tags=["Audit"])
 
 
 @router.get("", response_model=invoice_schemas.AuditLogListResponse)
+@require_permissions(["admin.audit.view", "admin.*"])
 async def list_audit_logs(
     skip: int = Query(0, ge=0, description="Pagination offset"),
     limit: int = Query(50, ge=1, le=500, description="Max items per page"),
@@ -25,7 +27,8 @@ async def list_audit_logs(
     entity_type: Optional[str] = Query(None, description="Filter by entity type (Invoice, Payment, Employee, etc.)"),
     date_from: Optional[datetime] = Query(None, description="Filter from date (ISO 8601)"),
     date_to: Optional[datetime] = Query(None, description="Filter to date (ISO 8601)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
 ):
     """
     List all audit logs with optional filtering and pagination.
@@ -64,9 +67,11 @@ async def list_audit_logs(
 
 
 @router.get("/{audit_log_id}", response_model=invoice_schemas.AuditLogResponse)
+@require_permissions(["admin.audit.view", "admin.*"])
 async def get_audit_log(
     audit_log_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
 ):
     """
     Get a single audit log entry by ID.

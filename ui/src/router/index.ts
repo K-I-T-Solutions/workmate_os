@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppLayout from "@/layouts/AppLayout.vue";
 import CrmApp from "@/modules/crm/CrmApp.vue";
+import HRApp from "@/modules/hr/HRApp.vue";
 import LoginPage from "@/pages/LoginPage.vue";
 import { useAuth } from "@/composables/useAuth";
 
@@ -44,6 +45,51 @@ const routes = [
         path: "crm",
         name: "crm",
         component: CrmApp,
+      },
+      {
+        path: "hr",
+        component: HRApp,
+        children: [
+          {
+            path: "",
+            redirect: "/app/hr/dashboard",
+          },
+          {
+            path: "dashboard",
+            name: "hr-dashboard",
+            meta: { view: "dashboard" },
+          },
+          {
+            path: "leave/requests",
+            name: "hr-leave-requests",
+            meta: { view: "leave" },
+          },
+          {
+            path: "leave/requests/:id",
+            name: "hr-leave-request-detail",
+            meta: { view: "leave", requestId: ':id' },
+          },
+          {
+            path: "leave/approvals",
+            name: "hr-leave-approvals",
+            meta: { view: "approvals" },
+          },
+          {
+            path: "my-requests",
+            name: "hr-my-requests",
+            meta: { view: "leave" },
+          },
+          {
+            path: "my-requests/:id",
+            name: "hr-my-request-detail",
+            meta: { view: "leave" },
+          },
+          {
+            path: "employees",
+            name: "hr-employees",
+            meta: { view: "employees" },
+          },
+        ],
       }
     ],
   },

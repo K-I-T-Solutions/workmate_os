@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Union
 
 from sqlalchemy.orm import Session
-from app import models
+from app.modules.backoffice.invoices.models import AuditLog
 import json
 import logging
 
@@ -86,7 +86,7 @@ def log_action(
         if serialized and len(serialized) > max_details_len:
             serialized = serialized[:max_details_len - 3] + "..."
 
-        log = models.AuditLog(
+        log = AuditLog(
             user_email=user_email,
             role=user_role,
             action=norm_action,

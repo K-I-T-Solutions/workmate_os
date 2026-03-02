@@ -5,5 +5,6 @@
 
 export { useTimeTracking } from './useTimeTracking';
 export { useTimeTrackingNavigation } from './useTimeTrackingNavigation';
-export type { TimeEntryFilters } from './useTimeTracking';
+export { useTimeTrackingStats } from './useTimeTrackingStats';
+export type { TimeEntryFilters } from '../types/timeEntry';
 export type { TimeTrackingView } from './useTimeTrackingNavigation';

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
-import { handleZitadelCallback, getPostLoginRedirect } from '@/services/zitadel';
+import { handleKeycloakCallback, getPostLoginRedirect } from '@/services/keycloak';
 import { Loader2 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -25,7 +25,7 @@ onMounted(async () => {
     status.value = 'Token wird abgerufen...';
 
     // Exchange code for tokens
-    const tokens = await handleZitadelCallback(code, state);
+    const tokens = await handleKeycloakCallback(code, state);
 
     if (!tokens) {
       error.value = 'Fehler beim Token-Austausch';

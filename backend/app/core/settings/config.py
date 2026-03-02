@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # App Info
     APP_NAME: str = "Workmate OS Backend"
-    APP_VERSION: str = "2.0.0"
+    APP_VERSION: str = "3.0.1"
     ENVIRONMENT: str = "development"
 
     # Database
@@ -31,11 +31,26 @@ class Settings(BaseSettings):
     NEXTCLOUD_PASSWORD: str = os.getenv("NEXTCLOUD_PASSWORD","workmate123!")
     NEXTCLOUD_BASE_PATH: str = os.getenv("NEXTCLOUD_BASE_PATH","")
 
-    # Zitadel OIDC Configuration
-    ZITADEL_ISSUER: str = os.getenv("ZITADEL_ISSUER", "https://auth.intern.phudevelopement.xyz")
-    ZITADEL_CLIENT_ID: str = os.getenv("ZITADEL_CLIENT_ID", "")
-    # Internal URL for backend-to-zitadel communication (Docker network)
-    ZITADEL_INTERNAL_URL: str = os.getenv("ZITADEL_INTERNAL_URL", "http://zitadel:8080")
+    # Keycloak OIDC Configuration
+    KEYCLOAK_URL: str = os.getenv("KEYCLOAK_URL", "https://login.intern.phudevelopement.xyz")
+    KEYCLOAK_INTERNAL_URL: str = os.getenv("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080")
+    KEYCLOAK_REALM: str = os.getenv("KEYCLOAK_REALM", "kit")
+    KEYCLOAK_CLIENT_ID: str = os.getenv("KEYCLOAK_CLIENT_ID", "workmate-backend")
+
+    @property
+    def KEYCLOAK_ISSUER(self) -> str:
+        """External issuer URL (must match 'iss' claim in tokens)"""
+        return f"{self.KEYCLOAK_URL}/realms/{self.KEYCLOAK_REALM}"
+
+    @property
+    def KEYCLOAK_JWKS_URI(self) -> str:
+        """Internal JWKS URL (backend-to-keycloak via Docker network)"""
+        return f"{self.KEYCLOAK_INTERNAL_URL}/realms/{self.KEYCLOAK_REALM}/protocol/openid-connect/certs"
+
+    @property
+    def KEYCLOAK_USERINFO_URI(self) -> str:
+        """Internal userinfo URL (backend-to-keycloak via Docker network)"""
+        return f"{self.KEYCLOAK_INTERNAL_URL}/realms/{self.KEYCLOAK_REALM}/protocol/openid-connect/userinfo"
 
     # JWT Authentication
     JWT_SECRET_KEY: str = os.getenv(
@@ -47,11 +62,6 @@ class Settings(BaseSettings):
 
     # PSD2/Banking Configuration
     PSD2_ENVIRONMENT: str = os.getenv("PSD2_ENVIRONMENT", "sandbox")  # "sandbox" or "production"
-
-    # Keycloak (deprecated - wird durch Zitadel ersetzt)
-    KEYCLOAK_URL: str | None = None
-    KEYCLOAK_REALM: str = "kit"
-    KEYCLOAK_CLIENT_ID: str = "workmate-backend"
 
     model_config = SettingsConfigDict(
         env_file=".env",  # In Docker: /app/.env

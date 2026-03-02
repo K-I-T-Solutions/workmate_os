@@ -209,8 +209,15 @@ async function fetchLogs() {
   loading.value = true;
   try {
     const skip = (page.value - 1) * pageSize.value;
+
+    // Remove empty string values from params
+    const cleanParams = Object.fromEntries(
+      Object.entries({ ...filters.value, skip, limit: pageSize.value })
+        .filter(([_, value]) => value !== '' && value !== null && value !== undefined)
+    );
+
     const response = await apiClient.get('/api/audit-logs', {
-      params: { ...filters.value, skip, limit: pageSize.value }
+      params: cleanParams
     });
     logs.value = response.data.items || [];
     total.value = response.data.total || 0;
@@ -226,7 +233,8 @@ async function fetchLogs() {
 // Fetch users for filter
 async function fetchUsers() {
   try {
-    const response = await apiClient.get('/api/employees', { params: { limit: 1000 } });
+    // Backend limit max is 500
+    const response = await apiClient.get('/api/employees', { params: { limit: 500 } });
     users.value = response.data.employees || [];
   } catch (error) {
     console.error('Failed to fetch users:', error);

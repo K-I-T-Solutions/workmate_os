@@ -82,40 +82,52 @@ def format_eur(value) -> str:
 
 def draw_logo_watermark(c: canvas.Canvas, width, height):
     """
-    Zeichnet ein halbtransparentes Logo als Wasserzeichen diagonal über die Seite.
-    Wird nur verwendet, wenn das Logo existiert.
+    Zeichnet ein halbtransparentes Logo schräg oben links auf Seite 1.
+    Nutzt Pillow für echte Pixel-Transparenz, da setFillAlpha drawImage nicht beeinflusst.
     """
     logo_path = Path(ASSETS_DIR) / "KIT_IT_GREY_NO_BACKGROUND.png"
     if not logo_path.exists():
         return
 
     try:
-        c.saveState()
-        # Mitte der Seite
-        c.translate(width / 2, height / 2)
-        # Diagonal drehen
-        c.rotate(45)
-        # Transparenz
-        try:
-            c.setFillAlpha(0.10)
-        except Exception:
-            # Wenn Alpha im Backend nicht verfügbar ist, einfach normal zeichnen
-            pass
+        from PIL import Image as PILImage
+        import io
 
-        # Bild relativ zur Mitte zeichnen
-        watermark_width = 120 * mm
+        # Original laden und Transparenz per Pixel setzen
+        img = PILImage.open(str(logo_path)).convert("RGBA")
+        r, g, b, a = img.split()
+        # Alpha auf 12% reduzieren (nur wo das Bild nicht bereits transparent ist)
+        a = a.point(lambda x: int(x * 0.12))
+        img.putalpha(a)
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+
+        from reportlab.lib.utils import ImageReader
+        img_reader = ImageReader(buf)
+
+        watermark_size = 90 * mm
+
+        c.saveState()
+        # Ankerpunkt: oben links, leicht eingerückt
+        anchor_x = 5 * mm
+        anchor_y = height - 5 * mm
+        c.translate(anchor_x, anchor_y)
+        c.rotate(30)
         c.drawImage(
-            str(logo_path),
-            -watermark_width / 2,
-            -watermark_width / 2,
-            width=watermark_width,
+            img_reader,
+            0,
+            -watermark_size,
+            width=watermark_size,
+            height=watermark_size,
             preserveAspectRatio=True,
             mask="auto",
         )
         c.restoreState()
+
     except Exception:
-        # Wasserzeichen ist nice-to-have; Fehler sollen das PDF nicht killen
-        c.restoreState()
+        pass
 
 
 def build_epc_qr_string(amount: Decimal, invoice_number: str) -> str:
@@ -584,7 +596,6 @@ def generate_invoice_pdf(invoice, output_path: str = None) -> bytes | None:
             # Neue Seite für Rest der Tabelle
             c.showPage()
             current_page += 1
-            draw_logo_watermark(c, width, height)
 
             # Hinweis "Fortsetzung von Seite 1" oben auf Seite 2
             c.setFont("Roboto-Italic", 9)
@@ -604,7 +615,6 @@ def generate_invoice_pdf(invoice, output_path: str = None) -> bytes | None:
                     # Neue Seite
                     c.showPage()
                     current_page += 1
-                    draw_logo_watermark(c, width, height)
                     current_y = height - 40 * mm
 
                 table_y = current_y - rem_h
@@ -618,7 +628,6 @@ def generate_invoice_pdf(invoice, output_path: str = None) -> bytes | None:
             draw_footer(c, width, margin, accent_color, current_page, total_pages)
             c.showPage()
             current_page += 1
-            draw_logo_watermark(c, width, height)
             table_y = height - 40 * mm - table_h
             table.drawOn(c, margin, table_y)
             y_totals = table_y - 10 * mm
@@ -712,8 +721,6 @@ def generate_invoice_pdf(invoice, output_path: str = None) -> bytes | None:
         # Start new page for Terms + Rückfragen
         c.showPage()
         current_page += 1
-        # Redraw watermark on new page
-        draw_logo_watermark(c, width, height)
         # Position Terms at top of new page
         terms_title_y = height - 40 * mm
 

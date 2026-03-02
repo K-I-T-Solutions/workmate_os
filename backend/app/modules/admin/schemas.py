@@ -42,6 +42,17 @@ class SystemSettingsResponse(BaseModel):
     allow_registration: bool = False
     require_email_verification: bool = True
 
+    # Email Configuration
+    email_enabled: bool = False
+    smtp_host: Optional[str] = ""
+    smtp_port: int = 587
+    smtp_username: Optional[str] = ""
+    smtp_password: Optional[str] = ""
+    smtp_from_email: Optional[str] = ""
+    smtp_from_name: str = "WorkmateOS"
+    smtp_use_tls: bool = True
+    smtp_use_ssl: bool = False
+
     # Timestamps
     created_at: datetime
     updated_at: datetime
@@ -86,7 +97,18 @@ class SystemSettingsUpdate(BaseModel):
     allow_registration: Optional[bool] = None
     require_email_verification: Optional[bool] = None
 
-    @field_validator('company_email')
+    # Email Configuration
+    email_enabled: Optional[bool] = None
+    smtp_host: Optional[str] = Field(None, max_length=200)
+    smtp_port: Optional[int] = Field(None, ge=1, le=65535)
+    smtp_username: Optional[str] = Field(None, max_length=200)
+    smtp_password: Optional[str] = Field(None, max_length=200)
+    smtp_from_email: Optional[str] = Field(None, max_length=200)
+    smtp_from_name: Optional[str] = Field(None, max_length=200)
+    smtp_use_tls: Optional[bool] = None
+    smtp_use_ssl: Optional[bool] = None
+
+    @field_validator('company_email', 'smtp_from_email')
     @classmethod
     def validate_email(cls, v):
         """Validate email format."""

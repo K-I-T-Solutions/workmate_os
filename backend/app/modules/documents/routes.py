@@ -22,6 +22,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.settings.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 from app.modules.documents import crud, schemas
 from app.modules.documents.storage import NextcloudStorage
 
@@ -47,6 +49,7 @@ def get_file_extension(filename: str) -> str:
 # ---------------------------------------------------------------------------
 
 @router.get("", response_model=schemas.DocumentListResponse)
+@require_permissions(["documents.view", "documents.*"])
 def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -56,6 +59,7 @@ def list_documents(
     owner_id: Optional[UUID] = Query(None),
     is_confidential: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     documents, total = crud.get_documents(
         db=db,
@@ -80,9 +84,11 @@ def list_documents(
 
 
 @router.get("/{document_id}", response_model=schemas.DocumentResponse)
+@require_permissions(["documents.view", "documents.*"])
 def get_document(
     document_id: UUID,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.get_document(db, document_id)
     if not document:
@@ -97,6 +103,7 @@ def get_document(
 # ---------------------------------------------------------------------------
 
 @router.post("", response_model=schemas.DocumentResponse, status_code=201)
+@require_permissions(["documents.write", "documents.*"])
 async def upload_document(
     file: UploadFile = File(...),
     owner_id: UUID = Form(...),
@@ -105,6 +112,7 @@ async def upload_document(
     linked_module: Optional[str] = Form(None),
     is_confidential: bool = Form(False),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
@@ -153,9 +161,11 @@ async def upload_document(
 # ---------------------------------------------------------------------------
 
 @router.get("/{document_id}/download")
+@require_permissions(["documents.view", "documents.*"])
 def download_document(
     document_id: UUID,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.get_document(db, document_id)
     if not document:
@@ -194,10 +204,12 @@ def download_document(
 # ---------------------------------------------------------------------------
 
 @router.put("/{document_id}", response_model=schemas.DocumentResponse)
+@require_permissions(["documents.write", "documents.*"])
 def update_document(
     document_id: UUID,
     document_update: schemas.DocumentUpdate,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.update_document(db, document_id, document_update)
     if not document:
@@ -212,9 +224,11 @@ def update_document(
 # ---------------------------------------------------------------------------
 
 @router.delete("/{document_id}", status_code=204)
+@require_permissions(["documents.delete", "documents.*"])
 def delete_document(
     document_id: UUID,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.get_document(db, document_id)
     if not document:

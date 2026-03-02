@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Neuer Urlaubsantrag - WorkmateOS{% endblock %}
+
+{% block header_title %}Neuer Urlaubsantrag{% endblock %}
+{% block header_subtitle %}Genehmigung erforderlich{% endblock %}
+
+{% block content %}
+<p>Hallo,</p>
+
+<p><strong>{{ employee_name }}</strong> ({{ employee_email }}) hat einen neuen Urlaubsantrag gestellt:</p>
+
+<div class="info-box warning">
+    <table class="details-table">
+        <tr>
+            <td>Mitarbeiter:</td>
+            <td><strong>{{ employee_name }}</strong></td>
+        </tr>
+        <tr>
+            <td>E-Mail:</td>
+            <td>{{ employee_email }}</td>
+        </tr>
+        <tr>
+            <td>Art:</td>
+            <td><strong>{{ leave_type_label }}</strong></td>
+        </tr>
+        <tr>
+            <td>Zeitraum:</td>
+            <td>{{ start_date }} bis {{ end_date }}</td>
+        </tr>
+        <tr>
+            <td>Dauer:</td>
+            <td><strong>{{ total_days }} Tage</strong></td>
+        </tr>
+        {% if reason %}
+        <tr>
+            <td>Begründung:</td>
+            <td>{{ reason }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<p>Bitte überprüfen Sie den Antrag im WorkmateOS HR-Modul und genehmigen oder lehnen Sie ihn ab.</p>
+
+<div style="text-align: center;">
+    <a href="{{ workmate_url }}/app/hr/leave/requests/{{ request_id }}" class="button">Antrag öffnen</a>
+</div>
+
+<p style="text-align: center; margin-top: 10px;">
+    <a href="{{ workmate_url }}/app/hr/leave/requests" style="color: #666; font-size: 12px; text-decoration: underline;">Alle Anträge ansehen</a>
+</p>
+{% endblock %}
