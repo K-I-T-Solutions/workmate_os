@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -25,135 +25,99 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H 77.42.17.200 >> ~/.ssh/known_hosts
 
-      - name: Sync files to server
+      - name: Sync backend
         run: |
           rsync -avz --delete \
-            --exclude '.git' \
-            --exclude 'node_modules' \
-            --exclude 'dist' \
-            --exclude '.env*' \
             --exclude '__pycache__' \
             --exclude '*.pyc' \
             --exclude '.venv' \
             --exclude 'venv' \
-            ./ joshua@77.42.17.200:/opt/workmate/
+            --exclude '.env*' \
+            backend/ joshua@77.42.17.200:/srv/workmate/backend/
 
-      - name: Create .env.prod locally with secrets
+      - name: Sync frontend
         run: |
-          cat > .env.prod << 'EOF'
-          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-          SECRET_KEY=$SECRET_KEY
-          JWT_SECRET_KEY=$JWT_SECRET_KEY
-          NEXTCLOUD_URL=$NEXTCLOUD_URL
-          NEXTCLOUD_USER=$NEXTCLOUD_USER
-          NEXTCLOUD_PASSWORD=$NEXTCLOUD_PASSWORD
-          NEXTCLOUD_BASE_PATH=
-          ACME_EMAIL=$ACME_EMAIL
-          TRAEFIK_DASHBOARD_AUTH=$TRAEFIK_DASHBOARD_AUTH
-          UPLOAD_DIR=/root/workmate_os_uploads
-          ASSETS_DIR=/app/assets
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude '.env*' \
+            ui/ joshua@77.42.17.200:/srv/workmate/frontend/
+
+      - name: Sync assets
+        run: |
+          if [ -d "assets" ]; then
+            rsync -avz --delete assets/ joshua@77.42.17.200:/srv/workmate/assets/
+          fi
+
+      - name: Upload .env.prod
+        run: |
+          cat > .env.prod << EOF
+          POSTGRES_USER=workmate
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=workmate
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          ENVIRONMENT=production
+          STORAGE_BACKEND=local
           EOF
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
-          NEXTCLOUD_USER: ${{ secrets.NEXTCLOUD_USER }}
-          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
-          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
-          TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
-
-      - name: Substitute environment variables
-        run: |
-          envsubst < .env.prod > .env.prod.final
-          mv .env.prod.final .env.prod
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
-          NEXTCLOUD_USER: ${{ secrets.NEXTCLOUD_USER }}
-          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
-          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
-          TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
-
-      - name: Upload .env.prod to server
-        run: |
-          scp .env.prod joshua@77.42.17.200:/opt/workmate/infra/.env.prod
+          envsubst < .env.prod > .env.prod.final && mv .env.prod.final .env.prod
+          scp .env.prod joshua@77.42.17.200:/srv/workmate/env/.env.prod
           rm .env.prod
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
 
-      - name: Verify secrets are set on server
-        run: |
-          echo "Verifying .env.prod content..."
-          ssh joshua@77.42.17.200 "wc -l /opt/workmate/infra/.env.prod"
-          ssh joshua@77.42.17.200 "grep -c 'POSTGRES_PASSWORD' /opt/workmate/infra/.env.prod"
-
-      - name: Build and restart containers
+      - name: Build and restart via systemd
         run: |
           ssh joshua@77.42.17.200 << 'ENDSSH'
-            cd /opt/workmate/infra
-            docker compose -f docker-compose.prod.yml --env-file .env.prod build
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+            cd /srv/workmate/infra
+            docker compose --env-file ../env/.env.prod build --no-cache
+            sudo systemctl restart workmate
           ENDSSH
 
-      - name: Wait for services to be ready
-        run: |
-          echo "Waiting for services to start..."
-          sleep 15
+      - name: Wait for services to start
+        run: sleep 30
 
       - name: Verify containers are running
         run: |
-          echo "Checking if containers are running..."
-          ssh joshua@77.42.17.200 "cd /opt/workmate/infra && docker compose -f docker-compose.prod.yml ps"
-
-          echo "Verifying backend container is healthy..."
           BACKEND_STATUS=$(ssh joshua@77.42.17.200 "docker inspect workmate_backend --format='{{.State.Status}}'")
           echo "Backend status: $BACKEND_STATUS"
-
           if [ "$BACKEND_STATUS" != "running" ]; then
-            echo "❌ Backend container is not running!"
-            ssh joshua@77.42.17.200 "cd /opt/workmate/infra && docker compose -f docker-compose.prod.yml logs --tail=50 backend"
+            echo "Backend container is not running!"
+            ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose logs --tail=50 backend"
             exit 1
           fi
 
-      - name: Health check via public URLs
+      - name: Health check
         run: |
-          echo "Checking backend health via public API..."
           MAX_RETRIES=12
           RETRY_COUNT=0
-
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://api.workmate.kit-it-koblenz.de/system/health)
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Backend is healthy! (HTTP $HTTP_CODE)"
+              echo "Backend healthy (HTTP $HTTP_CODE)"
               break
             fi
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              echo "Attempt $RETRY_COUNT/$MAX_RETRIES - HTTP $HTTP_CODE, waiting 5 seconds..."
-              sleep 5
-            fi
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES - HTTP $HTTP_CODE, waiting 5s..."
+            sleep 5
           done
-
           if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-            echo "❌ Backend health check failed after $MAX_RETRIES attempts"
-            ssh joshua@77.42.17.200 "cd /opt/workmate/infra && docker compose -f docker-compose.prod.yml logs --tail=100 backend"
+            echo "Health check failed after $MAX_RETRIES attempts"
+            ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose logs --tail=100 backend"
             exit 1
           fi
-
-          echo "Checking frontend..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de)
-          if [ "$RESPONSE" != "200" ]; then
-            echo "❌ Frontend health check failed with status $RESPONSE"
+          HTTP_FRONT=$(curl -s -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de)
+          if [ "$HTTP_FRONT" != "200" ]; then
+            echo "Frontend health check failed: $HTTP_FRONT"
             exit 1
           fi
-
-          echo "✅ All services healthy!"
+          echo "All services healthy!"
 
       - name: Deployment summary
         if: success()
         run: |
-          echo "🚀 Deployment successful!"
+          echo "Deployment successful!"
           echo "Frontend: https://workmate.kit-it-koblenz.de"
-          echo "Backend: https://api.workmate.kit-it-koblenz.de"
-          echo "Traefik: https://traefik.workmate.kit-it-koblenz.de"
+          echo "Backend:  https://api.workmate.kit-it-koblenz.de"
