@@ -10,10 +10,10 @@ from datetime import date
 from contextlib import contextmanager
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.app.core.settings.database import SessionLocal, engine, Base
+from app.core.settings.database import SessionLocal, engine, Base
 from app.modules.employees.models import Department, Role, Employee
-from app.modules.backoffice.crm.models import Customer, Contact
-from app.modules.backoffice.projects.models import Project
+from app.modules.backoffice.crm.models import Customer, Contact, CustomerType, CustomerStatus
+from app.modules.backoffice.projects.models import Project, ProjectStatus, ProjectPriority
 from app.modules.backoffice.time_tracking.models import TimeEntry
 from datetime import datetime, timedelta
 import random
@@ -323,6 +323,112 @@ def seed_database():
 
             db.commit()
             print(f"  ✓ {len(time_entries)} time entries created successfully.")
+
+            # ----------------------------------
+            # 6. Streamerforge (freiwillige Begleitung)
+            # ----------------------------------
+            print("\n🎮 Creating Streamerforge data...")
+
+            sf_email = "kontakt@streamerforge.net"
+            existing_sf = db.query(Customer).filter(Customer.email == sf_email).first()
+
+            if not existing_sf:
+                sf_customer = Customer(
+                    customer_number="KIT-CUS-000006",
+                    name="Streamerforge",
+                    type=CustomerType.CREATOR.value,
+                    status=CustomerStatus.ACTIVE.value,
+                    email=sf_email,
+                    website="https://streamerforge.net",
+                    notes=(
+                        "Streaming & Event-Tech Projekt. "
+                        "Joshua begleitet als Techniker auf freiwilliger Basis. "
+                        "Infrastruktur: Hetzner infra-1 (188.245.146.122), "
+                        "Traefik + mailcow + kroma + docs."
+                    ),
+                )
+                db.add(sf_customer)
+                db.commit()
+                db.refresh(sf_customer)
+                print(f"  ✓ Created customer: {sf_customer.name}")
+            else:
+                sf_customer = existing_sf
+                print(f"  ⊙ Customer already exists: {existing_sf.email}")
+
+            # Projekt
+            existing_sf_proj = (
+                db.query(Project)
+                .filter(Project.title == "Streamerforge Infrastruktur")
+                .first()
+            )
+
+            if not existing_sf_proj:
+                sf_project = Project(
+                    customer_id=sf_customer.id,
+                    department_id=departments["IT"].id,
+                    project_manager_id=admin_user.id,
+                    title="Streamerforge Infrastruktur",
+                    project_number="PRJ-2026-001",
+                    status=ProjectStatus.ACTIVE.value,
+                    priority=ProjectPriority.MEDIUM.value,
+                    start_date=date(2026, 2, 27),
+                    description=(
+                        "Aufbau und Dokumentation der gesamten Streamerforge-Infrastruktur. "
+                        "Ansible-Playbook für lückenlose Reproduktion. "
+                        "Dienste: Traefik, mailcow, kroma, docs."
+                    ),
+                    notes="Freiwillige Begleitung durch K.I.T. — kein Vertrag.",
+                )
+                db.add(sf_project)
+                db.commit()
+                db.refresh(sf_project)
+                print(f"  ✓ Created project: {sf_project.title}")
+            else:
+                sf_project = existing_sf_proj
+                print(f"  ⊙ Project already exists: {existing_sf_proj.title}")
+
+            # TimeEntries aus Tätigkeitsnachweis
+            sf_entries = [
+                {
+                    "start_time": datetime(2026, 2, 27, 20, 0),
+                    "end_time":   datetime(2026, 2, 28,  2, 0),
+                    "duration_minutes": 360,
+                    "task_type": "deployment",
+                    "note": "Kroma deployed, Mail-Server deployed, Debugging",
+                    "billable": False,
+                },
+                {
+                    "start_time": datetime(2026, 3, 1, 14, 30),
+                    "end_time":   datetime(2026, 3, 1, 14, 45),
+                    "duration_minutes": 15,
+                    "task_type": "deployment",
+                    "note": "Deploy-Docs Container, Dokumentation",
+                    "billable": False,
+                },
+            ]
+
+            for entry_data in sf_entries:
+                existing_entry = (
+                    db.query(TimeEntry)
+                    .filter(
+                        TimeEntry.project_id == sf_project.id,
+                        TimeEntry.start_time == entry_data["start_time"],
+                    )
+                    .first()
+                )
+                if not existing_entry:
+                    entry = TimeEntry(
+                        project_id=sf_project.id,
+                        employee_id=admin_user.id,
+                        **entry_data,
+                    )
+                    db.add(entry)
+                    print(f"  ⏺ Added time entry: {entry_data['note'][:50]} ({entry_data['duration_minutes']}min)")
+                else:
+                    print(f"  ⊙ Time entry already exists: {entry_data['start_time']}")
+
+            db.commit()
+            print("  ✓ Streamerforge data complete.")
 
             # ----------------------------------
             # DONE
