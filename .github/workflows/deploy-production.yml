@@ -49,9 +49,11 @@ jobs:
             rsync -avz --delete assets/ joshua@77.42.17.200:/srv/workmate/assets/
           fi
 
-      - name: Deploy docker-compose.prod.yml as production compose
+      - name: Deploy compose + systemd unit
         run: |
           scp infra/docker-compose.prod.yml joshua@77.42.17.200:/srv/workmate/infra/docker-compose.yml
+          scp infra/systemd/workmate.service joshua@77.42.17.200:/tmp/workmate.service
+          ssh joshua@77.42.17.200 "sudo mv /tmp/workmate.service /etc/systemd/system/workmate.service && sudo systemctl daemon-reload"
 
       - name: Upload .env.prod
         run: |
@@ -79,14 +81,14 @@ jobs:
         run: |
           MAX=24
           for i in $(seq 1 $MAX); do
-            STATUS=$(ssh joshua@77.42.17.200 "docker inspect workmate_backend --format='{{.State.Status}}' 2>/dev/null || echo 'not_found'")
-            echo "[$i/$MAX] Backend status: $STATUS"
-            if [ "$STATUS" = "running" ]; then
-              echo "Backend is running!"
+            STATUS=$(ssh joshua@77.42.17.200 "docker inspect workmate_backend --format='{{.State.Health.Status}}' 2>/dev/null || echo 'not_found'")
+            echo "[$i/$MAX] Backend health: $STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Backend is healthy!"
               break
             fi
             if [ $i -eq $MAX ]; then
-              echo "Backend not running after ${MAX} attempts"
+              echo "Backend not healthy after ${MAX} attempts"
               ssh joshua@77.42.17.200 "docker logs workmate_backend --tail=80 2>&1 || true"
               exit 1
             fi

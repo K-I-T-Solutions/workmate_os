@@ -1,0 +1,15 @@
+[Unit]
+Description=Workmate OS Production Stack
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/srv/workmate/infra
+ExecStart=/usr/bin/docker compose --env-file ../env/.env.prod up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file ../env/.env.prod down
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
