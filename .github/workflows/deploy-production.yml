@@ -65,6 +65,10 @@ jobs:
             "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
             "ENVIRONMENT=production" \
             "STORAGE_BACKEND=local" \
+            "KEYCLOAK_URL=${{ secrets.KEYCLOAK_URL }}" \
+            "KEYCLOAK_INTERNAL_URL=${{ secrets.KEYCLOAK_INTERNAL_URL }}" \
+            "KEYCLOAK_REALM=${{ secrets.KEYCLOAK_REALM }}" \
+            "KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }}" \
             > .env.prod
           scp .env.prod joshua@77.42.17.200:/srv/workmate/env/.env.prod
           rm .env.prod
