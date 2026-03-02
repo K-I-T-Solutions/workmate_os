@@ -51,22 +51,17 @@ jobs:
 
       - name: Upload .env.prod
         run: |
-          cat > .env.prod << EOF
-          POSTGRES_USER=workmate
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=workmate
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-          ENVIRONMENT=production
-          STORAGE_BACKEND=local
-          EOF
-          envsubst < .env.prod > .env.prod.final && mv .env.prod.final .env.prod
+          printf '%s\n' \
+            "POSTGRES_USER=workmate" \
+            "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+            "POSTGRES_DB=workmate" \
+            "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+            "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
+            "ENVIRONMENT=production" \
+            "STORAGE_BACKEND=local" \
+            > .env.prod
           scp .env.prod joshua@77.42.17.200:/srv/workmate/env/.env.prod
           rm .env.prod
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
 
       - name: Build and restart via systemd
         run: |
@@ -81,11 +76,12 @@ jobs:
 
       - name: Verify containers are running
         run: |
-          BACKEND_STATUS=$(ssh joshua@77.42.17.200 "docker inspect workmate_backend --format='{{.State.Status}}'")
+          ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose --env-file ../env/.env.prod ps"
+          BACKEND_STATUS=$(ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose --env-file ../env/.env.prod ps --format json | python3 -c \"import json,sys; data=json.load(sys.stdin); items=data if isinstance(data,list) else [data]; print(next((s.get('State','') for s in items if 'backend' in s.get('Service','')), 'not_found'))\"")
           echo "Backend status: $BACKEND_STATUS"
           if [ "$BACKEND_STATUS" != "running" ]; then
             echo "Backend container is not running!"
-            ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose logs --tail=50 backend"
+            ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose --env-file ../env/.env.prod logs --tail=50 backend"
             exit 1
           fi
 
@@ -105,7 +101,7 @@ jobs:
           done
           if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
             echo "Health check failed after $MAX_RETRIES attempts"
-            ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose logs --tail=100 backend"
+            ssh joshua@77.42.17.200 "cd /srv/workmate/infra && docker compose --env-file ../env/.env.prod logs --tail=100 backend"
             exit 1
           fi
           HTTP_FRONT=$(curl -s -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de)
