@@ -15,10 +15,6 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Build argument for API URL
-ARG VITE_API_BASE
-ENV VITE_API_BASE=$VITE_API_BASE
-
 # Build the application (skip TypeScript check for production build)
 RUN pnpm vite build
 
