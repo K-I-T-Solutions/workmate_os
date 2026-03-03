@@ -11,7 +11,9 @@ alembic.backup/
 
 # Env / Secrets
 .env*
+!ui/.env.production
 .env.*
+!ui/.env.production
 .envrc
 
 # Databases
