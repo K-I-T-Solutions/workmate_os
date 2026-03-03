@@ -1,16 +1,21 @@
 # app/modules/backoffice/invoices/pdf_generator.py
+#
+# K.I.T. Solutions – PDF Generator
+# Spec: 3_Assets/Rebrand 2026/files/KIT_Solutions_PDFGenerator_DesignSpec.md
+# Fonts: built-in Helvetica/Courier (no TTF required)
+# Logo: ASSETS_DIR/kit_logo.png (fallback: KIT_IT_GREY_NO_BACKGROUND.png)
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
-from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.colors import HexColor
+from reportlab.lib.utils import ImageReader
 from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
 from reportlab.graphics import renderPDF
 
 import os
+from io import BytesIO
 from pathlib import Path
 from decimal import Decimal
 
@@ -19,250 +24,449 @@ from app.core.settings.config import settings
 ASSETS_DIR = settings.ASSETS_DIR
 
 # =====================================================================
-# DOKUMENTTYPEN → Titel, Farben, Default Terms
+# LAYOUT
 # =====================================================================
+PAGE_W, PAGE_H = A4          # 595.28 x 841.89 pt
+MARGIN_L  = 18 * mm
+MARGIN_R  = 18 * mm
+MARGIN_B  = 14 * mm
+CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R   # ≈ 493 pt
+HEADER_H  = 72               # pt  (orange line at PAGE_H - HEADER_H)
+FOOTER_H  = 32               # pt  (blue line at FOOTER_H + 18)
+CONTENT_START = PAGE_H - HEADER_H - 14    # first usable Y ≈ 756 pt
+MIN_Y     = FOOTER_H + 18 + 12            # lowest usable Y (above footer)
 
+# =====================================================================
+# BRAND COLORS
+# =====================================================================
+NAVY  = HexColor("#0F1629")
+DARK2 = HexColor("#1E2D4A")
+ORANGE= HexColor("#FF6B35")
+BLUE  = HexColor("#3B82F6")
+CYAN  = HexColor("#06B6D4")
+WHITE = HexColor("#FFFFFF")
+LGRAY = HexColor("#F5F7FA")
+MGRAY = HexColor("#94A3B8")
+DGRAY = HexColor("#374151")
+EGRAY = HexColor("#E5E7EB")
+GREEN = HexColor("#22C55E")
+RED   = HexColor("#EF4444")
+
+# =====================================================================
+# TYPOGRAPHY  (ReportLab built-ins — no installation required)
+# =====================================================================
+FONT_BODY   = "Helvetica"
+FONT_BOLD   = "Helvetica-Bold"
+FONT_ITALIC = "Helvetica-Oblique"
+FONT_MONO   = "Courier"
+FONT_MONO_B = "Courier-Bold"
+
+# =====================================================================
+# COMPANY DATA
+# =====================================================================
+COMPANY_NAME    = "K.I.T. Solutions"
+COMPANY_OWNER   = "Joshua Phu Kuhrau"
+COMPANY_STREET  = "Dietzstr. 1"
+COMPANY_CITY    = "56073 Koblenz"
+COMPANY_STATE   = "Rheinland-Pfalz"
+COMPANY_EMAIL   = "joshua@kit-it-koblenz.de"
+COMPANY_PHONE   = "0162 2654262"
+COMPANY_WEB     = "kit-it-koblenz.de"
+COMPANY_TAGLINE = "Kuhrau InformationsTechnik"
+COMPANY_SLOGAN  = "Miteinander statt Führend."
+
+BANK_IBAN = "DE94100110012706471170"
+BANK_BIC  = "NTSBDEB1XX"
+BANK_NAME = "N26 Bank AG"
+
+# =====================================================================
+# DOCUMENT TYPES
+# =====================================================================
 DOCUMENT_TYPES = {
     "invoice": {
-        "title": "RECHNUNG",
-        "color": "#ff9100",
+        "title":         "RECHNUNG",
         "terms_default": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum.",
     },
     "quote": {
-        "title": "ANGEBOT",
-        "color": "#008cff",
+        "title":         "ANGEBOT",
         "terms_default": "Dieses Angebot ist 14 Tage gültig.",
     },
     "credit_note": {
-        "title": "GUTSCHRIFT",
-        "color": "#5dcc5d",
+        "title":         "GUTSCHRIFT",
         "terms_default": "Die Gutschrift wird mit offenen Posten verrechnet.",
     },
     "order_confirmation": {
-        "title": "AUFTRAGSBESTÄTIGUNG",
-        "color": "#9933ff",
+        "title":         "AUFTRAGSBESTÄTIGUNG",
         "terms_default": "Bitte prüfen Sie alle Angaben sorgfältig.",
     },
 }
 
-# Feste Stammdaten für Footer & SEPA-QR
-COMPANY_NAME = "K.I.T. Solutions"
-COMPANY_OWNER = "Joshua Phu Kuhrau"
-COMPANY_STREET = "Dietzstr. 1"
-COMPANY_ZIP_CITY = "56073 Koblenz"
-COMPANY_COUNTRY = "Germany"
-COMPANY_EMAIL = "info@kit-it-koblenz.de"
-COMPANY_WEBSITE = "https://kit-it-koblenz.de"
-COMPANY_PHONE = "Tel. 0162 / 2654262"
-
-BANK_IBAN = "DE94100110012706471170"
-BANK_BIC = "NTSBDEB1XX"
-BANK_NAME = "N26 Bank AG"
+STATUS_COLORS = {
+    "offen":        ORANGE,
+    "open":         ORANGE,
+    "paid":         GREEN,
+    "bezahlt":      GREEN,
+    "overdue":      RED,
+    "ueberfaellig": RED,
+    "draft":        MGRAY,
+    "storniert":    MGRAY,
+    "cancelled":    MGRAY,
+}
 
 # =====================================================================
-# HELFER
+# POSITIONS TABLE  – column layout
+# =====================================================================
+_COLS = [
+    ("pos",         30),
+    ("description", 218),
+    ("qty",         42),
+    ("unit",        43),
+    ("unit_price",  72),
+    ("total_price", 88),
+]
+_COL_HEADERS = ["Pos.", "Beschreibung", "Menge", "Einheit", "EP (EUR)", "GP (EUR)"]
+_COL_ALIGNS  = ["center", "left", "right", "left", "right", "right"]
+
+TABLE_HDR_H = 22   # pt – header row
+ROW_H_MIN   = 26   # pt – minimum data row
+
+def _row_h(desc: str) -> float:
+    lines = str(desc or "").split("\n")
+    return max(ROW_H_MIN, len(lines) * 12 + 8)
+
+
+# =====================================================================
+# HELPERS
 # =====================================================================
 
 def format_eur(value) -> str:
-    """
-    Formatiert Zahlen nach deutschem Firmenkunden-Schema:
-    1234.5 -> '1.234,50 €'
-    """
     if value is None:
         return "0,00 €"
     if isinstance(value, Decimal):
         value = float(value)
-
-    # 1,234.50 -> 1.234,50
     s = f"{value:,.2f}"
-    # US-Format: 1,234.50  ->  deutsch: 1.234,50
     s = s.replace(",", "_").replace(".", ",").replace("_", ".")
     return f"{s} €"
 
 
-def draw_logo_watermark(c: canvas.Canvas, width, height):
-    """
-    Zeichnet ein halbtransparentes Logo schräg oben links auf Seite 1.
-    Nutzt Pillow für echte Pixel-Transparenz, da setFillAlpha drawImage nicht beeinflusst.
-    """
+def format_customer_address(customer) -> list[str]:
+    if not customer:
+        return ["Unbekannter Kunde"]
+    lines = []
+    if getattr(customer, "name", None):
+        lines.append(customer.name)
+    street   = getattr(customer, "street",   None) or ""
+    zip_code = getattr(customer, "zip_code", None) or ""
+    city     = getattr(customer, "city",     None) or ""
+    country  = getattr(customer, "country",  None) or ""
+    if street:
+        lines.append(street)
+    zip_city = f"{zip_code} {city}".strip()
+    if zip_city:
+        lines.append(zip_city)
+    if country and country.upper() not in ("GERMANY", "DE", "DEUTSCHLAND"):
+        lines.append(country)
+    return lines
+
+
+def build_epc_qr_string(amount, invoice_number: str) -> str:
+    eur = float(amount) if isinstance(amount, Decimal) else float(amount)
+    return "\n".join([
+        "BCD", "001", "1", "SCT",
+        BANK_BIC, COMPANY_NAME, BANK_IBAN,
+        f"EUR{eur:.2f}", "", f"Rechnung {invoice_number}", "",
+    ])
+
+
+def draw_qr_code(c: canvas.Canvas, x: float, y: float, size_mm: float, data: str):
+    qr_widget = qr.QrCodeWidget(data)
+    bounds = qr_widget.getBounds()
+    bw = bounds[2] - bounds[0]
+    bh = bounds[3] - bounds[1]
+    size = size_mm * mm
+    d = Drawing(size, size)
+    d.add(qr_widget)
+    d.scale(size / bw, size / bh)
+    renderPDF.draw(d, c, x, y)
+
+
+def _resolve_logo() -> str | None:
+    """Returns path to the best available logo PNG, or None."""
+    for name in ("kit_logo.png", "KIT_IT_GREY_NO_BACKGROUND.png"):
+        p = Path(ASSETS_DIR) / name
+        if p.exists():
+            return str(p)
+    return None
+
+
+# =====================================================================
+# WATERMARK
+# =====================================================================
+
+def draw_logo_watermark(c: canvas.Canvas):
     logo_path = Path(ASSETS_DIR) / "KIT_IT_GREY_NO_BACKGROUND.png"
     if not logo_path.exists():
         return
-
     try:
         from PIL import Image as PILImage
-        import io
-
-        # Original laden und Transparenz per Pixel setzen
         img = PILImage.open(str(logo_path)).convert("RGBA")
         r, g, b, a = img.split()
-        # Alpha auf 12% reduzieren (nur wo das Bild nicht bereits transparent ist)
         a = a.point(lambda x: int(x * 0.12))
         img.putalpha(a)
-
-        buf = io.BytesIO()
+        buf = BytesIO()
         img.save(buf, format="PNG")
         buf.seek(0)
-
-        from reportlab.lib.utils import ImageReader
-        img_reader = ImageReader(buf)
-
-        watermark_size = 90 * mm
-
+        size = 90 * mm
         c.saveState()
-        # Ankerpunkt: oben links, leicht eingerückt
-        anchor_x = 5 * mm
-        anchor_y = height - 5 * mm
-        c.translate(anchor_x, anchor_y)
+        c.translate(5 * mm, PAGE_H - 5 * mm)
         c.rotate(30)
-        c.drawImage(
-            img_reader,
-            0,
-            -watermark_size,
-            width=watermark_size,
-            height=watermark_size,
-            preserveAspectRatio=True,
-            mask="auto",
-        )
+        c.drawImage(ImageReader(buf), 0, -size, width=size, height=size,
+                    preserveAspectRatio=True, mask="auto")
         c.restoreState()
-
     except Exception:
         pass
 
 
-def build_epc_qr_string(amount: Decimal, invoice_number: str) -> str:
-    """
-    Baut den EPC-QR-String für SEPA-Zahlungen.
-    Siehe: EPC069-12 (vereinfachte Variante).
-    """
-    eur_amount = float(amount) if isinstance(amount, Decimal) else amount
-    amount_str = f"{eur_amount:.2f}"
+# =====================================================================
+# HEADER
+# =====================================================================
 
-    # Zeilen: BCD-Header, Version, Service Tag, Charakter-Set,
-    #         Transfer Type, BIC, Name, IBAN, Betrag, Purpose, Verwendungszweck, leer
-    lines = [
-        "BCD",
-        "001",
-        "1",
-        "SCT",
-        BANK_BIC,
-        COMPANY_NAME,
-        BANK_IBAN,
-        f"EUR{amount_str}",
-        "",
-        f"Rechnung {invoice_number}",
-        "",
-    ]
-    return "\n".join(lines)
+def draw_header(c: canvas.Canvas, logo_path: str | None):
+    # Logo
+    if logo_path:
+        try:
+            c.drawImage(logo_path, MARGIN_L, PAGE_H - HEADER_H + 9,
+                        width=54, height=54,
+                        preserveAspectRatio=True, mask="auto")
+        except Exception:
+            pass
 
+    # Company name – Courier Bold, Navy
+    c.setFillColor(NAVY)
+    c.setFont(FONT_MONO_B, 18)
+    c.drawRightString(PAGE_W - MARGIN_R, PAGE_H - 22, "K.I.T. SOLUTIONS")
 
-def draw_qr_code(c: canvas.Canvas, x: float, y: float, size_mm: float, data: str):
-    """Zeichnet einen QR-Code an Position (x, y) mit gegebener Datenbasis."""
-    qr_code = qr.QrCodeWidget(data)
-    bounds = qr_code.getBounds()
-    w = bounds[2] - bounds[0]
-    h = bounds[3] - bounds[1]
-    size = size_mm * mm
+    # Subtitle – Orange
+    c.setFillColor(ORANGE)
+    c.setFont(FONT_ITALIC, 10)
+    c.drawRightString(PAGE_W - MARGIN_R, PAGE_H - 35, COMPANY_TAGLINE)
 
-    d = Drawing(size, size)
-    d.add(qr_code)
-    d.scale(size / w, size / h)
-    renderPDF.draw(d, c, x, y)
+    # Contact line
+    c.setFillColor(MGRAY)
+    c.setFont(FONT_BODY, 9)
+    c.drawRightString(
+        PAGE_W - MARGIN_R, PAGE_H - 48,
+        f"{COMPANY_EMAIL}  \u2022  {COMPANY_PHONE}  \u2022  {COMPANY_WEB}",
+    )
 
+    # Address line
+    c.drawRightString(
+        PAGE_W - MARGIN_R, PAGE_H - 60,
+        f"{COMPANY_STREET}  \u2022  {COMPANY_CITY}  \u2022  {COMPANY_STATE}",
+    )
 
-def format_customer_address(customer) -> list[str]:
-    """
-    Baut eine saubere Adress-Blockliste für den Kunden.
-    """
-    lines = []
-    if not customer:
-        return ["Unbekannter Kunde"]
-
-    if getattr(customer, "name", None):
-        lines.append(customer.name)
-
-    street = getattr(customer, "street", None) or ""
-    zip_code = getattr(customer, "zip_code", None) or ""
-    city = getattr(customer, "city", None) or ""
-    country = getattr(customer, "country", None) or ""
-
-    if street:
-        lines.append(street)
-
-    zip_city = f"{zip_code} {city}".strip()
-    if zip_city:
-        lines.append(zip_city)
-
-    if country and country not in lines:
-        lines.append(country)
-
-    return lines
+    # Orange divider
+    c.setStrokeColor(ORANGE)
+    c.setLineWidth(3)
+    c.line(0, PAGE_H - HEADER_H, PAGE_W, PAGE_H - HEADER_H)
 
 
-def draw_footer(c: canvas.Canvas, width: float, margin: float, accent_color, page_num: int = None, total_pages: int = None):
-    """
-    Zeichnet den 3-Spalten-Footer mit Firmendaten.
-    """
-    footer_y = 35 * mm   # etwas tiefer, wirkt ruhiger
+# =====================================================================
+# FOOTER
+# =====================================================================
+
+def draw_footer(c: canvas.Canvas, page_num: int, total_pages: int):
+    footer_line_y = FOOTER_H + 18
+
+    # Blue divider
+    c.setStrokeColor(BLUE)
+    c.setLineWidth(1.5)
+    c.line(MARGIN_L, footer_line_y, PAGE_W - MARGIN_R, footer_line_y)
+
+    c.setFont(FONT_BODY, 8)
+    c.setFillColor(MGRAY)
+
+    # Left: tagline
+    c.drawString(
+        MARGIN_L, FOOTER_H + 8,
+        f"{COMPANY_NAME}  \u2022  {COMPANY_SLOGAN}"
+        "  \u2022  Business IT \u2022 Event Tech \u2022 Custom Software",
+    )
+
+    # Right: page number
+    c.drawRightString(PAGE_W - MARGIN_R, FOOTER_H + 8,
+                      f"Seite {page_num} / {total_pages}")
+
+    # Steuerhinweis only on last page
+    if page_num == total_pages:
+        c.setFont(FONT_BODY, 7)
+        c.drawString(
+            MARGIN_L, FOOTER_H - 4,
+            "Kleinunternehmer gem. \u00a7 19 UStG \u2013 "
+            "Es wird keine Umsatzsteuer berechnet.",
+        )
+
+
+# =====================================================================
+# STATUS BADGE
+# =====================================================================
+
+def draw_status_badge(c: canvas.Canvas, status: str, x: float, y: float):
+    color = STATUS_COLORS.get(status.lower(), MGRAY)
+    bw, bh = 65, 16
+    c.setFillColor(color)
+    c.roundRect(x, y, bw, bh, 3, fill=1, stroke=0)
+    c.setFillColor(WHITE)
+    c.setFont(FONT_BOLD, 7.5)
+    c.drawCentredString(x + bw / 2, y + 5, status.upper())
+
+
+# =====================================================================
+# POSITIONS TABLE  (canvas-based, no Platypus Table)
+# =====================================================================
+
+def _draw_table_header_row(c: canvas.Canvas, x: float, y: float):
+    c.setFillColor(NAVY)
+    c.rect(x, y - TABLE_HDR_H, CONTENT_W, TABLE_HDR_H, fill=1, stroke=0)
+    cx = x
+    for i, (_, col_w) in enumerate(_COLS):
+        c.setFont(FONT_BOLD, 9)
+        c.setFillColor(WHITE)
+        text = _COL_HEADERS[i]
+        mid_y = y - TABLE_HDR_H + 7
+        if _COL_ALIGNS[i] == "right":
+            c.drawRightString(cx + col_w - 4, mid_y, text)
+        elif _COL_ALIGNS[i] == "center":
+            c.drawCentredString(cx + col_w / 2, mid_y, text)
+        else:
+            c.drawString(cx + 4, mid_y, text)
+        cx += col_w
+    return y - TABLE_HDR_H
+
+
+def _draw_data_row(c: canvas.Canvas, x: float, y: float, pos: dict, row_idx: int):
+    desc  = str(pos.get("description", ""))
+    row_h = _row_h(desc)
+
+    # Zebra
+    if row_idx % 2 == 0:
+        c.setFillColor(LGRAY)
+        c.rect(x, y - row_h, CONTENT_W, row_h, fill=1, stroke=0)
 
     # Divider
-    c.setStrokeColor(accent_color)
-    c.setLineWidth(1)
-    c.line(margin, footer_y + 20, width - margin, footer_y + 20)
+    c.setStrokeColor(EGRAY)
+    c.setLineWidth(0.5)
+    c.line(x, y - row_h, x + CONTENT_W, y - row_h)
 
-    # Schrift
-    c.setFont("Roboto", 8)
-    c.setFillColor(colors.black)
+    cells = [
+        str(pos.get("pos", row_idx + 1)),
+        desc,
+        f"{pos.get('qty', 0):.2f}".replace(".", ","),
+        pos.get("unit", "Stk."),
+        f"{pos.get('unit_price', 0):.2f}".replace(".", ","),
+        f"{pos.get('total_price', 0):.2f}".replace(".", ","),
+    ]
 
-    # Grid
-    usable_width = width - 2 * margin
-    col_width = usable_width / 3
+    # Vertikale Mitte der Zeile (Baseline für 9pt ≈ Mitte - 3)
+    cell_mid_y = y - row_h / 2 - 3
 
-    left_x  = margin
-    mid_x   = margin + col_width
-    right_x = margin + 2 * col_width
+    cx = x
+    for i, (col_key, col_w) in enumerate(_COLS):
+        c.setFillColor(DGRAY)
+        cell_text = cells[i]
 
-    # Zeilenabstände (perfekt für 8pt Roboto)
-    line_step = 12
-    line1 = 0
-    line2 = line_step
-    line3 = line_step * 2
-    line4 = line_step * 3
+        if col_key == "description":
+            desc_lines = cell_text.split("\n")
+            line_h = 11
+            block_h = len(desc_lines) * line_h
+            # Block vertikal mittig in der Zeile
+            start_y = y - (row_h - block_h) / 2 - 3
+            for li, line in enumerate(desc_lines):
+                line_y = start_y - li * line_h
+                if li == 0:
+                    c.setFont(FONT_BOLD, 9)
+                    c.setFillColor(DGRAY)
+                else:
+                    c.setFont(FONT_BODY, 8.5)
+                    c.setFillColor(MGRAY)
+                c.drawString(cx + 4, line_y, line)
+        elif _COL_ALIGNS[i] == "right":
+            c.setFont(FONT_BODY, 9)
+            c.drawRightString(cx + col_w - 4, cell_mid_y, cell_text)
+        elif _COL_ALIGNS[i] == "center":
+            c.setFont(FONT_BODY, 9)
+            c.drawCentredString(cx + col_w / 2, cell_mid_y, cell_text)
+        else:
+            c.setFont(FONT_BODY, 9)
+            c.drawString(cx + 4, cell_mid_y, cell_text)
+        cx += col_w
 
-    # -------------------------------
-    # SPALTE 1: ANSCHRIFT
-    # -------------------------------
-    c.drawString(left_x, footer_y,                 COMPANY_NAME)
-    c.drawString(left_x, footer_y - line2,         f"Inhaber: {COMPANY_OWNER}")
-    c.drawString(left_x, footer_y - line3,         COMPANY_STREET)
-    c.drawString(left_x, footer_y - line4,         COMPANY_ZIP_CITY)
+    return y - row_h
 
-    # -------------------------------
-    # SPALTE 2: KONTAKT
-    # -------------------------------
-    c.drawString(mid_x, footer_y,                  "Kontakt")
-    c.drawString(mid_x, footer_y - line2,          COMPANY_EMAIL)
-    c.drawString(mid_x, footer_y - line3,          COMPANY_WEBSITE.replace("https://", ""))
-    c.drawString(mid_x, footer_y - line4,          COMPANY_PHONE)
 
-    # -------------------------------
-    # SPALTE 3: BANK
-    # -------------------------------
-    c.drawString(right_x, footer_y,                "Bankverbindung")
-    c.drawString(right_x, footer_y - line2,        f"IBAN: {BANK_IBAN}")
-    c.drawString(right_x, footer_y - line3,        f"BIC: {BANK_BIC}")
-    c.drawString(right_x, footer_y - line4,        BANK_NAME)
+def _draw_summary_rows(c: canvas.Canvas, x: float, y: float,
+                       subtotal: float, tax_amt: float, total: float) -> float:
+    y -= 4  # small gap after last data row
 
-    # -------------------------------
-    # SEITENZAHL (zentriert unter dem Footer)
-    # -------------------------------
-    if page_num is not None and total_pages is not None:
-        c.setFont("Roboto", 8)
-        c.setFillColor(colors.grey)
-        page_text = f"Seite {page_num} von {total_pages}"
-        text_width = c.stringWidth(page_text, "Roboto", 8)
-        c.drawString((width - text_width) / 2, footer_y - line4 - 8, page_text)
-        c.setFillColor(colors.black)
+    rows = [
+        ("Nettobetrag:",                      f"{subtotal:.2f} EUR".replace(".", ",")),
+        ("zzgl. 0 % USt. (\u00a7 19 UStG):", f"{tax_amt:.2f} EUR".replace(".", ",")),
+        ("GESAMT:",                            f"{total:.2f} EUR".replace(".", ",")),
+    ]
+    for i, (label, value) in enumerate(rows):
+        is_total = (i == len(rows) - 1)
+        sh = 24 if is_total else 20
+        bg = DARK2 if is_total else (LGRAY if i % 2 == 0 else WHITE)
+        c.setFillColor(bg)
+        c.rect(x, y - sh, CONTENT_W, sh, fill=1, stroke=0)
+
+        lbl_x = x + CONTENT_W - _COLS[-1][1] - 4
+        val_x = x + CONTENT_W - 4
+
+        c.setFont(FONT_BOLD if is_total else FONT_BODY, 9)
+        c.setFillColor(CYAN if is_total else MGRAY)
+        c.drawRightString(lbl_x, y - sh + 7, label)
+
+        c.setFont(FONT_BOLD if is_total else FONT_BODY, 10 if is_total else 9)
+        c.setFillColor(CYAN if is_total else DGRAY)
+        c.drawRightString(val_x, y - sh + 7, value)
+
+        y -= sh
+    return y
+
+
+# =====================================================================
+# PAYMENT INFO BLOCK
+# =====================================================================
+
+def draw_payment_info(c: canvas.Canvas, y: float, invoice_number: str) -> float:
+    block_h = 72  # 4 Zeilen à 11pt + Titel (14pt) + Padding
+    c.setFillColor(DARK2)
+    c.rect(MARGIN_L, y - block_h, CONTENT_W, block_h, fill=1, stroke=0)
+    # Cyan left accent
+    c.setFillColor(CYAN)
+    c.rect(MARGIN_L, y - block_h, 3, block_h, fill=1, stroke=0)
+
+    c.setFont(FONT_BOLD, 9)
+    c.setFillColor(CYAN)
+    c.drawString(MARGIN_L + 10, y - 14, "Zahlungsinformationen")
+
+    fields = [
+        ("IBAN:",       BANK_IBAN),
+        ("BIC:",        BANK_BIC),
+        ("Bank:",       BANK_NAME),
+        ("Verwendung:", f"Rechnung {invoice_number}"),
+    ]
+    for i, (label, value) in enumerate(fields):
+        row_y = y - 28 - i * 11
+        c.setFont(FONT_BOLD, 8)
+        c.setFillColor(MGRAY)
+        c.drawString(MARGIN_L + 10, row_y, label)
+        c.setFont(FONT_BODY, 8)
+        c.setFillColor(WHITE)
+        c.drawString(MARGIN_L + 68, row_y, value)
+
+    return y - block_h - 8
 
 
 # =====================================================================
@@ -271,502 +475,269 @@ def draw_footer(c: canvas.Canvas, width: float, margin: float, accent_color, pag
 
 def generate_invoice_pdf(invoice, output_path: str = None) -> bytes | None:
     """
-    Universeller PDF-Generator für:
-    - Rechnung
-    - Angebot
-    - Gutschrift
-    - Auftragsbestätigung
-    inkl.:
-    - Logo-Wasserzeichen
-    - dynamischer Farb- & Titelwahl
-    - Summenblock mit doppelt unterstrichenem Gesamtbetrag
-    - Terms / Zahlungsbedingungen
-    - 3-Spalten-Footer
-    - SEPA-EPC-QR (und optional Payment-URL-QR)
+    Universeller PDF-Generator für Rechnung, Angebot, Gutschrift,
+    Auftragsbestätigung.
 
     Args:
-        invoice: Invoice object
-        output_path: Optional file path. If None, returns PDF as bytes.
-
+        invoice:     Invoice-Objekt aus WorkmateOS
+        output_path: Optional. Wenn None → PDF als bytes zurückgeben.
     Returns:
-        If output_path is None: PDF content as bytes
-        If output_path is provided: None (saves to file)
+        bytes wenn output_path=None, sonst None (Datei geschrieben).
     """
-    from io import BytesIO
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-
-    # Register Roboto fonts
-    # Use absolute path to ensure fonts are found
-    fonts_dir = Path("/app/app/assets/fonts")
-    pdfmetrics.registerFont(TTFont('Roboto', str(fonts_dir / "Roboto-Regular.ttf")))
-    pdfmetrics.registerFont(TTFont('Roboto-Bold', str(fonts_dir / "Roboto-Bold.ttf")))
-    pdfmetrics.registerFont(TTFont('Roboto-Italic', str(fonts_dir / "Roboto-Italic.ttf")))
-    pdfmetrics.registerFont(TTFont('Roboto-BoldItalic', str(fonts_dir / "Roboto-BoldItalic.ttf")))
-
-    # Create BytesIO buffer if no output path
-    if output_path is None:
-        buffer = BytesIO()
-        c = canvas.Canvas(buffer, pagesize=A4)
-    else:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        c = canvas.Canvas(output_path, pagesize=A4)
-    width, height = A4
-    margin = 20 * mm
-
-    # ---------------------------------------------------------
-    # Dokumenttyp & Farbe
-    # ---------------------------------------------------------
+    # --- Setup ---
     doc_type = getattr(invoice, "document_type", "invoice")
-    cfg = DOCUMENT_TYPES.get(doc_type, DOCUMENT_TYPES["invoice"])
-    accent_color = colors.HexColor(cfg["color"])
+    cfg      = DOCUMENT_TYPES.get(doc_type, DOCUMENT_TYPES["invoice"])
+    logo     = _resolve_logo()
 
-    # Seitenzahl-Tracking
-    current_page = 1
+    if output_path:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        target = output_path
+    else:
+        target = BytesIO()
 
-    # ---------------------------------------------------------
-    # Wasserzeichen (Logo)
-    # ---------------------------------------------------------
-    draw_logo_watermark(c, width, height)
+    # --- Positionen normalisieren ---
+    raw_items = getattr(invoice, "line_items", None) or []
+    positions: list[dict] = []
+    for idx, item in enumerate(raw_items, start=1):
+        if hasattr(item, "total") and item.total is not None:
+            total = float(item.total)
+        else:
+            discount = getattr(item, "discount_percent", 0) or 0
+            total = float(item.quantity) * float(item.unit_price) * (1 - discount / 100)
+        positions.append({
+            "pos":         idx,
+            "description": item.description or "",
+            "qty":         float(item.quantity),
+            "unit":        getattr(item, "unit", "Stk."),
+            "unit_price":  float(item.unit_price),
+            "total_price": total,
+        })
+    if not positions:
+        positions = [{
+            "pos": "-", "description": "Keine Positionen vorhanden",
+            "qty": 0, "unit": "", "unit_price": 0.0, "total_price": 0.0,
+        }]
 
-    # ---------------------------------------------------------
-    # HEADER (Logo oben links, Firmendaten oben rechts)
-    # ---------------------------------------------------------
-    logo_path = Path(ASSETS_DIR) / "KIT_IT_GREY_NO_BACKGROUND.png"
-    if logo_path.exists():
-        c.drawImage(
-            str(logo_path),
-            margin,
-            height - 45 * mm,
-            width=40 * mm,
-            preserveAspectRatio=True,
-            mask="auto",
-        )
+    subtotal  = sum(p["total_price"] for p in positions)
+    tax_amt   = 0.0   # Kleinunternehmer
+    inv_total = subtotal + tax_amt
 
-    c.setFont("Roboto-Bold", 14)
-    c.drawRightString(width - margin, height - 20 * mm, COMPANY_NAME)
+    # Für Summenzeilen (aus invoice-Objekt falls vorhanden, sonst berechnet)
+    sub_display   = float(getattr(invoice, "subtotal",   subtotal))
+    tax_display   = float(getattr(invoice, "tax_amount", 0.0))
+    total_display = float(getattr(invoice, "total",      inv_total))
 
-    c.setFont("Roboto", 9)
-    c.drawRightString(
-        width - margin,
-        height - 26 * mm,
-        f"Inhaber: {COMPANY_OWNER}",
+    inv_number = getattr(invoice, "invoice_number", "—") or "—"
+    status     = getattr(invoice, "status", None)
+    terms_raw  = getattr(invoice, "terms", None) or cfg["terms_default"]
+    notes      = getattr(invoice, "notes", None)
+    responsible = getattr(invoice, "responsible_person", None) or COMPANY_OWNER
+
+    # --- Höhen für Seitenzahl-Schätzung ---
+    # Seite 1 Content-Bereich: CONTENT_START → MIN_Y
+    # Fester Block oben: Absender + Empfänger + Meta + Titel + Betreff ≈ 170 pt
+    FIXED_TOP = 170
+    avail_p1  = CONTENT_START - FIXED_TOP - MIN_Y  # Platz für Tabelle auf S.1
+
+    tbl_h = TABLE_HDR_H
+    for p in positions:
+        tbl_h += _row_h(p["description"])
+    tbl_h += 4 + 20 + 20 + 24   # gap + 3 summary rows
+
+    payment_h = 64 if doc_type == "invoice" else 0
+    qr_h      = 35 if doc_type == "invoice" and total_display > 0 else 0
+    terms_h   = len(terms_raw.split("\n")) * 11 + 40
+
+    # Grobe Seitenzahl-Schätzung (für Footer-Text; max 1 Fehler ist ok)
+    overflow  = max(0, tbl_h - avail_p1)
+    avail_p2  = CONTENT_START - MIN_Y
+    extra_pages = 0
+    if overflow > 0:
+        extra_pages = 1
+        remaining_h = overflow - avail_p2
+        if remaining_h > 0:
+            extra_pages += int(remaining_h / avail_p2) + 1
+
+    tail_h = payment_h + qr_h + terms_h
+    tail_on_last = avail_p2 - max(0, tbl_h - avail_p1 - extra_pages * avail_p2)
+    if tail_on_last < tail_h:
+        extra_pages += 1
+
+    total_pages = 1 + extra_pages
+
+    # --- Canvas ---
+    c = canvas.Canvas(target, pagesize=A4)
+    current_page = [1]   # list for nonlocal mutation
+
+    def start_page(first=False):
+        draw_header(c, logo)
+
+    def finish_page():
+        draw_footer(c, current_page[0], total_pages)
+        c.showPage()
+        current_page[0] += 1
+
+    def next_page():
+        finish_page()
+        start_page()
+
+    # ===== SEITE 1 =====
+    start_page(first=True)
+
+    # Absender-Zeile (DIN 5008)
+    y = CONTENT_START
+    c.setFont(FONT_BODY, 7)
+    c.setFillColor(MGRAY)
+    c.line(MARGIN_L, y - 2, MARGIN_L + 85 * mm, y - 2)
+    c.drawString(
+        MARGIN_L, y - 14,
+        f"{COMPANY_NAME}  \u2022  {COMPANY_STREET}  \u2022  {COMPANY_CITY}",
     )
-    c.drawRightString(
-        width - margin,
-        height - 31 * mm,
-        f"{COMPANY_STREET} · {COMPANY_ZIP_CITY}",
-    )
-    c.drawRightString(
-        width - margin,
-        height - 36 * mm,
-        f"{COMPANY_EMAIL} · kit-it-koblenz.de",
-    )
-    c.drawRightString(
-        width - margin,
-        height - 41 * mm,
-        COMPANY_PHONE,
-    )
 
-    # ---------------------------------------------------------
-    # TITELBLOCK (Dokumenttyp, Nummer, Datum, Fälligkeit)
-    # ---------------------------------------------------------
-    c.setFont("Roboto-Bold", 18)
-    c.setFillColor(accent_color)
-    c.drawString(margin, height - 55 * mm, cfg["title"])
-
-    c.setFillColor(colors.black)
-    c.setFont("Roboto-Bold", 10)
-    c.drawString(margin, height - 65 * mm, f"Nummer: {invoice.invoice_number}")
-    c.drawString(margin, height - 72 * mm, f"Datum: {invoice.issued_date}")
-    if doc_type == "invoice":
-        c.drawString(
-            margin,
-            height - 79 * mm,
-            f"Fällig bis: {getattr(invoice, 'due_date', None) or '—'}",
-        )
-    elif doc_type == "quote":
-        c.drawString(
-            margin,
-            height - 79 * mm,
-            "Dieses Angebot ist 14 Tage gültig.",
-        )
-
-    # ---------------------------------------------------------
-    # KUNDENBLOCK
-    # ---------------------------------------------------------
-    y = height - 95 * mm
-    c.setFont("Roboto-Bold", 11)
-
+    # Empfänger-Block
+    RECIPIENT_Y = y - 32
     address_lines = format_customer_address(getattr(invoice, "customer", None))
     for i, line in enumerate(address_lines):
-        if i == 0:
-            c.drawString(margin, y, line)
-        else:
-            c.setFont("Roboto", 9)
-            c.drawString(margin, y - 5 * mm * i, line)
+        c.setFont(FONT_BOLD if i == 0 else FONT_BODY, 10 if i == 0 else 9)
+        c.setFillColor(NAVY if i == 0 else DGRAY)
+        c.drawString(MARGIN_L, RECIPIENT_Y - i * 15, line)
 
-    # ---------------------------------------------------------
-    # OPTIONALE HINWEISBOX (oberhalb der Tabelle)
-    # Verwendet invoice.notes, falls vorhanden
-    # ---------------------------------------------------------
-    notes = getattr(invoice, "notes", None)
-    y_table_top = y - 35 * mm
+    # Meta-Block (rechts)
+    META_X = MARGIN_L + CONTENT_W * 0.55
+    META_Y = RECIPIENT_Y
+    title_key = "Angebotsnummer:" if doc_type == "quote" else "Rechnungsnummer:"
+    meta_fields = [
+        (title_key, inv_number),
+        ("Datum:",  str(getattr(invoice, "issued_date", "—"))),
+    ]
+    if doc_type == "quote":
+        meta_fields.append(("Gültig bis:", "14 Tage ab Datum"))
+    elif doc_type == "invoice":
+        meta_fields.append(("Fällig bis:", str(getattr(invoice, "due_date", "—"))))
 
-    if notes:
-        box_height = 15 * mm
-        box_y = y_table_top
-        c.setStrokeColor(accent_color)
-        c.setFillColor(colors.white)
-        c.setLineWidth(0.5)
-        c.roundRect(margin, box_y - box_height, width - 2 * margin, box_height, 3 * mm)
+    META_VALUE_X = META_X + 115  # Offset breit genug für "Rechnungsnummer:"
+    for i, (label, value) in enumerate(meta_fields):
+        row_y = META_Y - i * 16
+        c.setFont(FONT_BOLD, 9)
+        c.setFillColor(MGRAY)
+        c.drawString(META_X, row_y, label)
+        c.setFont(FONT_BODY, 9)
+        c.setFillColor(NAVY)
+        c.drawString(META_VALUE_X, row_y, value or "—")
 
-        c.setFont("Roboto-Bold", 9)
-        c.setFillColor(accent_color)
-        c.drawString(margin + 3 * mm, box_y - 5, "Hinweis")
-        c.setFillColor(colors.black)
-        c.setFont("Roboto", 8)
+    # Status-Badge (nur Rechnung) – 2 Zeilen unter letztem Meta-Eintrag
+    if doc_type == "invoice" and status:
+        badge_y = META_Y - len(meta_fields) * 16 - 20
+        draw_status_badge(c, status, META_X, badge_y)
 
-        text_obj = c.beginText(margin + 3 * mm, box_y - 10)
-        text_obj.setLeading(10)
-        for line in notes.split("\n"):
-            text_obj.textLine(line)
-        c.drawText(text_obj)
+    # Titel
+    TITLE_Y = RECIPIENT_Y - 90
+    c.setFont(FONT_MONO_B, 22)
+    c.setFillColor(NAVY)
+    c.drawString(MARGIN_L, TITLE_Y, cfg["title"])
 
-        y_table_top = box_y - box_height - 5 * mm
-
-    # ---------------------------------------------------------
-    # POSITIONSTABELLE
-    # ---------------------------------------------------------
-    # Styles für Tabellen-Inhalte
-    desc_style = ParagraphStyle(
-        'Description',
-        fontName='Roboto',
-        fontSize=9,
-        leading=11,
-        alignment=0,  # LEFT
+    # Betreff-Box mit orangem Akzentbalken
+    subject = notes or (
+        "Rechnung für erbrachte Leistungen" if doc_type == "invoice"
+        else "Angebot für geplante Leistungen"
     )
+    SUBJECT_Y = TITLE_Y - 32
+    c.setFillColor(ORANGE)
+    c.rect(MARGIN_L, SUBJECT_Y - 2, 3, 18, fill=1, stroke=0)
+    c.setFont(FONT_BOLD, 10)
+    c.setFillColor(NAVY)
+    c.drawString(MARGIN_L + 8, SUBJECT_Y + 3, f"Betreff: {subject}")
 
-    bold_style = ParagraphStyle(
-        'Bold',
-        fontName='Roboto-Bold',
-        fontSize=9,
-        leading=11,
-        alignment=1,  # CENTER
-    )
+    # ===== POSITIONEN-TABELLE mit Seitenumbruch =====
+    TABLE_Y = SUBJECT_Y - 22
+    x = MARGIN_L
 
-    data = [["Pos", "Beschreibung", "Menge", "Einheit", "Einzelpreis", "Gesamt"]]
+    # Tabellen-Header
+    y = _draw_table_header_row(c, x, TABLE_Y)
 
-    if getattr(invoice, "line_items", None):
-        for idx, item in enumerate(invoice.line_items, start=1):
-            total = item.total if hasattr(item, "total") else (
-                (item.quantity * item.unit_price) * (1 - item.discount_percent / 100)
-            )
-            # Beschreibung als Paragraph für automatischen Umbruch
-            desc_paragraph = Paragraph(item.description or "", desc_style)
+    for row_idx, pos in enumerate(positions):
+        rh = _row_h(pos["description"])
+        # Platz prüfen: brauchen Zeile + Summen + Mindestpuffer
+        sum_h = 4 + 20 + 20 + 24  # summary rows
+        if y - rh - sum_h < MIN_Y + 20:
+            # Fortsetzungshinweis
+            c.setFont(FONT_ITALIC, 8)
+            c.setFillColor(ORANGE)
+            c.drawRightString(PAGE_W - MARGIN_R, y - 4,
+                              "Fortsetzung auf nächster Seite \u2192")
+            next_page()
+            y = CONTENT_START - 6
+            y = _draw_table_header_row(c, x, y)
 
-            # Position, Menge und Gesamt fett
-            pos_paragraph = Paragraph(str(idx), bold_style)
-            qty_paragraph = Paragraph(f"{item.quantity:.2f}", bold_style)
-            total_paragraph = Paragraph(format_eur(total), bold_style)
+        y = _draw_data_row(c, x, y, pos, row_idx)
 
-            data.append(
-                [
-                    pos_paragraph,
-                    desc_paragraph,
-                    qty_paragraph,
-                    item.unit,
-                    format_eur(item.unit_price),
-                    total_paragraph,
-                ]
-            )
-    else:
-        data.append(["-", "Keine Positionen vorhanden", "", "", "", ""])
+    # Summen-Block
+    y = _draw_summary_rows(c, x, y, sub_display, tax_display, total_display)
 
-    table = Table(
-        data,
-        colWidths=[15 * mm, 65 * mm, 22 * mm, 22 * mm, 28 * mm, 28 * mm],
-        repeatRows=1,
-    )
+    # ===== ZAHLUNGSINFO + QR (nur Rechnung) =====
+    if doc_type == "invoice":
+        y -= 12
+        # Neue Seite wenn zu wenig Platz
+        if y - payment_h - qr_h < MIN_Y:
+            next_page()
+            y = CONTENT_START - 6
 
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), accent_color),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Roboto-Bold"),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-                ("TOPPADDING", (0, 0), (-1, 0), 6),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                ("FONTNAME", (0, 1), (-1, -1), "Roboto"),
-                ("FONTSIZE", (0, 1), (-1, -1), 9),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ALIGN", (1, 0), (1, -1), "LEFT"),  # Nur Beschreibung linksbündig
-                ("ALIGN", (0, 0), (0, -1), "CENTER"),  # Pos zentriert
-                ("ALIGN", (2, 0), (-1, -1), "CENTER"),  # Menge, Einheit, Einzelpreis, Gesamt zentriert
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-                 [colors.whitesmoke, colors.Color(0.97, 0.97, 0.97)]),
-                ("LEFTPADDING", (0, 1), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 1), (-1, -1), 4),
-                ("TOPPADDING", (0, 1), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
-            ]
-        )
-    )
+        y = draw_payment_info(c, y, inv_number)
 
-    avail_width = width - 2 * margin
-    table_w, table_h = table.wrap(avail_width, height)
+        # SEPA-QR
+        if total_display > 0:
+            qr_size = 28  # mm
+            qr_y = y - qr_size * mm
+            if qr_y > MIN_Y:
+                epc = build_epc_qr_string(total_display, inv_number)
+                qr_x = PAGE_W - MARGIN_R - qr_size * mm
+                draw_qr_code(c, qr_x, qr_y, qr_size, epc)
+                c.setFont(FONT_BODY, 7)
+                c.setFillColor(MGRAY)
+                c.drawRightString(PAGE_W - MARGIN_R, qr_y - 3,
+                                  "SEPA-Überweisung per Scan")
+                y = qr_y - 6
 
-    # Berechne verfügbaren Platz auf aktueller Seite
-    footer_line_y = 55 * mm  # Footer blue line position
-    summen_height = 25 * mm  # Platz für Summenblock
-    min_y_above_footer = footer_line_y + 15 * mm  # Sicherheitsabstand
+    # ===== TERMS =====
+    terms_lines = terms_raw.split("\n")
+    terms_needed = len(terms_lines) * 11 + 42
+    y -= 16
 
-    # Verfügbare Höhe für Tabelle auf aktueller Seite
-    available_height = y_table_top - min_y_above_footer - summen_height
+    if y - terms_needed < MIN_Y:
+        next_page()
+        y = CONTENT_START - 16
 
-    # ======================================================================
-    # BERECHNE TOTAL PAGES (für Seitenzahlen im Footer)
-    # ======================================================================
-    total_pages = current_page  # Start mit aktueller Seite (1)
+    # Terms-Überschrift
+    c.setFont(FONT_BOLD, 9)
+    c.setFillColor(NAVY)
+    c.drawString(MARGIN_L, y, "Zahlungsbedingungen")
+    c.setFillColor(ORANGE)
+    c.rect(MARGIN_L, y - 2, CONTENT_W, 1.5, fill=1, stroke=0)
+    y -= 12
 
-    # Prüfe ob Tabelle gesplittet werden muss
-    if table_h > available_height:
-        split_tables_preview = table.split(avail_width, available_height)
-        if len(split_tables_preview) > 1:
-            total_pages += len(split_tables_preview) - 1  # Zusätzliche Seiten für Tabellen-Teile
+    c.setFont(FONT_BODY, 9)
+    c.setFillColor(DGRAY)
+    for line in terms_lines:
+        c.drawString(MARGIN_L, y, line)
+        y -= 11
 
-    # Prüfe ob Terms auf neue Seite müssen
-    terms = getattr(invoice, "terms", None) or cfg["terms_default"]
-    terms_lines = len(terms.split("\n"))
-    terms_height_calc = (terms_lines * 11) + 5 * mm
-    contact_height = 11
-    total_content_height = terms_height_calc + contact_height + 5 * mm
+    # Rückfragen-Hinweis
+    y -= 8
+    prefix = "Bei Rückfragen: "
+    c.setFont(FONT_BODY, 9)
+    c.setFillColor(DGRAY)
+    tw = c.stringWidth(prefix, FONT_BODY, 9)
+    c.drawString(MARGIN_L, y, prefix)
+    c.setFont(FONT_BOLD, 9)
+    c.drawString(MARGIN_L + tw, y, responsible)
 
-    # Simuliere y_totals Position
-    if table_h > available_height:
-        # Tabelle wird gesplittet, y_totals ist auf letzter Tabellenseite
-        # Nimm Höhe der letzten Tabelle
-        if len(split_tables_preview) > 1:
-            last_table = split_tables_preview[-1]
-            last_table_w, last_table_h = last_table.wrap(avail_width, height)
-            simulated_table_y = height - 40 * mm - last_table_h
-            simulated_y_totals = simulated_table_y - 10 * mm
-        else:
-            simulated_y_totals = height - 40 * mm - table_h - 10 * mm
-    else:
-        # Tabelle passt auf Seite 1
-        simulated_y_totals = y_table_top - table_h - 10 * mm
-
-    simulated_terms_title_y = simulated_y_totals - 20 * mm
-    footer_line_y_check = 55 * mm
-    min_safe_y = footer_line_y_check + 10 * mm
-
-    if (simulated_terms_title_y - total_content_height) < min_safe_y:
-        total_pages += 1  # Terms brauchen eine neue Seite
-
-    # ======================================================================
-    # ENDE TOTAL PAGES BERECHNUNG
-    # ======================================================================
-
-    # Versuche Tabelle zu splitten wenn nötig
-    if table_h > available_height:
-        # Tabelle splitten
-        split_tables = table.split(avail_width, available_height)
-
-        if len(split_tables) > 1:
-            # Erster Teil auf aktuelle Seite
-            first_table = split_tables[0]
-            first_table_w, first_table_h = first_table.wrap(avail_width, available_height)
-            table_y = y_table_top - first_table_h
-            first_table.drawOn(c, margin, table_y)
-
-            # Hinweis "Fortsetzung auf Seite 2"
-            c.setFont("Roboto-Italic", 9)
-            c.setFillColor(accent_color)
-            continuation_y = table_y - 5 * mm
-            c.drawRightString(width - margin, continuation_y, "Fortsetzung auf Seite 2 →")
-            c.setFillColor(colors.black)
-
-            # Footer auf Seite 1
-            draw_footer(c, width, margin, accent_color, current_page, total_pages)
-
-            # Neue Seite für Rest der Tabelle
-            c.showPage()
-            current_page += 1
-
-            # Hinweis "Fortsetzung von Seite 1" oben auf Seite 2
-            c.setFont("Roboto-Italic", 9)
-            c.setFillColor(accent_color)
-            c.drawString(margin, height - 30 * mm, "← Fortsetzung von Seite 1")
-            c.setFillColor(colors.black)
-
-            # Restliche Tabellen-Teile auf neue Seiten
-            current_y = height - 40 * mm
-            for remaining_table in split_tables[1:]:
-                rem_w, rem_h = remaining_table.wrap(avail_width, height)
-
-                # Prüfe ob auf aktuelle Seite passt
-                if current_y - rem_h < (footer_line_y + summen_height + 15 * mm):
-                    # Footer zeichnen
-                    draw_footer(c, width, margin, accent_color, current_page, total_pages)
-                    # Neue Seite
-                    c.showPage()
-                    current_page += 1
-                    current_y = height - 40 * mm
-
-                table_y = current_y - rem_h
-                remaining_table.drawOn(c, margin, table_y)
-                current_y = table_y
-
-            # y_totals auf letzter Position nach letztem Tabellenteil
-            y_totals = table_y - 10 * mm
-        else:
-            # Tabelle passt nicht mal gesplittet auf eine Seite - komplett auf neue Seite
-            draw_footer(c, width, margin, accent_color, current_page, total_pages)
-            c.showPage()
-            current_page += 1
-            table_y = height - 40 * mm - table_h
-            table.drawOn(c, margin, table_y)
-            y_totals = table_y - 10 * mm
-    else:
-        # Tabelle passt komplett auf aktuelle Seite
-        table_y = y_table_top - table_h
-        table.drawOn(c, margin, table_y)
-        y_totals = table_y - 10 * mm
-
-    # ---------------------------------------------------------
-    # SUMMENBLOCK (mit doppelt unterstrichenem Gesamtbetrag)
-    # ---------------------------------------------------------
-    y_totals = table_y - 10 * mm
-
-    c.setFont("Roboto-Bold", 10)
-    c.setFillColor(colors.black)
-
-    c.drawRightString(width - margin - 60, y_totals, "Zwischensumme:")
-    c.drawRightString(width - margin, y_totals, format_eur(invoice.subtotal))
-
-    c.drawRightString(width - margin - 60, y_totals - 6 * mm, "MwSt:")
-    c.drawRightString(width - margin, y_totals - 6 * mm, format_eur(invoice.tax_amount))
-
-    total_y = y_totals - 12 * mm
-    c.setFillColor(accent_color)
-    c.drawRightString(width - margin - 60, total_y, "Gesamtbetrag:")
-    c.drawRightString(width - margin, total_y, format_eur(invoice.total))
-    c.setFillColor(colors.black)
-
-    # Doppelte Unterstreichung unter dem Gesamtbetrag
-    line_left = width - margin - 60
-    line_right = width - margin
-    c.setLineWidth(0.7)
-    c.setStrokeColor(accent_color)
-    c.line(line_left, total_y - 2, line_right, total_y - 2)
-    c.line(line_left, total_y - 4, line_right, total_y - 4)
-
-    # ---------------------------------------------------------
-    # QR-CODES (SEPA & optional Payment-URL) - auf Seite 1 bei Totals
-    # ---------------------------------------------------------
-    qr_size = 30  # mm
-    qr_y = y_totals - 60 * mm  # Position unterhalb der Totals
-
-    # SEPA-EPC-QR nur bei Rechnungen & positive Beträge
-    if doc_type == "invoice" and float(invoice.total) > 0:
-        epc_data = build_epc_qr_string(invoice.total, invoice.invoice_number)
-        qr_x = width - margin - qr_size * mm
-        draw_qr_code(c, qr_x, qr_y, qr_size, epc_data)
-        c.setFont("Roboto", 7)
-        c.drawRightString(
-            width - margin,
-            qr_y - 3,
-            "SEPA-Überweisung per Scan",
-        )
-
-    # Optional: Payment-URL-QR (z.B. Stripe-Link), falls verfügbar
-    payment_url = getattr(invoice, "payment_url", None)
-    if payment_url:
-        qr2_x = width - margin - 2 * qr_size * mm - 5 * mm
-        draw_qr_code(c, qr2_x, qr_y, qr_size, payment_url)
-        c.setFont("Roboto", 7)
-        c.drawString(
-            qr2_x,
-            qr_y - 3,
-            "Online-Zahlung",
-        )
-
-    # ---------------------------------------------------------
-    # TERMS / ZAHLUNGSBEDINGUNGEN
-    # ---------------------------------------------------------
-    terms = getattr(invoice, "terms", None) or cfg["terms_default"]
-
-    # Calculate space needed for Terms + Rückfragen
-    terms_lines = len(terms.split("\n"))
-    terms_height = (terms_lines * 11) + 5 * mm  # 11 = leading, 5mm = space after title
-    contact_height = 11  # Rückfragen line height
-    total_content_height = terms_height + contact_height + 5 * mm  # 5mm = title "Zahlungsbedingungen:"
-
-    # Footer blue line is at 55mm from bottom (footer_y + 20)
-    footer_line_y = 55 * mm
-    min_safe_y = footer_line_y + 10 * mm  # 10mm safety margin above footer line
-
-    # Calculate initial position
-    terms_title_y = y_totals - 20 * mm
-
-    # Check if content would overlap with footer
-    if (terms_title_y - total_content_height) < min_safe_y:
-        # Draw footer on current page first
-        draw_footer(c, width, margin, accent_color, current_page, total_pages)
-
-        # Start new page for Terms + Rückfragen
-        c.showPage()
-        current_page += 1
-        # Position Terms at top of new page
-        terms_title_y = height - 40 * mm
-
-    c.setFont("Roboto", 9)
-    c.drawString(margin, terms_title_y, "Zahlungsbedingungen:")
-
-    text_obj = c.beginText(margin, terms_title_y - 5 * mm)
-    text_obj.setLeading(11)
-    for line in terms.split("\n"):
-        text_obj.textLine(line)
-
-    c.drawText(text_obj)
-
-    # Rückfragen-Hinweis mit fettem Namen
-    responsible = getattr(invoice, "responsible_person", None)
-    if not responsible:
-        # Fallback: Nur den Namen des Inhabers verwenden
-        responsible = COMPANY_OWNER
-
-    # Berechne Y-Position nach den Terms
-    contact_y = terms_title_y - 5 * mm - (len(terms.split("\n")) * 11) - 11  # 11 = leading
-
-    # Zeichne Text in zwei Teilen: normaler Text + fetter Name
-    c.setFont("Roboto", 9)
-    text_before = "Bei Rückfragen wenden Sie sich bitte an: "
-    text_width = c.stringWidth(text_before, "Roboto", 9)
-    c.drawString(margin, contact_y, text_before)
-
-    c.setFont("Roboto-Bold", 9)
-    c.drawString(margin + text_width, contact_y, responsible)
-
-    # ---------------------------------------------------------
-    # FOOTER (3 Spalten) – Clean & Stable Version
-    # ---------------------------------------------------------
-    draw_footer(c, width, margin, accent_color, current_page, total_pages)
-
-    # ---------------------------------------------------------
-    # SAVE
-    # ---------------------------------------------------------
-    c.showPage()
+    # ===== FINAL FOOTER + SAVE =====
+    finish_page()
     c.save()
 
-    # Return bytes if no output path
     if output_path is None:
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
+        pdf_bytes = target.getvalue()
+        target.close()
         return pdf_bytes
 
     return None
