@@ -130,8 +130,10 @@ _COL_ALIGNS  = ["center", "left", "right", "left", "right", "right"]
 TABLE_HDR_H = 22   # pt – header row
 ROW_H_MIN   = 26   # pt – minimum data row
 
+DESC_COL_W = 210  # pt – nutzbarer Textbereich in der Beschreibungsspalte
+
 def _row_h(desc: str) -> float:
-    lines = str(desc or "").split("\n")
+    lines = _wrap_text(str(desc or ""), FONT_BOLD, 9, DESC_COL_W)
     return max(ROW_H_MIN, len(lines) * 12 + 8)
 
 
@@ -325,6 +327,24 @@ def draw_status_badge(c: canvas.Canvas, status: str, x: float, y: float):
 # POSITIONS TABLE  (canvas-based, no Platypus Table)
 # =====================================================================
 
+def _wrap_text(text: str, font: str, font_size: float, max_width: float) -> list[str]:
+    """Bricht einen Text in Zeilen die max_width nicht überschreiten."""
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+    result = []
+    for paragraph in text.split("\n"):
+        words = paragraph.split(" ")
+        line = ""
+        for word in words:
+            test = f"{line} {word}".strip()
+            if stringWidth(test, font, font_size) <= max_width:
+                line = test
+            else:
+                if line:
+                    result.append(line)
+                line = word
+        result.append(line)
+    return result or [""]
+
 def _draw_table_header_row(c: canvas.Canvas, x: float, y: float):
     c.setFillColor(NAVY)
     c.rect(x, y - TABLE_HDR_H, CONTENT_W, TABLE_HDR_H, fill=1, stroke=0)
@@ -376,14 +396,18 @@ def _draw_data_row(c: canvas.Canvas, x: float, y: float, pos: dict, row_idx: int
         cell_text = cells[i]
 
         if col_key == "description":
-            desc_lines = cell_text.split("\n")
+            # Erste Zeile bold, Folgezeilen regular — alle gewrapped
+            first_para = cell_text.split("\n")[0] if cell_text else ""
+            rest_paras = "\n".join(cell_text.split("\n")[1:]) if "\n" in cell_text else ""
+            wrapped_first = _wrap_text(first_para, FONT_BOLD, 9, DESC_COL_W)
+            wrapped_rest  = _wrap_text(rest_paras, FONT_BODY, 8.5, DESC_COL_W) if rest_paras else []
+            desc_lines = wrapped_first + wrapped_rest
             line_h = 11
             block_h = len(desc_lines) * line_h
-            # Block vertikal mittig in der Zeile
             start_y = y - (row_h - block_h) / 2 - 3
             for li, line in enumerate(desc_lines):
                 line_y = start_y - li * line_h
-                if li == 0:
+                if li < len(wrapped_first):
                     c.setFont(FONT_BOLD, 9)
                     c.setFillColor(DGRAY)
                 else:
