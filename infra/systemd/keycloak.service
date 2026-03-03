@@ -1,0 +1,15 @@
+[Unit]
+Description=Workmate Keycloak
+Requires=docker.service workmate.service
+After=docker.service workmate.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/srv/keycloak
+ExecStart=/usr/bin/docker compose --env-file .env up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file .env down
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

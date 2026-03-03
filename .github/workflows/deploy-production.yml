@@ -53,7 +53,8 @@ jobs:
         run: |
           scp infra/docker-compose.prod.yml joshua@77.42.17.200:/srv/workmate/infra/docker-compose.yml
           scp infra/systemd/workmate.service joshua@77.42.17.200:/tmp/workmate.service
-          ssh joshua@77.42.17.200 "sudo mv /tmp/workmate.service /etc/systemd/system/workmate.service && sudo systemctl daemon-reload"
+          scp infra/systemd/keycloak.service joshua@77.42.17.200:/tmp/keycloak.service
+          ssh joshua@77.42.17.200 "sudo mv /tmp/workmate.service /etc/systemd/system/workmate.service && sudo mv /tmp/keycloak.service /etc/systemd/system/keycloak.service && sudo systemctl daemon-reload && sudo systemctl enable keycloak.service"
 
       - name: Upload .env.prod
         run: |
