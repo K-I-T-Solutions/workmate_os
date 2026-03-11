@@ -6,9 +6,9 @@
 <h3 align="center">The internal toolkit.</h3>
 
 <p align="center">
-  <a href="https://github.com/K-I-T-Solutions/workmate_os"><img src="https://img.shields.io/badge/Version-v3.0.0-blue?style=flat-square&logo=git" /></a>
+  <a href="https://github.com/K-I-T-Solutions/workmate_os"><img src="https://img.shields.io/badge/Version-v4.0.0-blue?style=flat-square&logo=git" /></a>
   <a href="https://k-i-t-solutions.github.io/workmate_os/"><img src="https://img.shields.io/badge/Docs-Online-success?style=flat-square&logo=readthedocs" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/Phase-3%20(100%25)-brightgreen?style=flat-square&logo=github" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/Phase-4%20(100%25)-brightgreen?style=flat-square&logo=github" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Framework-Vue%203-42b883?style=flat-square&logo=vue.js" /></a>
   <a href="#"><img src="https://img.shields.io/badge/API-FastAPI-009688?style=flat-square&logo=fastapi" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Auth-Zitadel%20SSO-5469d4?style=flat-square&logo=oauth" /></a>
@@ -63,13 +63,19 @@ Ziel ist es, Verwaltungsarbeit **endlich einfach und modern** zu machen:
 | 👤 **User Settings** | Persönliche Einstellungen (Sprache, Zeitzone) | ✅ |
 | 📊 **CRM Activity Timeline** | Automatisches Logging aller CRM-Operationen | ✅ |
 
-### 📅 Phase 4 & 5: Planned
+### ✅ Phase 4: HR & Support (100%)
 
 | Modul | Beschreibung | Status |
 |:--|:--|:--:|
-| 🏥 **HR Module** | Urlaub, Krankmeldungen, Bewerbungsmanagement | 📅 |
-| 🎫 **Support Tickets** | Kundentickets mit vollständigem Logging | 📅 |
-| 📚 **Knowledge Base** | Interne Wiki & FAQ-System | 📅 |
+| 🏖️ **HR Self-Service** | Urlaubsanträge, Saldo, Genehmigungsworkflow | ✅ |
+| 👥 **HR Recruiting** | Job Postings, Bewerbungs-Pipeline mit Rating | ✅ |
+| 🎫 **Support Tickets** | Ticket-System mit Kommentaren, internen Notizen | ✅ |
+| 📚 **Knowledge Base** | Interne Wiki mit Markdown, Suche, Voting | ✅ |
+
+### 📅 Phase 5: Enterprise (Planned)
+
+| Modul | Beschreibung | Status |
+|:--|:--|:--:|
 | 🏦 **Banking API** | Kontoauszüge automatisch importieren | 📅 |
 | 💼 **Elster Integration** | Deutsche Steuerverwaltung | 📅 |
 | 📱 **Mobile App** | React Native / Flutter App | 📅 |
@@ -168,14 +174,14 @@ K.I.T. Solutions • Koblenz, Deutschland
 Phase 1: Core System         ████████████████ 100% ✅
 Phase 2: Backoffice          ████████████████ 100% ✅
 Phase 3: SSO & Admin         ████████████████ 100% ✅
-Phase 4: HR & Support        ░░░░░░░░░░░░░░░░   0% 📅
+Phase 4: HR & Support        ████████████████ 100% ✅
 Phase 5: Enterprise          ░░░░░░░░░░░░░░░░   0% 📅
 
 Overall Documentation        ██████████████░░  85% 📚
 ```
 
-**Current Version:** v3.0.0 — Phase 3 abgeschlossen
-**Next Sprint:** Phase 4 (HR Module, Support Tickets, Knowledge Base)
+**Current Version:** v4.0.0 — Phase 4 abgeschlossen
+**Next Sprint:** Phase 5 (Banking API, Elster Integration, Mobile App)
 
 ---
 
