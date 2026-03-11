@@ -1,8 +1,21 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { Plus, Search, Edit, Trash2, Mail, Phone, Calendar } from 'lucide-vue-next';
+import md5 from 'md5';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getDepartments } from '../services/hr.service';
 import type { Employee, EmployeeCreate, EmploymentType, Department } from '../types';
+
+const router = useRouter();
+
+function viewEmployee(id: string) {
+  router.push(`/app/hr/employees/${id}`);
+}
+
+function gravatarUrl(email?: string, size = 40): string {
+  if (!email) return `https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&s=${size}`;
+  return `https://www.gravatar.com/avatar/${md5(email.toLowerCase().trim())}?d=mp&s=${size}`;
+}
 
 const loading = ref(true);
 const employees = ref<Employee[]>([]);
@@ -328,12 +341,19 @@ const formatDate = (date: string): string => {
         :key="employee.id"
         class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 hover:bg-white/15 transition-colors"
       >
-        <div class="mb-4">
-          <h3 class="text-xl font-semibold text-white mb-1">
-            {{ employee.first_name }} {{ employee.last_name }}
-          </h3>
-          <p class="text-blue-400 text-sm">{{ employee.bio || 'Keine Beschreibung' }}</p>
-          <p class="text-white/60 text-sm">{{ employee.department?.name || 'Keine Abteilung' }}</p>
+        <div class="mb-4 cursor-pointer flex items-center gap-3" @click="viewEmployee(employee.id)">
+          <img
+            :src="gravatarUrl(employee.email, 40)"
+            :alt="employee.first_name"
+            class="w-10 h-10 rounded-full border border-white/10 object-cover flex-shrink-0"
+          />
+          <div class="min-w-0">
+            <h3 class="text-base font-semibold text-white hover:text-blue-300 transition-colors truncate">
+              {{ employee.first_name }} {{ employee.last_name }}
+            </h3>
+            <p class="text-blue-400 text-sm truncate">{{ employee.bio || 'Keine Beschreibung' }}</p>
+            <p class="text-white/60 text-xs">{{ employee.department?.name || 'Keine Abteilung' }}</p>
+          </div>
         </div>
 
         <div class="space-y-2 mb-4">

@@ -6,13 +6,15 @@ import LeaveManagementPage from './pages/LeaveManagementPage.vue';
 import LeaveApprovalsPage from './pages/LeaveApprovalsPage.vue';
 import EmployeeListPage from './pages/EmployeeListPage.vue';
 import MyLeavePage from './pages/MyLeavePage.vue';
+import EmployeeDetailPage from './pages/EmployeeDetailPage.vue';
+import LeaveDetailPage from './pages/LeaveDetailPage.vue';
 
 const route = useRoute();
 const router = useRouter();
 
-const currentView = computed(() => {
-  return (route.meta.view as string) || 'my-leave';
-});
+const currentView = computed(() => (route.meta.view as string) || 'my-leave');
+const currentEmployeeId = computed(() => route.params.id as string | undefined);
+const currentRequestId = computed(() => route.params.id as string | undefined);
 
 const tabs = [
   { id: 'my-leave',   label: 'Mein Urlaub',        icon: '🏖️', path: '/app/hr/my-leave' },
@@ -56,6 +58,8 @@ function navigateTo(path: string) {
       <LeaveManagementPage v-if="currentView === 'leave'" />
       <LeaveApprovalsPage v-if="currentView === 'approvals'" />
       <EmployeeListPage v-if="currentView === 'employees'" />
+      <EmployeeDetailPage v-if="currentView === 'employee-detail' && currentEmployeeId" :employee-id="currentEmployeeId" />
+      <LeaveDetailPage v-if="currentView === 'leave-detail' && currentRequestId" :request-id="currentRequestId" />
     </div>
   </div>
 </template>

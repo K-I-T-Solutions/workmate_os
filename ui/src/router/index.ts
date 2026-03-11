@@ -72,7 +72,7 @@ const routes = [
           {
             path: "leave/requests/:id",
             name: "hr-leave-request-detail",
-            meta: { view: "leave", requestId: ':id' },
+            meta: { view: "leave-detail" },
           },
           {
             path: "leave/approvals",
@@ -93,6 +93,11 @@ const routes = [
             path: "employees",
             name: "hr-employees",
             meta: { view: "employees" },
+          },
+          {
+            path: "employees/:id",
+            name: "hr-employee-detail",
+            meta: { view: "employee-detail" },
           },
         ],
       }
