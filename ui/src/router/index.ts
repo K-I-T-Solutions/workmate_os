@@ -3,6 +3,7 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import CrmApp from "@/modules/crm/CrmApp.vue";
 import HRApp from "@/modules/hr/HRApp.vue";
 import SupportApp from "@/modules/support/SupportApp.vue";
+import KnowledgeApp from "@/modules/knowledge/KnowledgeApp.vue";
 import LoginPage from "@/pages/LoginPage.vue";
 import { useAuth } from "@/composables/useAuth";
 
@@ -46,6 +47,16 @@ const routes = [
         path: "crm",
         name: "crm",
         component: CrmApp,
+      },
+      {
+        path: "kb",
+        component: KnowledgeApp,
+        children: [
+          { path: "", redirect: "/app/kb/home" },
+          { path: "home", name: "kb-home", meta: { view: "home" } },
+          { path: "categories/:id", name: "kb-category", meta: { view: "category" } },
+          { path: "articles/:id", name: "kb-article", meta: { view: "article" } },
+        ],
       },
       {
         path: "support",
