@@ -52,7 +52,12 @@ const routes = [
         children: [
           {
             path: "",
-            redirect: "/app/hr/dashboard",
+            redirect: "/app/hr/my-leave",
+          },
+          {
+            path: "my-leave",
+            name: "hr-my-leave",
+            meta: { view: "my-leave" },
           },
           {
             path: "dashboard",
@@ -77,12 +82,12 @@ const routes = [
           {
             path: "my-requests",
             name: "hr-my-requests",
-            meta: { view: "leave" },
+            meta: { view: "my-leave" },
           },
           {
             path: "my-requests/:id",
             name: "hr-my-request-detail",
-            meta: { view: "leave" },
+            meta: { view: "my-leave" },
           },
           {
             path: "employees",

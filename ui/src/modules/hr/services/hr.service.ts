@@ -298,3 +298,36 @@ export async function updateLeaveBalance(
 export async function deleteLeaveBalance(id: string): Promise<void> {
   await apiClient.delete(`/api/hr/leave/balances/${id}`);
 }
+
+// ============================================================================
+// Self-Service (eigene Anträge & Saldo)
+// ============================================================================
+
+export async function getMyLeaveRequests(filters?: {
+  status?: string;
+  skip?: number;
+  limit?: number;
+}): Promise<LeaveRequestListResponse> {
+  const params: Record<string, any> = {
+    skip: filters?.skip || 0,
+    limit: filters?.limit || 100,
+  };
+  if (filters?.status) params.status = filters.status;
+  const response = await apiClient.get('/api/hr/leave/my-requests', { params });
+  return response.data;
+}
+
+export async function createMyLeaveRequest(data: LeaveRequestCreate): Promise<LeaveRequest> {
+  const response = await apiClient.post('/api/hr/leave/my-requests', data);
+  return response.data;
+}
+
+export async function cancelMyLeaveRequest(id: string): Promise<LeaveRequest> {
+  const response = await apiClient.post(`/api/hr/leave/my-requests/${id}/cancel`);
+  return response.data;
+}
+
+export async function getMyLeaveBalance(year: number): Promise<LeaveBalance> {
+  const response = await apiClient.get('/api/hr/leave/my-balance', { params: { year } });
+  return response.data;
+}
