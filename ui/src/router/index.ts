@@ -99,6 +99,16 @@ const routes = [
             name: "hr-employee-detail",
             meta: { view: "employee-detail" },
           },
+          {
+            path: "recruiting",
+            name: "hr-recruiting",
+            meta: { view: "recruiting" },
+          },
+          {
+            path: "recruiting/jobs/:id",
+            name: "hr-recruiting-applications",
+            meta: { view: "applications" },
+          },
         ],
       }
     ],

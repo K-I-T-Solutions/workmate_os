@@ -8,20 +8,22 @@ import EmployeeListPage from './pages/EmployeeListPage.vue';
 import MyLeavePage from './pages/MyLeavePage.vue';
 import EmployeeDetailPage from './pages/EmployeeDetailPage.vue';
 import LeaveDetailPage from './pages/LeaveDetailPage.vue';
+import RecruitingPage from './pages/RecruitingPage.vue';
+import ApplicationsPage from './pages/ApplicationsPage.vue';
 
 const route = useRoute();
 const router = useRouter();
 
 const currentView = computed(() => (route.meta.view as string) || 'my-leave');
-const currentEmployeeId = computed(() => route.params.id as string | undefined);
-const currentRequestId = computed(() => route.params.id as string | undefined);
+const currentId = computed(() => route.params.id as string | undefined);
 
 const tabs = [
-  { id: 'my-leave',   label: 'Mein Urlaub',        icon: '🏖️', path: '/app/hr/my-leave' },
-  { id: 'dashboard',  label: 'Dashboard',            icon: '📊', path: '/app/hr/dashboard' },
-  { id: 'leave',      label: 'Urlaubsverwaltung',    icon: '🌴', path: '/app/hr/leave/requests' },
-  { id: 'approvals',  label: 'Genehmigungen',        icon: '✅', path: '/app/hr/leave/approvals' },
-  { id: 'employees',  label: 'Mitarbeiter',           icon: '👥', path: '/app/hr/employees' },
+  { id: 'my-leave',   label: 'Mein Urlaub',      icon: '🏖️', path: '/app/hr/my-leave' },
+  { id: 'dashboard',  label: 'Dashboard',          icon: '📊', path: '/app/hr/dashboard' },
+  { id: 'leave',      label: 'Urlaubsverwaltung',  icon: '🌴', path: '/app/hr/leave/requests' },
+  { id: 'approvals',  label: 'Genehmigungen',      icon: '✅', path: '/app/hr/leave/approvals' },
+  { id: 'employees',  label: 'Mitarbeiter',         icon: '👥', path: '/app/hr/employees' },
+  { id: 'recruiting', label: 'Recruiting',          icon: '🎯', path: '/app/hr/recruiting' },
 ];
 
 function navigateTo(path: string) {
@@ -58,8 +60,10 @@ function navigateTo(path: string) {
       <LeaveManagementPage v-if="currentView === 'leave'" />
       <LeaveApprovalsPage v-if="currentView === 'approvals'" />
       <EmployeeListPage v-if="currentView === 'employees'" />
-      <EmployeeDetailPage v-if="currentView === 'employee-detail' && currentEmployeeId" :employee-id="currentEmployeeId" />
-      <LeaveDetailPage v-if="currentView === 'leave-detail' && currentRequestId" :request-id="currentRequestId" />
+      <EmployeeDetailPage v-if="currentView === 'employee-detail' && currentId" :employee-id="currentId" />
+      <LeaveDetailPage v-if="currentView === 'leave-detail' && currentId" :request-id="currentId" />
+      <RecruitingPage v-if="currentView === 'recruiting'" />
+      <ApplicationsPage v-if="currentView === 'applications' && currentId" :job-id="currentId" />
     </div>
   </div>
 </template>
