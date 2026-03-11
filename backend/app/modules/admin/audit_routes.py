@@ -11,20 +11,21 @@ from uuid import UUID
 
 from app.core.settings.database import get_db
 from app.core.auth.roles import require_permissions, get_current_user
-from app.modules.backoffice.invoices import schemas as invoice_schemas
 from app.modules.admin import service
+from app.modules.admin.schemas import AdminAuditLogResponse, AdminAuditLogListResponse
 
 router = APIRouter(prefix="/api/audit-logs", tags=["Audit"])
 
 
-@router.get("", response_model=invoice_schemas.AuditLogListResponse)
+@router.get("", response_model=AdminAuditLogListResponse)
 @require_permissions(["admin.audit.view", "admin.*"])
 async def list_audit_logs(
     skip: int = Query(0, ge=0, description="Pagination offset"),
     limit: int = Query(50, ge=1, le=500, description="Max items per page"),
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
-    action: Optional[str] = Query(None, description="Filter by action (create, update, delete, status_change)"),
-    entity_type: Optional[str] = Query(None, description="Filter by entity type (Invoice, Payment, Employee, etc.)"),
+    action: Optional[str] = Query(None, description="Filter by action"),
+    resource_type: Optional[str] = Query(None, description="Filter by resource/entity type"),
+    entity_type: Optional[str] = Query(None, description="Alias für resource_type"),
     date_from: Optional[datetime] = Query(None, description="Filter from date (ISO 8601)"),
     date_to: Optional[datetime] = Query(None, description="Filter to date (ISO 8601)"),
     db: Session = Depends(get_db),
@@ -34,24 +35,18 @@ async def list_audit_logs(
     List all audit logs with optional filtering and pagination.
 
     **Permissions required:** admin.audit.*, admin.*, or *
-
-    **Filters:**
-    - user_id: Filter by user who made the change
-    - action: Filter by action type (create, update, delete, status_change)
-    - entity_type: Filter by entity type (Invoice, Payment, Employee, Department, Role, Customer, Project, etc.)
-    - date_from: Filter changes from this date
-    - date_to: Filter changes until this date
-
-    **Returns:** List of audit log entries with pagination info
     """
     try:
+        # resource_type (Frontend) und entity_type (Backend) sind Synonyme
+        effective_entity_type = resource_type or entity_type
+
         logs, total = await service.get_audit_logs(
             db=db,
             skip=skip,
             limit=limit,
             user_id=user_id,
             action=action,
-            entity_type=entity_type,
+            entity_type=effective_entity_type,
             date_from=date_from,
             date_to=date_to
         )
@@ -66,7 +61,7 @@ async def list_audit_logs(
         raise HTTPException(status_code=500, detail=f"Failed to fetch audit logs: {str(e)}")
 
 
-@router.get("/{audit_log_id}", response_model=invoice_schemas.AuditLogResponse)
+@router.get("/{audit_log_id}", response_model=AdminAuditLogResponse)
 @require_permissions(["admin.audit.view", "admin.*"])
 async def get_audit_log(
     audit_log_id: UUID,
@@ -83,4 +78,6 @@ async def get_audit_log(
     if not log:
         raise HTTPException(status_code=404, detail="Audit log not found")
 
-    return log
+    from app.modules.admin.service import _build_user_cache, _enrich_log
+    user_cache = _build_user_cache(db, [str(log.user_id)] if log.user_id else [])
+    return _enrich_log(log, user_cache)

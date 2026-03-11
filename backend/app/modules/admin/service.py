@@ -2,13 +2,52 @@
 Admin Service - Business logic for Admin APIs
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from typing import Optional, Tuple, List
+from sqlalchemy import and_
+from typing import Optional, Tuple, List, Dict
 from datetime import datetime
 from uuid import UUID
 
 from app.modules.backoffice.invoices.models import AuditLog
 from app.modules.admin.models import SystemSettings
+from app.modules.admin.schemas import AdminAuditLogResponse
+
+
+def _build_user_cache(db: Session, user_ids: List[str]) -> Dict[str, dict]:
+    """Lädt Employee-Daten für eine Liste von user_ids in einer Query."""
+    if not user_ids:
+        return {}
+    from app.modules.employees.models import Employee
+    employees = (
+        db.query(Employee.id, Employee.first_name, Employee.last_name, Employee.email)
+        .filter(Employee.id.in_(user_ids))
+        .all()
+    )
+    return {
+        str(e.id): {
+            "name": f"{e.first_name} {e.last_name}".strip(),
+            "email": e.email,
+        }
+        for e in employees
+    }
+
+
+def _enrich_log(log: AuditLog, user_cache: Dict[str, dict]) -> AdminAuditLogResponse:
+    """Reichert einen AuditLog-Eintrag mit User-Infos an."""
+    user_info = user_cache.get(str(log.user_id), {}) if log.user_id else {}
+    return AdminAuditLogResponse(
+        id=log.id,
+        user_id=str(log.user_id) if log.user_id else None,
+        user_name=user_info.get("name"),
+        user_email=user_info.get("email"),
+        timestamp=log.timestamp,
+        action=log.action,
+        resource_type=log.entity_type,
+        resource_name=None,
+        details=None,
+        ip_address=log.ip_address,
+        old_values=log.old_values,
+        new_values=log.new_values,
+    )
 
 
 async def get_audit_logs(
@@ -20,26 +59,15 @@ async def get_audit_logs(
     entity_type: Optional[str] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None
-) -> Tuple[List[AuditLog], int]:
+) -> Tuple[List[AdminAuditLogResponse], int]:
     """
-    Retrieve audit logs with filtering and pagination.
-
-    Args:
-        db: Database session
-        skip: Number of records to skip (pagination)
-        limit: Max number of records to return
-        user_id: Optional filter by user ID
-        action: Optional filter by action type
-        entity_type: Optional filter by entity type
-        date_from: Optional filter from date
-        date_to: Optional filter to date
+    Retrieve audit logs with filtering, pagination and user enrichment.
 
     Returns:
-        Tuple of (logs list, total count)
+        Tuple of (enriched logs list, total count)
     """
     query = db.query(AuditLog)
 
-    # Apply filters
     filters = []
 
     if user_id:
@@ -60,10 +88,8 @@ async def get_audit_logs(
     if filters:
         query = query.filter(and_(*filters))
 
-    # Get total count before pagination
     total = query.count()
 
-    # Apply pagination and ordering
     logs = (
         query
         .order_by(AuditLog.timestamp.desc())
@@ -72,7 +98,11 @@ async def get_audit_logs(
         .all()
     )
 
-    return logs, total
+    # Enrich with user info (single query for all users)
+    user_ids = list({str(log.user_id) for log in logs if log.user_id})
+    user_cache = _build_user_cache(db, user_ids)
+
+    return [_enrich_log(log, user_cache) for log in logs], total
 
 
 async def get_audit_log_by_id(db: Session, audit_log_id: UUID) -> Optional[AuditLog]:

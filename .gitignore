@@ -50,3 +50,4 @@ app/uploads/
 *.cover
 ../assets/openapi.yaml
 assets/openapi.yaml
+assets/_banking_certs_bak/

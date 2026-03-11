@@ -16,6 +16,7 @@ import {
   MapPin,
   MonitorPlay,
   FileText,
+  Activity,
 } from 'lucide-vue-next';
 
 // Props & Emits
@@ -68,8 +69,9 @@ function getActivityIcon(type: string) {
     onsite: MapPin,
     remote: MonitorPlay,
     note: FileText,
+    system: Activity,
   };
-  return icons[type] || FileText;
+  return icons[type] || Activity;
 }
 
 // Helper: Get activity label
@@ -80,6 +82,7 @@ function getActivityLabel(type: string): string {
     onsite: 'Vor-Ort-Besuch',
     remote: 'Remote-Meeting',
     note: 'Notiz',
+    system: 'System',
   };
   return labels[type] || type;
 }

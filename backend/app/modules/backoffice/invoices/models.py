@@ -649,7 +649,17 @@ class AuditLog(Base, UUIDMixin):
         Index("ix_audit_logs_action", "action"),
         Index("ix_audit_logs_user_id", "user_id"),
         CheckConstraint(
-            "action IN ('create', 'update', 'delete', 'status_change')",
+            "action IN ("
+            "'create', 'update', 'delete', 'status_change',"
+            # CRM / Kommunikation
+            "'call', 'email', 'message', 'note',"
+            # Support (Phase 4)
+            "'ticket_created', 'ticket_updated', 'ticket_closed',"
+            # Auth
+            "'login', 'logout',"
+            # Dokumente
+            "'upload'"
+            ")",
             name="check_audit_action_valid"
         ),
     )
@@ -658,7 +668,7 @@ class AuditLog(Base, UUIDMixin):
     entity_type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
-        comment="Typ der Entität (Invoice, Payment, Expense)"
+        comment="Typ der Entität (Invoice, Payment, Expense, Customer, Contact, ...)"
     )
     entity_id: Mapped[uuid.UUID] = mapped_column(
         nullable=False,
@@ -667,7 +677,7 @@ class AuditLog(Base, UUIDMixin):
     action: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
-        comment="Art der Änderung (create, update, delete, status_change)"
+        comment="Art der Aktion: create/update/delete/status_change/call/email/message/note/ticket_*/login/logout/upload"
     )
     old_values: Mapped[dict | None] = mapped_column(
         JSON,

@@ -1,4 +1,4 @@
-export type ActivityType = "call" | "email" | "onsite" | "remote" | "note";
+export type ActivityType = "call" | "email" | "onsite" | "remote" | "note" | "system";
 
 export interface CrmActivity {
   id: string;

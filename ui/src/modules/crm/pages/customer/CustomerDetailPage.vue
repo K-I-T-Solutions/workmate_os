@@ -24,6 +24,7 @@ import {
   FileText,
   FolderOpen,
   Receipt,
+  Activity,
 } from 'lucide-vue-next';
 
 // Props
@@ -224,8 +225,9 @@ function getActivityIcon(type: string) {
     onsite: MapPin,
     remote: MonitorPlay,
     note: FileText,
+    system: Activity,
   };
-  return icons[type] || FileText;
+  return icons[type] || Activity;
 }
 
 function getActivityLabel(type: string): string {
@@ -235,6 +237,7 @@ function getActivityLabel(type: string): string {
     onsite: 'Vor-Ort-Besuch',
     remote: 'Remote-Meeting',
     note: 'Notiz',
+    system: 'System',
   };
   return labels[type] || type;
 }
