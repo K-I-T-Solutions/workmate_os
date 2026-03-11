@@ -11,6 +11,10 @@
       class="window-titlebar"
       @mousedown.stop="startDrag"
     >
+      <button class="window-home" @click.stop="goHome" title="Zum Dashboard">
+        ⌂
+      </button>
+
       <span class="window-title">
         {{ win.title }}
       </span>
@@ -37,6 +41,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useRouter } from "vue-router";
 import { useAppManager } from "./useAppManager";
 import type { WindowApp } from "./useAppManager";
 
@@ -46,6 +51,12 @@ const props = defineProps<{
 
 const { activeWindow, closeWindow, minimizeWindow, focusWindow, startDragFor, startResizeFor } =
   useAppManager();
+
+const router = useRouter();
+
+function goHome() {
+  router.push("/app");
+}
 
 const isActive = computed(() => activeWindow.value === props.win.id);
 
@@ -125,6 +136,26 @@ function close() {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.window-home {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: #6366f1;
+  color: white;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  margin-right: 4px;
+}
+
+.window-home:hover {
+  opacity: 0.8;
 }
 
 .window-minimize,
