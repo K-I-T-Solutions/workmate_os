@@ -32,6 +32,8 @@ from app.modules.backoffice.finance import routes as finance_routes
 from app.modules.admin.audit_routes import router as audit_router
 from app.modules.admin.settings_routes import router as settings_router
 from app.modules.hr import router as hr_router
+from app.modules.support.routes import router as support_router
+from app.modules.knowledge.routes import router as kb_router
 
 
 # Logging aktivieren
@@ -137,6 +139,12 @@ app.include_router(settings_router, tags=["Admin"])
 
 # HR Module
 app.include_router(hr_router, prefix="/api", tags=["HR"])
+
+# Support Module
+app.include_router(support_router, tags=["Support"])
+
+# Knowledge Base
+app.include_router(kb_router, tags=["Knowledge Base"])
 
 # === Core Endpoints ===
 @app.get("/", tags=["Root"], response_class=HTMLResponse)

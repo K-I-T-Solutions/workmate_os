@@ -1,14 +1,25 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { Check, X, Clock } from 'lucide-vue-next';
-import { getLeaveRequests, approveLeaveRequest, rejectLeaveRequest } from '../services/hr.service';
-import type { LeaveRequest, LeaveType } from '../types';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { Check, X, Clock, Calendar, User, FileText, ChevronRight } from 'lucide-vue-next';
+import md5 from 'md5';
+import { getLeaveRequests, approveLeaveRequest, rejectLeaveRequest, getEmployee } from '../services/hr.service';
+import type { LeaveRequest, Employee } from '../types';
 
+const router = useRouter();
 const loading = ref(true);
 const pendingRequests = ref<LeaveRequest[]>([]);
+const employeeCache = ref<Record<string, Employee>>({});
 const showRejectDialog = ref(false);
 const selectedRequest = ref<LeaveRequest | null>(null);
 const rejectionReason = ref('');
+const submitting = ref(false);
+
+const leaveTypeLabels: Record<string, string> = {
+  vacation: 'Urlaub', sick: 'Krankheit', personal: 'Persönlich',
+  unpaid: 'Unbezahlt', parental: 'Elternzeit', bereavement: 'Trauerfall',
+  training: 'Weiterbildung', remote: 'Remote', other: 'Sonstiges',
+};
 
 onMounted(async () => {
   await loadPendingRequests();
@@ -17,207 +28,220 @@ onMounted(async () => {
 async function loadPendingRequests() {
   loading.value = true;
   try {
-    const response = await getLeaveRequests({
-      status: 'pending',
-    });
+    const response = await getLeaveRequests({ status: 'pending' });
     pendingRequests.value = response.items;
-  } catch (error) {
-    console.error('Failed to load pending requests:', error);
+    // Lade alle benötigten Employees
+    const ids = [...new Set(response.items.map(r => r.employee_id).filter(Boolean))];
+    await Promise.all(ids.map(async id => {
+      if (!employeeCache.value[id]) {
+        try { employeeCache.value[id] = await getEmployee(id); } catch { /* ignore */ }
+      }
+    }));
   } finally {
     loading.value = false;
   }
 }
 
-async function handleApprove(request: LeaveRequest) {
-  if (!confirm(`Möchten Sie den Antrag von ${request.employee?.first_name} ${request.employee?.last_name} genehmigen?`)) {
-    return;
-  }
+function emp(request: LeaveRequest): Employee | null {
+  return employeeCache.value[request.employee_id] || null;
+}
 
+function empName(request: LeaveRequest): string {
+  const e = emp(request);
+  if (!e) return '–';
+  return [e.first_name, e.last_name].filter(Boolean).join(' ') || e.email;
+}
+
+function gravatarUrl(email?: string, size = 40): string {
+  if (!email) return `https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&s=${size}`;
+  return `https://www.gravatar.com/avatar/${md5(email.toLowerCase().trim())}?d=mp&s=${size}`;
+}
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+async function handleApprove(request: LeaveRequest) {
+  submitting.value = true;
   try {
     await approveLeaveRequest(request.id, {});
     await loadPendingRequests();
-  } catch (error) {
-    console.error('Failed to approve request:', error);
-    alert('Fehler beim Genehmigen des Antrags');
+  } catch {
+    // ignore
+  } finally {
+    submitting.value = false;
   }
 }
 
-function showRejectForm(request: LeaveRequest) {
+function openRejectDialog(request: LeaveRequest) {
   selectedRequest.value = request;
-  showRejectDialog.value = true;
   rejectionReason.value = '';
+  showRejectDialog.value = true;
 }
 
 async function handleReject() {
-  if (!selectedRequest.value || !rejectionReason.value.trim()) {
-    alert('Bitte geben Sie einen Grund für die Ablehnung an');
-    return;
-  }
-
+  if (!selectedRequest.value || !rejectionReason.value.trim()) return;
+  submitting.value = true;
   try {
-    await rejectLeaveRequest(selectedRequest.value.id, {
-      rejection_reason: rejectionReason.value,
-    });
+    await rejectLeaveRequest(selectedRequest.value.id, { rejection_reason: rejectionReason.value });
     showRejectDialog.value = false;
     selectedRequest.value = null;
-    rejectionReason.value = '';
     await loadPendingRequests();
-  } catch (error) {
-    console.error('Failed to reject request:', error);
-    alert('Fehler beim Ablehnen des Antrags');
+  } finally {
+    submitting.value = false;
   }
 }
 
-const getLeaveTypeLabel = (type: LeaveType): string => {
-  const labels: Record<LeaveType, string> = {
-    vacation: 'Urlaub',
-    sick: 'Krankheit',
-    personal: 'Persönlich',
-    unpaid: 'Unbezahlt',
-    parental: 'Elternzeit',
-    bereavement: 'Trauerfall',
-    other: 'Sonstiges',
-  };
-  return labels[type] || type;
-};
-
-const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('de-DE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-};
+function openDetail(request: LeaveRequest) {
+  router.push(`/app/hr/leave/requests/${request.id}`);
+}
 </script>
 
 <template>
-  <div class="leave-approvals">
+  <div class="space-y-4 max-w-4xl">
+
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-white mb-2">Genehmigungen</h1>
-      <p class="text-white/60">Ausstehende Urlaubsanträge genehmigen oder ablehnen</p>
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-white">Genehmigungen</h1>
+        <p class="text-sm text-white/50 mt-0.5">Ausstehende Urlaubsanträge</p>
+      </div>
+      <span v-if="!loading" class="text-sm px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-300">
+        {{ pendingRequests.length }} ausstehend
+      </span>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center h-64">
-      <div class="text-white/60">Lade ausstehende Anträge...</div>
+    <!-- Loading -->
+    <div v-if="loading" class="flex justify-center py-16">
+      <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
     </div>
 
-    <!-- Empty State -->
-    <div v-else-if="pendingRequests.length === 0" class="bg-white/10 backdrop-blur-lg rounded-lg p-12 border border-white/20 text-center">
-      <Clock :size="64" class="mx-auto text-white/40 mb-4" />
-      <p class="text-white/60 text-lg">Keine ausstehenden Anträge</p>
-      <p class="text-white/40 text-sm mt-2">Alle Urlaubsanträge wurden bereits bearbeitet</p>
+    <!-- Empty -->
+    <div v-else-if="pendingRequests.length === 0" class="text-center py-16 text-white/40">
+      <Clock :size="40" class="mx-auto mb-3 opacity-40" />
+      <p class="font-medium">Keine ausstehenden Anträge</p>
+      <p class="text-sm mt-1">Alle Anträge wurden bearbeitet</p>
     </div>
 
-    <!-- Pending Requests List -->
-    <div v-else class="grid grid-cols-1 gap-4">
+    <!-- List -->
+    <div v-else class="space-y-3">
       <div
         v-for="request in pendingRequests"
         :key="request.id"
-        class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20"
+        class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
       >
-        <div class="flex justify-between items-start mb-4">
-          <div class="flex-1">
-            <h3 class="text-xl font-semibold text-white mb-1">
-              {{ request.employee?.first_name }} {{ request.employee?.last_name }}
-            </h3>
-            <p class="text-white/60 text-sm mb-3">
-              {{ request.employee?.department }} • {{ request.employee?.position }}
-            </p>
-            <div class="flex items-center gap-4 text-white/80">
-              <span class="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold">
-                {{ getLeaveTypeLabel(request.leave_type) }}
-              </span>
-              <span>{{ formatDate(request.start_date) }} - {{ formatDate(request.end_date) }}</span>
-              <span class="text-white font-semibold">{{ request.total_days }} Tage</span>
+        <div class="flex items-start gap-4">
+
+          <!-- Gravatar -->
+          <img
+            :src="gravatarUrl(emp(request)?.email, 40)"
+            :alt="empName(request)"
+            class="w-10 h-10 rounded-lg border border-white/10 object-cover flex-shrink-0 mt-0.5 cursor-pointer"
+            @click="openDetail(request)"
+          />
+
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span
+                    class="text-sm font-semibold text-white hover:text-blue-300 cursor-pointer transition-colors"
+                    @click="openDetail(request)"
+                  >{{ empName(request) }}</span>
+                  <span v-if="emp(request)?.department?.name" class="text-xs text-white/40">
+                    {{ emp(request)?.department?.name }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                  <span class="text-xs px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                    {{ leaveTypeLabels[request.leave_type] || request.leave_type }}
+                  </span>
+                  <span class="text-xs text-white/50 flex items-center gap-1">
+                    <Calendar :size="11" />
+                    {{ formatDate(request.start_date) }} – {{ formatDate(request.end_date) }}
+                  </span>
+                  <span class="text-xs font-medium text-white/80">{{ request.total_days }} Tag(e)</span>
+                  <span v-if="request.half_day_start" class="text-xs text-white/40">½ Start</span>
+                  <span v-if="request.half_day_end" class="text-xs text-white/40">½ Ende</span>
+                </div>
+                <div v-if="request.reason" class="mt-1.5 text-xs text-white/50 flex items-center gap-1">
+                  <FileText :size="11" />{{ request.reason }}
+                </div>
+              </div>
+
+              <button @click="openDetail(request)" class="text-white/30 hover:text-white/60 transition-colors flex-shrink-0">
+                <ChevronRight :size="16" />
+              </button>
             </div>
-            <div v-if="request.half_day_start || request.half_day_end" class="flex gap-2 mt-2">
-              <span v-if="request.half_day_start" class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
-                ½ Tag Start
-              </span>
-              <span v-if="request.half_day_end" class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
-                ½ Tag Ende
-              </span>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2 mt-3">
+              <button
+                @click="handleApprove(request)"
+                :disabled="submitting"
+                class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500/15 hover:bg-green-500/25 border border-green-500/25 text-green-300 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Check :size="13" />Genehmigen
+              </button>
+              <button
+                @click="openRejectDialog(request)"
+                :disabled="submitting"
+                class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-500/15 hover:bg-red-500/25 border border-red-500/25 text-red-300 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <X :size="13" />Ablehnen
+              </button>
+              <span class="text-xs text-white/30 ml-auto">{{ formatDate(request.created_at) }}</span>
             </div>
           </div>
-
-          <span class="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm font-semibold">
-            Ausstehend
-          </span>
-        </div>
-
-        <!-- Reason -->
-        <div v-if="request.reason" class="bg-white/5 rounded-lg p-4 mb-4">
-          <h4 class="text-white/60 text-sm mb-2">Grund:</h4>
-          <p class="text-white">{{ request.reason }}</p>
-        </div>
-
-        <!-- Metadata -->
-        <div class="text-white/60 text-sm mb-4">
-          <span>Beantragt am: {{ formatDate(request.created_at) }}</span>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex gap-3">
-          <button
-            @click="handleApprove(request)"
-            class="kit-btn-success"
-          >
-            <Check :size="18" />
-            Genehmigen
-          </button>
-          <button
-            @click="showRejectForm(request)"
-            class="kit-btn-danger"
-          >
-            <X :size="18" />
-            Ablehnen
-          </button>
         </div>
       </div>
     </div>
 
     <!-- Reject Dialog -->
     <div
-      v-if="showRejectDialog"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      v-if="showRejectDialog && selectedRequest"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       @click.self="showRejectDialog = false"
     >
-      <div class="bg-slate-800 rounded-lg p-6 w-full max-w-md border border-white/20">
-        <h3 class="text-xl font-semibold text-white mb-4">Antrag ablehnen</h3>
-        <p class="text-white/60 mb-4">
-          Bitte geben Sie einen Grund für die Ablehnung an:
-        </p>
+      <div class="w-full max-w-md p-5 rounded-xl bg-slate-800 border border-white/10 shadow-2xl">
+        <div class="flex items-center gap-3 mb-4">
+          <img
+            :src="gravatarUrl(emp(selectedRequest)?.email, 36)"
+            class="w-9 h-9 rounded-lg border border-white/10 object-cover"
+          />
+          <div>
+            <div class="text-sm font-semibold text-white">{{ empName(selectedRequest) }}</div>
+            <div class="text-xs text-white/50">
+              {{ leaveTypeLabels[selectedRequest.leave_type] }} · {{ selectedRequest.total_days }} Tag(e)
+            </div>
+          </div>
+        </div>
+        <label class="text-xs text-white/60 mb-1.5 block">Ablehnungsgrund *</label>
         <textarea
           v-model="rejectionReason"
-          class="kit-input mb-4"
-          rows="4"
+          class="kit-input w-full resize-none mb-4"
+          rows="3"
           placeholder="Grund für die Ablehnung..."
           autofocus
-        ></textarea>
-        <div class="flex gap-3">
+        />
+        <div class="flex gap-2">
           <button
             @click="handleReject"
-            class="kit-btn-danger flex-1"
+            :disabled="submitting || !rejectionReason.trim()"
+            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg transition-colors disabled:opacity-50"
           >
-            Ablehnen
+            <X :size="14" />Ablehnen
           </button>
           <button
             @click="showRejectDialog = false"
-            class="kit-btn-ghost"
+            class="px-4 py-2 text-sm text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
           >
             Abbrechen
           </button>
         </div>
       </div>
     </div>
+
   </div>
 </template>
-
-<style scoped>
-.leave-approvals {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-</style>

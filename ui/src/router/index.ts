@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from "vue-router";
 import AppLayout from "@/layouts/AppLayout.vue";
 import CrmApp from "@/modules/crm/CrmApp.vue";
 import HRApp from "@/modules/hr/HRApp.vue";
+import SupportApp from "@/modules/support/SupportApp.vue";
+import KnowledgeApp from "@/modules/knowledge/KnowledgeApp.vue";
 import LoginPage from "@/pages/LoginPage.vue";
 import { useAuth } from "@/composables/useAuth";
 
@@ -47,12 +49,36 @@ const routes = [
         component: CrmApp,
       },
       {
+        path: "kb",
+        component: KnowledgeApp,
+        children: [
+          { path: "", redirect: "/app/kb/home" },
+          { path: "home", name: "kb-home", meta: { view: "home" } },
+          { path: "categories/:id", name: "kb-category", meta: { view: "category" } },
+          { path: "articles/:id", name: "kb-article", meta: { view: "article" } },
+        ],
+      },
+      {
+        path: "support",
+        component: SupportApp,
+        children: [
+          { path: "", redirect: "/app/support/tickets" },
+          { path: "tickets", name: "support-tickets", meta: { view: "tickets" } },
+          { path: "tickets/:id", name: "support-ticket-detail", meta: { view: "ticket-detail" } },
+        ],
+      },
+      {
         path: "hr",
         component: HRApp,
         children: [
           {
             path: "",
-            redirect: "/app/hr/dashboard",
+            redirect: "/app/hr/my-leave",
+          },
+          {
+            path: "my-leave",
+            name: "hr-my-leave",
+            meta: { view: "my-leave" },
           },
           {
             path: "dashboard",
@@ -67,7 +93,7 @@ const routes = [
           {
             path: "leave/requests/:id",
             name: "hr-leave-request-detail",
-            meta: { view: "leave", requestId: ':id' },
+            meta: { view: "leave-detail" },
           },
           {
             path: "leave/approvals",
@@ -77,17 +103,32 @@ const routes = [
           {
             path: "my-requests",
             name: "hr-my-requests",
-            meta: { view: "leave" },
+            meta: { view: "my-leave" },
           },
           {
             path: "my-requests/:id",
             name: "hr-my-request-detail",
-            meta: { view: "leave" },
+            meta: { view: "my-leave" },
           },
           {
             path: "employees",
             name: "hr-employees",
             meta: { view: "employees" },
+          },
+          {
+            path: "employees/:id",
+            name: "hr-employee-detail",
+            meta: { view: "employee-detail" },
+          },
+          {
+            path: "recruiting",
+            name: "hr-recruiting",
+            meta: { view: "recruiting" },
+          },
+          {
+            path: "recruiting/jobs/:id",
+            name: "hr-recruiting-applications",
+            meta: { view: "applications" },
           },
         ],
       }

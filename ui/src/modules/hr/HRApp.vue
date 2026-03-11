@@ -1,25 +1,29 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import HRDashboardPage from './pages/HRDashboardPage.vue';
 import LeaveManagementPage from './pages/LeaveManagementPage.vue';
 import LeaveApprovalsPage from './pages/LeaveApprovalsPage.vue';
 import EmployeeListPage from './pages/EmployeeListPage.vue';
+import MyLeavePage from './pages/MyLeavePage.vue';
+import EmployeeDetailPage from './pages/EmployeeDetailPage.vue';
+import LeaveDetailPage from './pages/LeaveDetailPage.vue';
+import RecruitingPage from './pages/RecruitingPage.vue';
+import ApplicationsPage from './pages/ApplicationsPage.vue';
 
 const route = useRoute();
 const router = useRouter();
 
-// Get current view from route meta
-const currentView = computed(() => {
-  return (route.meta.view as string) || 'dashboard';
-});
+const currentView = computed(() => (route.meta.view as string) || 'my-leave');
+const currentId = computed(() => route.params.id as string | undefined);
 
-// Navigation tabs
 const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/app/hr/dashboard' },
-  { id: 'leave', label: 'Urlaubsverwaltung', icon: '🌴', path: '/app/hr/leave/requests' },
-  { id: 'approvals', label: 'Genehmigungen', icon: '✅', path: '/app/hr/leave/approvals' },
-  { id: 'employees', label: 'Mitarbeiter', icon: '👥', path: '/app/hr/employees' },
+  { id: 'my-leave',   label: 'Mein Urlaub',      icon: '🏖️', path: '/app/hr/my-leave' },
+  { id: 'dashboard',  label: 'Dashboard',          icon: '📊', path: '/app/hr/dashboard' },
+  { id: 'leave',      label: 'Urlaubsverwaltung',  icon: '🌴', path: '/app/hr/leave/requests' },
+  { id: 'approvals',  label: 'Genehmigungen',      icon: '✅', path: '/app/hr/leave/approvals' },
+  { id: 'employees',  label: 'Mitarbeiter',         icon: '👥', path: '/app/hr/employees' },
+  { id: 'recruiting', label: 'Recruiting',          icon: '🎯', path: '/app/hr/recruiting' },
 ];
 
 function navigateTo(path: string) {
@@ -31,13 +35,13 @@ function navigateTo(path: string) {
   <div class="hr-app h-full flex flex-col">
     <!-- Navigation Tabs -->
     <div class="border-b border-white/10 bg-white/5">
-      <div class="flex gap-2 p-4">
+      <div class="flex gap-2 p-4 overflow-x-auto">
         <button
           v-for="tab in tabs"
           :key="tab.id"
           @click="navigateTo(tab.path)"
           :class="[
-            'px-4 py-2 rounded-lg transition-colors',
+            'px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex-shrink-0',
             currentView === tab.id
               ? 'bg-blue-500/20 text-blue-300 font-semibold'
               : 'text-white/60 hover:bg-white/10 hover:text-white'
@@ -51,10 +55,15 @@ function navigateTo(path: string) {
 
     <!-- Content Area -->
     <div class="flex-1 overflow-auto p-4">
+      <MyLeavePage v-if="currentView === 'my-leave'" />
       <HRDashboardPage v-if="currentView === 'dashboard'" />
       <LeaveManagementPage v-if="currentView === 'leave'" />
       <LeaveApprovalsPage v-if="currentView === 'approvals'" />
       <EmployeeListPage v-if="currentView === 'employees'" />
+      <EmployeeDetailPage v-if="currentView === 'employee-detail' && currentId" :employee-id="currentId" />
+      <LeaveDetailPage v-if="currentView === 'leave-detail' && currentId" :request-id="currentId" />
+      <RecruitingPage v-if="currentView === 'recruiting'" />
+      <ApplicationsPage v-if="currentView === 'applications' && currentId" :job-id="currentId" />
     </div>
   </div>
 </template>

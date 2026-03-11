@@ -7,6 +7,8 @@ import TimeTrackingApp from "@/modules/time-tracking/TimeTrackingApp.vue";
 import ExpensesApp from "@/modules/expenses/ExpensesApp.vue";
 import FinanceApp from "@/modules/finance/FinanceApp.vue";
 import HRApp from "@/modules/hr/HRApp.vue";
+import SupportApp from "@/modules/support/SupportApp.vue";
+import KnowledgeApp from "@/modules/knowledge/KnowledgeApp.vue";
 import AdminApp from "@/modules/admin/AdminApp.vue";
 
 export const apps = [
@@ -99,6 +101,32 @@ export const apps = [
     window: {
       width: 1100,
       height: 700
+    }
+  },
+  {
+    id: "support",
+    title: "Support",
+    icon: markRaw(icons.LifeBuoy),
+    component: markRaw(SupportApp),
+    requiredPermission: "support",
+    showInDock: true,
+    dockOrder: 8,
+    window: {
+      width: 1100,
+      height: 700
+    }
+  },
+  {
+    id: "kb",
+    title: "Wissensdatenbank",
+    icon: markRaw(icons.BookOpen),
+    component: markRaw(KnowledgeApp),
+    requiredPermission: "kb",
+    showInDock: true,
+    dockOrder: 9,
+    window: {
+      width: 900,
+      height: 680
     }
   },
   {
