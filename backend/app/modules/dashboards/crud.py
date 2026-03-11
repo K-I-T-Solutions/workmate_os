@@ -153,6 +153,16 @@ def get_or_create_user_settings(db: Session, owner_id: UUID) -> UserSettings:
     return settings
 
 
+def update_user_settings(db: Session, owner_id: UUID, data: dict) -> UserSettings:
+    settings = get_or_create_user_settings(db, owner_id)
+    for field, value in data.items():
+        if hasattr(settings, field):
+            setattr(settings, field, value)
+    db.commit()
+    db.refresh(settings)
+    return settings
+
+
 # ================================================================
 # LIVE DASHBOARD DATA
 # ================================================================

@@ -161,7 +161,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, markRaw } from 'vue';
-import { Users, Briefcase, Receipt, Wallet, TrendingUp, Euro, FileText, Phone, Mail } from 'lucide-vue-next';
+import { Users, Briefcase, Receipt, Wallet, TrendingUp, Euro, FileText, Phone, Mail, Activity } from 'lucide-vue-next';
 import { useAppManager } from '@/layouts/app-manager/useAppManager';
 import { apiClient } from '@/services/api/client';
 
@@ -297,8 +297,11 @@ function getActivityIcon(type: string) {
     call: Phone,
     email: Mail,
     note: FileText,
+    onsite: Phone,
+    remote: Phone,
+    system: Activity,
   };
-  return icons[type] || FileText;
+  return icons[type] || Activity;
 }
 </script>
 

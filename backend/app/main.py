@@ -21,7 +21,7 @@ from app.modules.system.router import router as system_router
 from app.modules.employees.routes import router as employee_router
 from app.modules.documents.routes import router as documents_router
 from app.modules.reminders.routes import router as reminders_router
-from app.modules.dashboards.routes import router as dashboards_router
+from app.modules.dashboards.routes import router as dashboards_router, user_settings_router
 from app.modules.backoffice.crm.routes import router as crm_router
 from app.modules.backoffice.projects.routes import router as projects_router
 from app.modules.backoffice.time_tracking.routes import router as time_tracking_router
@@ -122,6 +122,7 @@ app.include_router(employee_router, prefix="/api", tags=["Core"])
 app.include_router(documents_router, prefix="/api", tags=["Documents"])
 app.include_router(reminders_router, prefix="/api", tags=["Reminders"])
 app.include_router(dashboards_router, prefix="/api", tags=["Dashboards"])
+app.include_router(user_settings_router, prefix="/api", tags=["User Settings"])
 app.include_router(crm_router, prefix="/api", tags=["Backoffice CRM"])
 app.include_router(projects_router, prefix="/api", tags=["Backoffice Projects"])
 app.include_router(time_tracking_router, prefix="/api", tags=["Backoffice Time Tracking"])

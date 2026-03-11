@@ -105,3 +105,32 @@ def delete_dashboard(
     if not success:
         raise HTTPException(status_code=404, detail="Dashboard not found")
     return None
+
+
+# ================================================================
+# USER SETTINGS ROUTES
+# ================================================================
+
+user_settings_router = APIRouter(prefix="/users", tags=["User Settings"])
+
+
+@user_settings_router.get("/{user_id}/settings", response_model=schemas.UserSettingsResponse)
+def get_user_settings(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Gibt die persönlichen Einstellungen eines Users zurück."""
+    return crud.get_or_create_user_settings(db, user_id)
+
+
+@user_settings_router.put("/{user_id}/settings", response_model=schemas.UserSettingsResponse)
+def update_user_settings(
+    user_id: UUID,
+    settings_update: schemas.UserSettingsUpdate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Aktualisiert die persönlichen Einstellungen eines Users."""
+    data = settings_update.model_dump(exclude_unset=True)
+    return crud.update_user_settings(db, user_id, data)

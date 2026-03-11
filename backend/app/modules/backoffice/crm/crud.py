@@ -10,6 +10,7 @@ from uuid import UUID
 from typing import Optional
 
 from . import models, schemas
+from app.modules.backoffice.invoices.audit import log_audit
 
 
 # === Helper Functions ===
@@ -109,21 +110,13 @@ def get_customer(db: Session, customer_id: UUID) -> Optional[models.Customer]:
     ).first()
 
 
-def create_customer(db: Session, data: schemas.CustomerCreate) -> models.Customer:
-    """
-    Erstelle einen neuen Kunden mit automatisch generierter Kundennummer.
-
-    Args:
-        db: Database Session
-        data: Customer Creation Schema
-
-    Returns:
-        Erstellter Customer
-    """
-    # Generiere automatisch die nächste Kundennummer
+def create_customer(
+    db: Session,
+    data: schemas.CustomerCreate,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> models.Customer:
     customer_number = _generate_customer_number(db)
-
-    # Erstelle Customer mit generierter Nummer
     customer_data = data.model_dump()
     customer_data['customer_number'] = customer_number
 
@@ -131,53 +124,64 @@ def create_customer(db: Session, data: schemas.CustomerCreate) -> models.Custome
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
+
+    log_audit(db, "Customer", new_customer.id, "create",
+              new_values={"name": new_customer.name, "customer_number": new_customer.customer_number},
+              user_id=user_id, ip_address=ip_address)
+    db.commit()
     return new_customer
 
 
 def update_customer(
     db: Session,
     customer_id: UUID,
-    data: schemas.CustomerUpdate
+    data: schemas.CustomerUpdate,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> Optional[models.Customer]:
-    """
-    Aktualisiere einen Kunden.
-
-    Args:
-        db: Database Session
-        customer_id: Customer UUID
-        data: Customer Update Schema
-
-    Returns:
-        Aktualisierter Customer oder None
-    """
     customer = get_customer(db, customer_id)
     if customer is None:
         return None
 
-    for key, value in data.model_dump(exclude_unset=True).items():
+    old_values = {k: getattr(customer, k) for k in data.model_dump(exclude_unset=True)}
+    changes = data.model_dump(exclude_unset=True)
+
+    for key, value in changes.items():
         setattr(customer, key, value)
 
     db.commit()
     db.refresh(customer)
+
+    log_audit(db, "Customer", customer.id, "update",
+              old_values=old_values, new_values=changes,
+              user_id=user_id, ip_address=ip_address)
+    db.commit()
     return customer
 
 
-def delete_customer(db: Session, customer_id: UUID) -> bool:
-    """
-    Lösche einen Kunden.
-
-    Args:
-        db: Database Session
-        customer_id: Customer UUID
-
-    Returns:
-        True wenn erfolgreich, False wenn nicht gefunden
-    """
+def delete_customer(
+    db: Session,
+    customer_id: UUID,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> bool:
     customer = get_customer(db, customer_id)
     if customer is None:
         return False
 
+    snapshot = {"name": customer.name, "customer_number": customer.customer_number}
     db.delete(customer)
+    db.commit()
+
+    # Audit nach Delete (entity_id bleibt bekannt, Objekt ist weg)
+    from app.modules.backoffice.invoices.models import AuditLog
+    from datetime import datetime
+    audit_entry = AuditLog(
+        entity_type="Customer", entity_id=customer_id, action="delete",
+        old_values=snapshot, user_id=user_id, ip_address=ip_address,
+        timestamp=datetime.utcnow()
+    )
+    db.add(audit_entry)
     db.commit()
     return True
 
@@ -226,18 +230,12 @@ def get_contact(db: Session, contact_id: UUID) -> Optional[models.Contact]:
     ).first()
 
 
-def create_contact(db: Session, data: schemas.ContactCreate) -> models.Contact:
-    """
-    Erstelle einen neuen Kontakt.
-
-    Args:
-        db: Database Session
-        data: Contact Creation Schema
-
-    Returns:
-        Erstellter Contact
-    """
-    # Prüfe ob Customer existiert
+def create_contact(
+    db: Session,
+    data: schemas.ContactCreate,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> models.Contact:
     customer = get_customer(db, data.customer_id)
     if customer is None:
         raise ValueError(f"Customer with id {data.customer_id} not found")
@@ -246,59 +244,70 @@ def create_contact(db: Session, data: schemas.ContactCreate) -> models.Contact:
     db.add(new_contact)
     db.commit()
     db.refresh(new_contact)
+
+    log_audit(db, "Contact", new_contact.id, "create",
+              new_values={"name": f"{new_contact.first_name} {new_contact.last_name}".strip(),
+                          "customer_id": str(new_contact.customer_id)},
+              user_id=user_id, ip_address=ip_address)
+    db.commit()
     return new_contact
 
 
 def update_contact(
     db: Session,
     contact_id: UUID,
-    data: schemas.ContactUpdate
+    data: schemas.ContactUpdate,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
 ) -> Optional[models.Contact]:
-    """
-    Aktualisiere einen Kontakt.
-
-    Args:
-        db: Database Session
-        contact_id: Contact UUID
-        data: Contact Update Schema
-
-    Returns:
-        Aktualisierter Contact oder None
-    """
     contact = get_contact(db, contact_id)
     if contact is None:
         return None
 
-    # Wenn customer_id geändert wird, prüfe ob neuer Customer existiert
     if data.customer_id and data.customer_id != contact.customer_id:
         customer = get_customer(db, data.customer_id)
         if customer is None:
             raise ValueError(f"Customer with id {data.customer_id} not found")
 
-    for key, value in data.model_dump(exclude_unset=True).items():
+    old_values = {k: getattr(contact, k) for k in data.model_dump(exclude_unset=True)}
+    changes = data.model_dump(exclude_unset=True)
+
+    for key, value in changes.items():
         setattr(contact, key, value)
 
     db.commit()
     db.refresh(contact)
+
+    log_audit(db, "Contact", contact.id, "update",
+              old_values=old_values, new_values=changes,
+              user_id=user_id, ip_address=ip_address)
+    db.commit()
     return contact
 
 
-def delete_contact(db: Session, contact_id: UUID) -> bool:
-    """
-    Lösche einen Kontakt.
-
-    Args:
-        db: Database Session
-        contact_id: Contact UUID
-
-    Returns:
-        True wenn erfolgreich, False wenn nicht gefunden
-    """
+def delete_contact(
+    db: Session,
+    contact_id: UUID,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+) -> bool:
     contact = get_contact(db, contact_id)
     if contact is None:
         return False
 
+    snapshot = {"name": f"{contact.first_name} {contact.last_name}".strip(),
+                "customer_id": str(contact.customer_id)}
     db.delete(contact)
+    db.commit()
+
+    from app.modules.backoffice.invoices.models import AuditLog
+    from datetime import datetime
+    audit_entry = AuditLog(
+        entity_type="Contact", entity_id=contact_id, action="delete",
+        old_values=snapshot, user_id=user_id, ip_address=ip_address,
+        timestamp=datetime.utcnow()
+    )
+    db.add(audit_entry)
     db.commit()
     return True
 

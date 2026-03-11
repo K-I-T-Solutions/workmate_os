@@ -2,9 +2,39 @@
 Admin Schemas - Pydantic models for Admin APIs
 """
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
+
+
+# ============================================================================
+# Audit Log Response (Admin view, enriched with user info)
+# ============================================================================
+
+class AdminAuditLogResponse(BaseModel):
+    """Audit Log Response für Admin-Ansicht, angereichert mit User-Infos."""
+    id: UUID
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    timestamp: datetime
+    action: str
+    resource_type: str
+    resource_name: Optional[str] = None
+    details: Optional[str] = None
+    ip_address: Optional[str] = None
+    old_values: Optional[dict] = None
+    new_values: Optional[dict] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminAuditLogListResponse(BaseModel):
+    """Paginierte Liste von Audit Logs für die Admin-Ansicht."""
+    items: List[AdminAuditLogResponse]
+    total: int
+    skip: int
+    limit: int
 
 
 class SystemSettingsResponse(BaseModel):
