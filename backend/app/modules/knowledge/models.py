@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
-from sqlalchemy import String, Text, DateTime, Integer, Boolean, Index, JSON
+from sqlalchemy import String, Text, DateTime, Integer, Boolean, Index, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -38,7 +38,7 @@ class KBArticle(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=generate_uuid)
     category_id: Mapped[Optional[UUID]] = mapped_column(
-        String(36), nullable=True
+        ForeignKey("kb_categories.id", ondelete="SET NULL"), nullable=True
     )
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     slug: Mapped[str] = mapped_column(String(300), nullable=False)
