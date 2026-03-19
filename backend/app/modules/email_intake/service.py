@@ -168,14 +168,13 @@ def ingest_email(
     email = str(payload.from_email)
     body_clean = _prepare_body(payload.body) if payload.body else ""
 
+    reply_subject = (payload.subject or '').replace('"', '&quot;')
     description = (
         f"📧 E-Mail-Eingang via {payload.mailbox}@kit-it-koblenz.de\n"
         f"{'─' * 40}\n\n"
         f"👤 Kontakt\n"
-        f"  Name:   {name}\n"
-        f"  E-Mail: {email}\n\n"
-        f"📞 Schnellaktionen\n"
-        f"  mailto:{email}?subject=Re: {payload.subject or ''}\n\n"
+        f"  Name:    {name}\n"
+        f'  E-Mail:  <a href="mailto:{email}?subject=Re: {reply_subject}">{email}</a>\n\n'
         f"{'─' * 40}\n\n"
         f"💬 Nachricht\n\n"
         f"{body_clean}"
