@@ -21,6 +21,8 @@ from sqlalchemy.orm import Session
 
 from app.modules.email_intake.models import ApiKey, EmailContact, EmailTicket
 from app.modules.email_intake.schemas import EmailIngestRequest, EmailIngestResponse
+from app.modules.support.crud import create_ticket as create_support_ticket
+from app.modules.support.schemas import TicketCreate
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +162,24 @@ def ingest_email(
     ticket = create_email_ticket(db, payload, contact)
     db.commit()
     db.refresh(ticket)
+
+    # Zusätzlich im sichtbaren Support-Ticketsystem anlegen
+    description = (
+        f"Von: {payload.from_name or ''} <{payload.from_email}>\n"
+        f"Postfach: {payload.mailbox}\n"
+        f"{'─' * 40}\n"
+        f"{_prepare_body(payload.body) if payload.body else ''}"
+    )
+    create_support_ticket(
+        db,
+        TicketCreate(
+            title=payload.subject or "(kein Betreff)",
+            description=description,
+            category=MAILBOX_TO_TYPE.get(payload.mailbox, payload.mailbox),
+            priority="medium",
+        ),
+        reporter_id=f"email:{payload.from_email}",
+    )
 
     return EmailIngestResponse(
         ticket_id=ticket.id,
