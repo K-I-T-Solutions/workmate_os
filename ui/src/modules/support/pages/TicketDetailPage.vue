@@ -16,11 +16,9 @@ const submittingComment = ref(false);
 
 const descriptionHtml = computed(() => {
   if (!ticket.value?.description) return '';
-  const escaped = ticket.value.description
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return escaped
-    .replace(/(mailto:[^\s]+)/g, '<a href="$1" class="text-indigo-400 hover:text-indigo-300 underline">$1</a>')
-    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300 underline">$1</a>')
+  // Backend liefert bereits <a href="mailto:..."> – nur https-Links und Zeilenumbrüche ergänzen
+  return ticket.value.description
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300 underline">$1</a>')
     .replace(/\n/g, '<br>');
 });
 
