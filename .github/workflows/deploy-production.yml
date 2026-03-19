@@ -72,6 +72,12 @@ jobs:
             "KEYCLOAK_REALM=${{ secrets.KEYCLOAK_REALM }}" \
             "KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }}" \
             "KEYCLOAK_CLIENT_SECRET=${{ secrets.KEYCLOAK_CLIENT_SECRET }}" \
+            "SMTP_HOST=${{ secrets.SMTP_HOST }}" \
+            "SMTP_PORT=587" \
+            "SMTP_USER=${{ secrets.SMTP_USER }}" \
+            "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" \
+            "SMTP_FROM=support@kit-it-koblenz.de" \
+            "SMTP_FROM_NAME=K.I.T. Solutions Support" \
             > .env.prod
           scp .env.prod joshua@77.42.17.200:/srv/workmate/env/.env.prod
           rm .env.prod
