@@ -152,6 +152,36 @@ def get_contact_by_email(
 
 
 # ---------------------------------------------------------------------------
+# POST /tickets/{ticket_id}/reply – Antwort an Kunden senden
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/tickets/{ticket_id}/reply",
+    status_code=status.HTTP_200_OK,
+    summary="Antwort an Kunden senden",
+)
+@require_permissions(["support.view", "support.*", "*"])
+def reply_to_ticket(
+    ticket_id: int,
+    body: str = Query(..., description="Antworttext"),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    ticket = db.query(EmailTicket).filter(EmailTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+
+    service.send_reply_email(
+        to_email=ticket.from_email,
+        to_name=ticket.from_name or "",
+        subject=ticket.subject or "",
+        body=body,
+        agent_name=user.get("name", user.get("email", "Support")),
+    )
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # POST /admin/keys – API-Key anlegen (nur für Admins mit JWT-Auth)
 # ---------------------------------------------------------------------------
 

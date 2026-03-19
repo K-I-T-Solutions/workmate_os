@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     # PSD2/Banking Configuration
     PSD2_ENVIRONMENT: str = os.getenv("PSD2_ENVIRONMENT", "sandbox")  # "sandbox" or "production"
 
+    # SMTP (Ausgehende E-Mails)
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "mail.kit-it-koblenz.de")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "support@kit-it-koblenz.de")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "support@kit-it-koblenz.de")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "K.I.T. Solutions Support")
+
     model_config = SettingsConfigDict(
         env_file=".env",  # In Docker: /app/.env
         env_file_encoding="utf-8",
