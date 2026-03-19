@@ -164,11 +164,21 @@ def ingest_email(
     db.refresh(ticket)
 
     # Zusätzlich im sichtbaren Support-Ticketsystem anlegen
+    name = payload.from_name or "Unbekannt"
+    email = str(payload.from_email)
+    body_clean = _prepare_body(payload.body) if payload.body else ""
+
     description = (
-        f"Von: {payload.from_name or ''} <{payload.from_email}>\n"
-        f"Postfach: {payload.mailbox}\n"
-        f"{'─' * 40}\n"
-        f"{_prepare_body(payload.body) if payload.body else ''}"
+        f"📧 E-Mail-Eingang via {payload.mailbox}@kit-it-koblenz.de\n"
+        f"{'─' * 40}\n\n"
+        f"👤 Kontakt\n"
+        f"  Name:   {name}\n"
+        f"  E-Mail: {email}\n\n"
+        f"📞 Schnellaktionen\n"
+        f"  mailto:{email}?subject=Re: {payload.subject or ''}\n\n"
+        f"{'─' * 40}\n\n"
+        f"💬 Nachricht\n\n"
+        f"{body_clean}"
     )
     create_support_ticket(
         db,
