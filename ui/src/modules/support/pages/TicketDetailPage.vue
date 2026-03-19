@@ -14,6 +14,25 @@ const newComment = ref('');
 const isInternal = ref(false);
 const submittingComment = ref(false);
 
+// Reply Modal
+const showReplyModal = ref(false);
+const replyBody = ref('');
+const sendingReply = ref(false);
+
+async function sendReply() {
+  if (!replyBody.value.trim()) return;
+  sendingReply.value = true;
+  try {
+    await apiClient.post(`/api/v1/email/tickets/${props.ticketId}/reply?body=${encodeURIComponent(replyBody.value)}`);
+    showReplyModal.value = false;
+    replyBody.value = '';
+  } catch (e) {
+    console.error('Reply fehlgeschlagen', e);
+  } finally {
+    sendingReply.value = false;
+  }
+}
+
 const descriptionHtml = computed(() => {
   if (!ticket.value?.description) return '';
   // Backend liefert bereits <a href="mailto:..."> – nur https-Links und Zeilenumbrüche ergänzen
@@ -162,6 +181,46 @@ function formatDate(d: string) {
           <div v-if="ticket.description" class="p-4 rounded-xl bg-white/5 border border-white/10">
             <div class="text-xs text-white/50 uppercase tracking-wide mb-2">Beschreibung</div>
             <p class="text-sm text-white/80 leading-relaxed" v-html="descriptionHtml"></p>
+          </div>
+
+          <!-- Reply Button -->
+          <div class="flex justify-end">
+            <button
+              @click="showReplyModal = true"
+              class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Send :size="14" />
+              Kunde antworten
+            </button>
+          </div>
+
+          <!-- Reply Modal -->
+          <div v-if="showReplyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div class="w-full max-w-lg bg-[#1a2035] border border-white/10 rounded-2xl shadow-2xl p-6 mx-4">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold text-white">Antwort an Kunden</h3>
+                <button @click="showReplyModal = false" class="text-white/40 hover:text-white/80 text-xl leading-none">&times;</button>
+              </div>
+              <div class="text-xs text-white/40 mb-1">An: {{ ticket.description?.match(/href="mailto:([^"?]+)/)?.[1] ?? '–' }}</div>
+              <div class="text-xs text-white/40 mb-4">Betreff: Re: {{ ticket.title }}</div>
+              <textarea
+                v-model="replyBody"
+                rows="6"
+                placeholder="Antworttext eingeben..."
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
+              ></textarea>
+              <div class="flex justify-end gap-3 mt-4">
+                <button @click="showReplyModal = false" class="px-4 py-2 text-sm text-white/60 hover:text-white">Abbrechen</button>
+                <button
+                  @click="sendReply"
+                  :disabled="sendingReply || !replyBody.trim()"
+                  class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <Send :size="14" />
+                  {{ sendingReply ? 'Wird gesendet...' : 'Absenden' }}
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Comments -->

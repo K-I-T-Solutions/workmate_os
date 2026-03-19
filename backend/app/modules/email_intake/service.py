@@ -16,9 +16,14 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
+from app.core.settings.config import settings
 from app.modules.email_intake.models import ApiKey, EmailContact, EmailTicket
 from app.modules.email_intake.schemas import EmailIngestRequest, EmailIngestResponse
 from app.modules.support.crud import create_ticket as create_support_ticket
@@ -140,6 +145,131 @@ def create_email_ticket(
 
 
 # ---------------------------------------------------------------------------
+# Ausgehende E-Mails
+# ---------------------------------------------------------------------------
+
+def send_confirmation_email(
+    to_email: str,
+    to_name: str,
+    ticket_number: str,
+    subject: str,
+) -> None:
+    """Sendet eine Bestätigungsmail an den Kunden nach Ticket-Erstellung."""
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Ihre Anfrage wurde erhalten – {ticket_number}"
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM}>"
+        msg["To"] = to_email
+        msg["References"] = f"<{ticket_number}@kit-it-koblenz.de>"
+
+        text_body = f"""Hallo {to_name},
+
+vielen Dank fuer Ihre Nachricht. Wir haben Ihre Anfrage erhalten und bearbeiten sie so schnell wie moeglich.
+
+Ihre Ticketnummer: {ticket_number}
+Betreff: {subject}
+
+Bitte verwenden Sie bei weiteren Rueckfragen Ihre Ticketnummer als Referenz.
+
+Mit freundlichen Gruessen
+K.I.T. Solutions Support-Team
+support@kit-it-koblenz.de
+"""
+
+        html_body = f"""<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background: #4f46e5; padding: 24px 32px;">
+      <h1 style="color: #fff; margin: 0; font-size: 20px;">K.I.T. Solutions</h1>
+      <p style="color: #c7d2fe; margin: 4px 0 0; font-size: 14px;">Support-Team</p>
+    </div>
+    <div style="padding: 32px;">
+      <p style="color: #374151; font-size: 16px;">Hallo {to_name},</p>
+      <p style="color: #6b7280;">vielen Dank fuer Ihre Nachricht. Wir haben Ihre Anfrage erhalten und bearbeiten sie so schnell wie moeglich.</p>
+
+      <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
+        <p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Ihre Ticketnummer</p>
+        <p style="margin: 0; font-size: 24px; font-weight: 700; color: #4f46e5; letter-spacing: 0.05em;">{ticket_number}</p>
+        <p style="margin: 8px 0 0; color: #374151; font-size: 14px;">{subject}</p>
+      </div>
+
+      <p style="color: #6b7280; font-size: 14px;">Bitte verwenden Sie bei weiteren Rueckfragen Ihre Ticketnummer als Referenz.</p>
+
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+      <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+        K.I.T. Solutions &bull; <a href="mailto:support@kit-it-koblenz.de" style="color: #4f46e5;">support@kit-it-koblenz.de</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as smtp:
+            smtp.starttls()
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            smtp.sendmail(settings.SMTP_FROM, [to_email], msg.as_string())
+
+        logger.info("Bestätigungsmail gesendet an %s (Ticket: %s)", to_email, ticket_number)
+    except Exception as exc:
+        logger.error("Bestätigungsmail fehlgeschlagen: %s", exc)
+
+
+def send_reply_email(
+    to_email: str,
+    to_name: str,
+    subject: str,
+    body: str,
+    agent_name: str = "Support",
+) -> None:
+    """Sendet eine Antwort-Mail an den Kunden."""
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Re: {subject}" if not subject.startswith("Re:") else subject
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM}>"
+        msg["To"] = to_email
+
+        html_body = f"""<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background: #4f46e5; padding: 24px 32px;">
+      <h1 style="color: #fff; margin: 0; font-size: 20px;">K.I.T. Solutions</h1>
+      <p style="color: #c7d2fe; margin: 4px 0 0; font-size: 14px;">Support-Team</p>
+    </div>
+    <div style="padding: 32px;">
+      <p style="color: #374151; font-size: 16px;">Hallo {to_name or ""},</p>
+      <div style="color: #374151; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">{body}</div>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+      <p style="color: #6b7280; font-size: 13px; margin: 0;">
+        {agent_name} &bull; K.I.T. Solutions Support<br>
+        <a href="mailto:support@kit-it-koblenz.de" style="color: #4f46e5;">support@kit-it-koblenz.de</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as smtp:
+            smtp.starttls()
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            smtp.sendmail(settings.SMTP_FROM, [to_email], msg.as_string())
+
+        logger.info("Antwort-Mail gesendet an %s", to_email)
+    except Exception as exc:
+        logger.error("Antwort-Mail fehlgeschlagen: %s", exc)
+        raise
+
+
+# ---------------------------------------------------------------------------
 # Ingest-Orchestrierung
 # ---------------------------------------------------------------------------
 
@@ -179,7 +309,7 @@ def ingest_email(
         f"💬 Nachricht\n\n"
         f"{body_clean}"
     )
-    create_support_ticket(
+    support_ticket = create_support_ticket(
         db,
         TicketCreate(
             title=payload.subject or "(kein Betreff)",
@@ -189,6 +319,22 @@ def ingest_email(
         ),
         reporter_id=f"email:{payload.from_email}",
     )
+
+    # Ticketnummer in Beschreibung nachträglich ergänzen
+    support_ticket.description = (
+        f"🎫 Ticket: {support_ticket.ticket_number}\n"
+        + support_ticket.description
+    )
+    db.commit()
+
+    # Bestätigungsmail an Kunden
+    if support_ticket:
+        send_confirmation_email(
+            to_email=email,
+            to_name=name,
+            ticket_number=support_ticket.ticket_number,
+            subject=payload.subject or "(kein Betreff)",
+        )
 
     return EmailIngestResponse(
         ticket_id=ticket.id,
