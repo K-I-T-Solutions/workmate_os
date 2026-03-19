@@ -10,8 +10,6 @@ POST /api/v1/email/admin/keys        – API-Key anlegen (nur Admin)
 from __future__ import annotations
 
 import logging
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -74,8 +72,8 @@ def ingest_email(
 )
 @require_permissions(["support.view", "support.*", "*"])
 def list_tickets(
-    mailbox: Optional[str] = Query(None, description="support | kontakt | info"),
-    status_filter: Optional[str] = Query(None, alias="status", description="open | in_progress | closed"),
+    mailbox: str | None = Query(None, description="support | kontakt | info"),
+    status_filter: str | None = Query(None, alias="status", description="open | in_progress | closed"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
