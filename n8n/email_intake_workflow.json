@@ -84,8 +84,8 @@
           "assignments": [
             { "id": "f1", "name": "subject",     "value": "={{ $json.subject || '(kein Betreff)' }}", "type": "string" },
             { "id": "f2", "name": "body",         "value": "={{ $json.text || $json.html || '' }}",    "type": "string" },
-            { "id": "f3", "name": "from_email",   "value": "={{ $json.from.value[0].address }}",       "type": "string" },
-            { "id": "f4", "name": "from_name",    "value": "={{ $json.from.value[0].name || '' }}",    "type": "string" },
+            { "id": "f3", "name": "from_email",   "value": "={{ ($json.from?.value?.[0]?.address) ?? ($json.from?.match(/<(.+?)>/)?.[1]) ?? $json.from ?? '' }}", "type": "string" },
+            { "id": "f4", "name": "from_name",    "value": "={{ ($json.from?.value?.[0]?.name) ?? ($json.from?.split('<')?.[0]?.trim()) ?? '' }}",                                                  "type": "string" },
             { "id": "f5", "name": "mailbox",      "value": "support",                                  "type": "string" },
             { "id": "f6", "name": "received_at",  "value": "={{ $json.date }}",                        "type": "string" }
           ]
@@ -106,8 +106,8 @@
           "assignments": [
             { "id": "f1", "name": "subject",     "value": "={{ $json.subject || '(kein Betreff)' }}", "type": "string" },
             { "id": "f2", "name": "body",         "value": "={{ $json.text || $json.html || '' }}",    "type": "string" },
-            { "id": "f3", "name": "from_email",   "value": "={{ $json.from.value[0].address }}",       "type": "string" },
-            { "id": "f4", "name": "from_name",    "value": "={{ $json.from.value[0].name || '' }}",    "type": "string" },
+            { "id": "f3", "name": "from_email",   "value": "={{ ($json.from?.value?.[0]?.address) ?? ($json.from?.match(/<(.+?)>/)?.[1]) ?? $json.from ?? '' }}", "type": "string" },
+            { "id": "f4", "name": "from_name",    "value": "={{ ($json.from?.value?.[0]?.name) ?? ($json.from?.split('<')?.[0]?.trim()) ?? '' }}",                                                  "type": "string" },
             { "id": "f5", "name": "mailbox",      "value": "kontakt",                                  "type": "string" },
             { "id": "f6", "name": "received_at",  "value": "={{ $json.date }}",                        "type": "string" }
           ]
@@ -128,8 +128,8 @@
           "assignments": [
             { "id": "f1", "name": "subject",     "value": "={{ $json.subject || '(kein Betreff)' }}", "type": "string" },
             { "id": "f2", "name": "body",         "value": "={{ $json.text || $json.html || '' }}",    "type": "string" },
-            { "id": "f3", "name": "from_email",   "value": "={{ $json.from.value[0].address }}",       "type": "string" },
-            { "id": "f4", "name": "from_name",    "value": "={{ $json.from.value[0].name || '' }}",    "type": "string" },
+            { "id": "f3", "name": "from_email",   "value": "={{ ($json.from?.value?.[0]?.address) ?? ($json.from?.match(/<(.+?)>/)?.[1]) ?? $json.from ?? '' }}", "type": "string" },
+            { "id": "f4", "name": "from_name",    "value": "={{ ($json.from?.value?.[0]?.name) ?? ($json.from?.split('<')?.[0]?.trim()) ?? '' }}",                                                  "type": "string" },
             { "id": "f5", "name": "mailbox",      "value": "info",                                     "type": "string" },
             { "id": "f6", "name": "received_at",  "value": "={{ $json.date }}",                        "type": "string" }
           ]
@@ -151,18 +151,21 @@
       },
       "parameters": {
         "method": "POST",
-        "url": "https://workmate.kit-it-koblenz.de/api/v1/email/ingest",
+        "url": "https://api.workmate.kit-it-koblenz.de/api/v1/email/ingest",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "json",
-        "body": {
-          "subject":     "={{ $json.subject }}",
-          "body":        "={{ $json.body }}",
-          "from_email":  "={{ $json.from_email }}",
-          "from_name":   "={{ $json.from_name }}",
-          "mailbox":     "={{ $json.mailbox }}",
-          "received_at": "={{ $json.received_at }}"
+        "specifyBody": "keypairs",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "subject",     "value": "={{ $json.subject }}" },
+            { "name": "body",        "value": "={{ $json.body }}" },
+            { "name": "from_email",  "value": "={{ $json.from_email }}" },
+            { "name": "from_name",   "value": "={{ $json.from_name }}" },
+            { "name": "mailbox",     "value": "={{ $json.mailbox }}" },
+            { "name": "received_at", "value": "={{ $json.received_at }}" }
+          ]
         },
         "options": {
           "response": {
