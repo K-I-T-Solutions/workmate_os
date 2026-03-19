@@ -178,30 +178,49 @@ support@kit-it-koblenz.de
 
         html_body = f"""<!DOCTYPE html>
 <html lang="de">
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <div style="background: #4f46e5; padding: 24px 32px;">
-      <h1 style="color: #fff; margin: 0; font-size: 20px;">K.I.T. Solutions</h1>
-      <p style="color: #c7d2fe; margin: 4px 0 0; font-size: 14px;">Support-Team</p>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background: #0a0f1e; font-family: 'Segoe UI', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px 16px;">
+    <!-- Gradient top bar -->
+    <div style="height: 4px; background: linear-gradient(90deg, #FF6B35 0%, #3B82F6 50%, #06B6D4 100%); border-radius: 4px 4px 0 0;"></div>
+    <!-- Header -->
+    <div style="background: #0F1629; padding: 28px 32px 24px; border-left: 1px solid #1E2D4A; border-right: 1px solid #1E2D4A;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%;">
+        <tr>
+          <td>
+            <span style="font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">K.I.T.</span>
+            <span style="font-size: 22px; font-weight: 300; color: #FF6B35;"> Solutions</span>
+            <p style="margin: 4px 0 0; color: #64748b; font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase;">Support-Team</p>
+          </td>
+          <td style="text-align: right;">
+            <div style="width: 3px; height: 40px; background: linear-gradient(180deg, #FF6B35, #3B82F6); display: inline-block; border-radius: 2px;"></div>
+          </td>
+        </tr>
+      </table>
     </div>
-    <div style="padding: 32px;">
-      <p style="color: #374151; font-size: 16px;">Hallo {to_name},</p>
-      <p style="color: #6b7280;">vielen Dank fuer Ihre Nachricht. Wir haben Ihre Anfrage erhalten und bearbeiten sie so schnell wie moeglich.</p>
+    <!-- Content -->
+    <div style="background: #1E2D4A; padding: 32px; border-left: 1px solid #263a5a; border-right: 1px solid #263a5a;">
+      <p style="color: #e2e8f0; font-size: 16px; margin: 0 0 12px;">Hallo {to_name},</p>
+      <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">vielen Dank fuer Ihre Nachricht. Wir haben Ihre Anfrage erhalten und bearbeiten sie so schnell wie moeglich.</p>
 
-      <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
-        <p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Ihre Ticketnummer</p>
-        <p style="margin: 0; font-size: 24px; font-weight: 700; color: #4f46e5; letter-spacing: 0.05em;">{ticket_number}</p>
-        <p style="margin: 8px 0 0; color: #374151; font-size: 14px;">{subject}</p>
+      <!-- Ticket card -->
+      <div style="background: #0F1629; border: 1px solid #263a5a; border-left: 4px solid #FF6B35; border-radius: 8px; padding: 20px 24px; margin: 0 0 24px;">
+        <p style="margin: 0 0 6px; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em;">Ihre Ticketnummer</p>
+        <p style="margin: 0 0 8px; font-size: 26px; font-weight: 700; color: #FF6B35; letter-spacing: 0.08em; font-family: 'Courier New', monospace;">{ticket_number}</p>
+        <p style="margin: 0; color: #94a3b8; font-size: 14px; border-top: 1px solid #1E2D4A; padding-top: 10px;">{subject}</p>
       </div>
 
-      <p style="color: #6b7280; font-size: 14px;">Bitte verwenden Sie bei weiteren Rueckfragen Ihre Ticketnummer als Referenz.</p>
-
-      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-      <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-        K.I.T. Solutions &bull; <a href="mailto:support@kit-it-koblenz.de" style="color: #4f46e5;">support@kit-it-koblenz.de</a>
+      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0;">Bitte verwenden Sie bei weiteren Rueckfragen Ihre Ticketnummer als Referenz.</p>
+    </div>
+    <!-- Footer -->
+    <div style="background: #0F1629; padding: 20px 32px; border: 1px solid #1E2D4A; border-top: none; border-radius: 0 0 4px 4px;">
+      <p style="margin: 0; color: #475569; font-size: 12px; line-height: 1.6;">
+        <span style="color: #FF6B35; font-weight: 600;">K.I.T. Solutions</span> &bull;
+        <a href="mailto:support@kit-it-koblenz.de" style="color: #3B82F6; text-decoration: none;">support@kit-it-koblenz.de</a>
       </p>
     </div>
+    <!-- Bottom gradient line -->
+    <div style="height: 2px; background: linear-gradient(90deg, #06B6D4 0%, #3B82F6 50%, #FF6B35 100%); border-radius: 0 0 4px 4px;"></div>
   </div>
 </body>
 </html>"""
@@ -235,22 +254,41 @@ def send_reply_email(
 
         html_body = f"""<!DOCTYPE html>
 <html lang="de">
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <div style="background: #4f46e5; padding: 24px 32px;">
-      <h1 style="color: #fff; margin: 0; font-size: 20px;">K.I.T. Solutions</h1>
-      <p style="color: #c7d2fe; margin: 4px 0 0; font-size: 14px;">Support-Team</p>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background: #0a0f1e; font-family: 'Segoe UI', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px 16px;">
+    <!-- Gradient top bar -->
+    <div style="height: 4px; background: linear-gradient(90deg, #FF6B35 0%, #3B82F6 50%, #06B6D4 100%); border-radius: 4px 4px 0 0;"></div>
+    <!-- Header -->
+    <div style="background: #0F1629; padding: 28px 32px 24px; border-left: 1px solid #1E2D4A; border-right: 1px solid #1E2D4A;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%;">
+        <tr>
+          <td>
+            <span style="font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">K.I.T.</span>
+            <span style="font-size: 22px; font-weight: 300; color: #FF6B35;"> Solutions</span>
+            <p style="margin: 4px 0 0; color: #64748b; font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase;">Support-Team</p>
+          </td>
+          <td style="text-align: right;">
+            <div style="width: 3px; height: 40px; background: linear-gradient(180deg, #FF6B35, #3B82F6); display: inline-block; border-radius: 2px;"></div>
+          </td>
+        </tr>
+      </table>
     </div>
-    <div style="padding: 32px;">
-      <p style="color: #374151; font-size: 16px;">Hallo {to_name or ""},</p>
-      <div style="color: #374151; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">{body}</div>
-      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-      <p style="color: #6b7280; font-size: 13px; margin: 0;">
-        {agent_name} &bull; K.I.T. Solutions Support<br>
-        <a href="mailto:support@kit-it-koblenz.de" style="color: #4f46e5;">support@kit-it-koblenz.de</a>
+    <!-- Content -->
+    <div style="background: #1E2D4A; padding: 32px; border-left: 1px solid #263a5a; border-right: 1px solid #263a5a;">
+      <p style="color: #e2e8f0; font-size: 16px; margin: 0 0 20px;">Hallo {to_name or ""},</p>
+      <div style="color: #cbd5e1; font-size: 15px; line-height: 1.8; white-space: pre-wrap; background: #0F1629; border: 1px solid #263a5a; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 20px 24px; margin: 0 0 24px;">{body}</div>
+    </div>
+    <!-- Agent footer -->
+    <div style="background: #0F1629; padding: 20px 32px; border: 1px solid #1E2D4A; border-top: none; border-radius: 0 0 4px 4px;">
+      <p style="margin: 0; color: #475569; font-size: 12px; line-height: 1.8;">
+        <span style="color: #e2e8f0; font-weight: 600;">{agent_name}</span><br>
+        <span style="color: #FF6B35; font-weight: 600;">K.I.T. Solutions</span> Support &bull;
+        <a href="mailto:support@kit-it-koblenz.de" style="color: #3B82F6; text-decoration: none;">support@kit-it-koblenz.de</a>
       </p>
     </div>
+    <!-- Bottom gradient line -->
+    <div style="height: 2px; background: linear-gradient(90deg, #06B6D4 0%, #3B82F6 50%, #FF6B35 100%); border-radius: 0 0 4px 4px;"></div>
   </div>
 </body>
 </html>"""
