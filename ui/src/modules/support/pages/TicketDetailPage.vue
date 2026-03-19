@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ChevronLeft, Send, Lock, Unlock, Trash2, User, Tag, Clock, MessageSquare } from 'lucide-vue-next';
 import md5 from 'md5';
@@ -13,6 +13,16 @@ const ticket = ref<any>(null);
 const newComment = ref('');
 const isInternal = ref(false);
 const submittingComment = ref(false);
+
+const descriptionHtml = computed(() => {
+  if (!ticket.value?.description) return '';
+  const escaped = ticket.value.description
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escaped
+    .replace(/(mailto:[^\s]+)/g, '<a href="$1" class="text-indigo-400 hover:text-indigo-300 underline">$1</a>')
+    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300 underline">$1</a>')
+    .replace(/\n/g, '<br>');
+});
 
 const statusConfig: Record<string, { label: string; class: string }> = {
   open:        { label: 'Offen',           class: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
@@ -153,7 +163,7 @@ function formatDate(d: string) {
         <div class="sm:col-span-2 space-y-4">
           <div v-if="ticket.description" class="p-4 rounded-xl bg-white/5 border border-white/10">
             <div class="text-xs text-white/50 uppercase tracking-wide mb-2">Beschreibung</div>
-            <p class="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">{{ ticket.description }}</p>
+            <p class="text-sm text-white/80 leading-relaxed" v-html="descriptionHtml"></p>
           </div>
 
           <!-- Comments -->
