@@ -21,7 +21,9 @@ import {
   Clock,
   FileText,
   X,
-  Upload
+  Upload,
+  Mail,
+  Send,
 } from 'lucide-vue-next';
 
 // Props
@@ -72,6 +74,9 @@ const sevdeskSyncSuccess = ref<string | null>(null);
 const sevdeskSyncError = ref<string | null>(null);
 const stripePaymentSuccess = ref<string | null>(null);
 const stripePaymentError = ref<string | null>(null);
+const sendLoading = ref(false);
+const sendSuccess = ref<string | null>(null);
+const sendError = ref<string | null>(null);
 
 // Payment Form State
 const paymentForm = ref<PaymentCreateRequest>({
@@ -246,6 +251,27 @@ function formatDate(dateString: string | null): string {
   return new Date(dateString).toLocaleDateString('de-DE');
 }
 
+// Send by Email
+async function handleSendByEmail() {
+  if (!invoice.value) return;
+
+  sendLoading.value = true;
+  sendSuccess.value = null;
+  sendError.value = null;
+
+  try {
+    const result = await apiClient.post(`/api/backoffice/invoices/${invoice.value.id}/send`, {});
+    sendSuccess.value = `Rechnung ${result.data.invoice_number} an ${result.data.sent_to} gesendet.`;
+    await loadInvoice(props.invoiceId);
+    setTimeout(() => { sendSuccess.value = null; }, 6000);
+  } catch (err: any) {
+    sendError.value = err.response?.data?.detail || 'Fehler beim Versenden der Rechnung';
+    setTimeout(() => { sendError.value = null; }, 8000);
+  } finally {
+    sendLoading.value = false;
+  }
+}
+
 // Payment Functions
 function openPaymentModal() {
   if (!invoice.value) return;
@@ -346,6 +372,15 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
 
 <template>
   <div class="h-full flex flex-col gap-4 p-4">
+    <!-- Mail-Versand Feedback -->
+    <div v-if="sendSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30 flex items-center gap-2">
+      <Mail :size="16" />
+      {{ sendSuccess }}
+    </div>
+    <div v-if="sendError" class="p-4 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30">
+      {{ sendError }}
+    </div>
+
     <!-- SevDesk Sync Messages -->
     <div v-if="sevdeskSyncSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30">
       {{ sevdeskSyncSuccess }}
@@ -389,14 +424,24 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
           <ExternalLink :size="18" />
         </button>
         <button
+          v-if="invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue'"
+          @click="handleSendByEmail"
+          :disabled="sendLoading"
+          class="kit-btn-primary"
+          title="Rechnung per E-Mail senden"
+        >
+          <Send :size="18" />
+          {{ sendLoading ? 'Sende...' : 'Per Mail senden' }}
+        </button>
+        <button
           v-if="invoice.status === 'draft'"
           @click="handleStatusChange('sent')"
           :disabled="statusLoading"
-          class="kit-btn-primary"
-          title="Rechnung als versendet markieren"
+          class="kit-btn-ghost"
+          title="Rechnung als versendet markieren (ohne Mail)"
         >
           <CheckCircle :size="18" />
-          {{ statusLoading ? 'Sende...' : 'Als versendet markieren' }}
+          Als versendet markieren
         </button>
         <button
           v-if="isSevDeskConfigured"
