@@ -930,6 +930,61 @@ def send_invoice_by_email(
 
 
 # ============================================================================
+# DATEV EXPORT
+# ============================================================================
+
+@router.get("/datev-export")
+@require_permissions(["backoffice.invoices.export", "backoffice.*"])
+def export_datev(
+    from_date: Optional[date] = Query(None, description="Rechnungsdatum ab (YYYY-MM-DD)"),
+    to_date: Optional[date] = Query(None, description="Rechnungsdatum bis (YYYY-MM-DD)"),
+    only_paid: bool = Query(False, description="Nur bezahlte Rechnungen exportieren"),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    """
+    DATEV EXTF Buchungsstapel Export.
+
+    **Format:** DATEV EXTF Buchungsstapel v700, CP1252, Semikolon-getrennt
+
+    **Kontenrahmen:** SKR03
+    - Erlöse 19% MwSt → 8400
+    - Erlöse  7% MwSt → 8300
+    - Erlöse  0% MwSt → 8100
+    - Debitor (Kunde) → 10000
+
+    **Verwendung:** Direkt in DATEV Unternehmen online importierbar.
+    Exportierte Datei an Steuerberater weitergeben.
+
+    **Filter:**
+    - `from_date` / `to_date`: Datumsbereich
+    - `only_paid`: Nur abgeschlossene Buchungen
+    """
+    from app.modules.backoffice.invoices.datev_export import generate_datev_extf
+
+    csv_bytes = generate_datev_extf(
+        db=db,
+        from_date=from_date,
+        to_date=to_date,
+        only_paid=only_paid,
+    )
+
+    date_suffix = ""
+    if from_date and to_date:
+        date_suffix = f"_{from_date.isoformat()}_bis_{to_date.isoformat()}"
+    elif from_date:
+        date_suffix = f"_ab_{from_date.isoformat()}"
+
+    filename = f"DATEV_Buchungsstapel{date_suffix}_{datetime.now().strftime('%Y%m%d')}.csv"
+
+    return StreamingResponse(
+        BytesIO(csv_bytes),
+        media_type="text/csv; charset=cp1252",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+# ============================================================================
 # MAHNWESEN (INVOICE REMINDERS)
 # ============================================================================
 

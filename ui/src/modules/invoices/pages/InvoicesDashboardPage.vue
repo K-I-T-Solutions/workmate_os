@@ -9,8 +9,11 @@ import {
   AlertCircle,
   TrendingUp,
   ArrowRight,
-  Plus
+  Plus,
+  Download,
 } from 'lucide-vue-next';
+import { ref } from 'vue';
+import { apiClient } from '@/services/api/client';
 
 // Props & Emits
 const emit = defineEmits<{
@@ -25,6 +28,42 @@ const { stats, loading, error, loadStats } = useInvoiceStats();
 onMounted(() => {
   loadStats();
 });
+
+// DATEV Export
+const datevLoading = ref(false);
+
+async function downloadDatevExport() {
+  datevLoading.value = true;
+  try {
+    const now = new Date();
+    const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const params = new URLSearchParams({
+      from_date: fmt(firstOfLastMonth),
+      to_date: fmt(lastOfLastMonth),
+    });
+
+    const response = await apiClient.get(
+      `/api/backoffice/invoices/datev-export?${params}`,
+      { responseType: 'blob' }
+    );
+
+    const month = `${firstOfLastMonth.getFullYear()}${pad(firstOfLastMonth.getMonth() + 1)}`;
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DATEV_${month}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('DATEV-Export fehlgeschlagen', e);
+  } finally {
+    datevLoading.value = false;
+  }
+}
 
 // Helper: Format currency
 function formatCurrency(value: number): string {
@@ -203,6 +242,23 @@ function formatCurrency(value: number): string {
                 <div class="text-sm text-blue-200/80 mt-1">Rechnung erstellen</div>
               </div>
               <ArrowRight :size="20" class="text-blue-300/60 group-hover:text-blue-200 transition" />
+            </div>
+          </button>
+
+          <button
+            @click="downloadDatevExport"
+            :disabled="datevLoading"
+            class="p-4 text-left rounded-lg border border-orange-400/30 bg-orange-500/10 hover:bg-orange-500/20 transition group"
+          >
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-medium text-orange-100 flex items-center gap-2">
+                  <Download :size="16" />
+                  DATEV-Export
+                </div>
+                <div class="text-sm text-orange-200/70 mt-1">{{ datevLoading ? 'Wird erstellt...' : 'Vormonat als CSV' }}</div>
+              </div>
+              <ArrowRight :size="20" class="text-orange-300/60 group-hover:text-orange-200 transition" />
             </div>
           </button>
 
