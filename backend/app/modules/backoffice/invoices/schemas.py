@@ -376,3 +376,32 @@ class AuditLogListResponse(BaseModel):
     total: int = Field(description="Gesamtanzahl")
     skip: int = Field(description="Pagination Offset")
     limit: int = Field(description="Max Anzahl pro Page")
+
+
+# ============================================================================
+# INVOICE REMINDERS (MAHNWESEN)
+# ============================================================================
+
+class ReminderCreate(BaseModel):
+    """Mahnung erstellen."""
+    level: int = Field(..., ge=1, le=3, description="Mahnstufe 1=Erinnerung, 2=1. Mahnung, 3=2. Mahnung")
+    fee: Decimal = Field(Decimal("0.00"), ge=0, description="Mahngebühr in EUR")
+    due_date: Optional[date] = Field(None, description="Neue Zahlungsfrist (Standard: +7 Tage)")
+    notes: Optional[str] = Field(None, description="Interne Notizen")
+    send_email: bool = Field(True, description="Sofort per E-Mail senden?")
+
+
+class ReminderResponse(BaseModel):
+    """Mahnung Response."""
+    id: uuid.UUID
+    invoice_id: uuid.UUID
+    level: int
+    fee: Decimal
+    due_date: Optional[date]
+    sent_at: Optional[datetime]
+    notes: Optional[str]
+    is_sent: bool
+    level_label: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

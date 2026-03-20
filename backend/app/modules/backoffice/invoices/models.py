@@ -232,6 +232,13 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         back_populates="invoice",
         cascade="all, delete-orphan"
     )
+    reminders: Mapped[list["InvoiceReminder"]] = relationship(
+        "InvoiceReminder",
+        back_populates="invoice",
+        cascade="all, delete-orphan",
+        order_by="InvoiceReminder.level",
+        lazy="selectin"
+    )
 
 
 
@@ -748,3 +755,76 @@ class NumberSequence(Base, UUIDMixin, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<NumberSequence(type='{self.doc_type}', year={self.year}, current={self.current_number})>"
+
+
+# =====================================================================
+# Invoice Reminder (Mahnwesen)
+# =====================================================================
+
+class InvoiceReminder(Base, UUIDMixin, TimestampMixin):
+    """
+    Mahnungen für überfällige Rechnungen.
+
+    Stufen:
+      1 = Zahlungserinnerung (0 € Gebühr, +7 Tage)
+      2 = 1. Mahnung        (5 € Gebühr, +7 Tage)
+      3 = 2. Mahnung        (15 € Gebühr, +7 Tage)
+    """
+    __tablename__ = "invoice_reminders"
+    __table_args__ = (
+        Index("ix_invoice_reminders_invoice_id", "invoice_id"),
+        Index("ix_invoice_reminders_level", "invoice_id", "level"),
+        CheckConstraint("level IN (1, 2, 3)", name="check_reminder_level_valid"),
+        CheckConstraint("fee >= 0", name="check_reminder_fee_positive"),
+        UniqueConstraint("invoice_id", "level", name="uq_invoice_reminder_level"),
+    )
+
+    invoice_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("invoices.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Zugehörige Rechnung"
+    )
+    level: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        comment="Mahnstufe: 1=Erinnerung, 2=1. Mahnung, 3=2. Mahnung"
+    )
+    fee: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2),
+        default=Decimal("0.00"),
+        server_default="0.00",
+        comment="Mahngebühr in EUR"
+    )
+    due_date: Mapped[date | None] = mapped_column(
+        Date,
+        comment="Neue Zahlungsfrist in der Mahnung"
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        comment="Zeitpunkt des Versands (NULL = noch nicht gesendet)"
+    )
+    pdf_path: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Pfad zur Mahnungs-PDF"
+    )
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Interne Notizen zur Mahnung"
+    )
+
+    invoice: Mapped[Invoice] = relationship(
+        "Invoice",
+        back_populates="reminders"
+    )
+
+    @property
+    def is_sent(self) -> bool:
+        return self.sent_at is not None
+
+    @property
+    def level_label(self) -> str:
+        labels = {1: "Zahlungserinnerung", 2: "1. Mahnung", 3: "2. Mahnung (Letzte)"}
+        return labels.get(self.level, f"Mahnstufe {self.level}")
+
+    def __repr__(self) -> str:
+        return f"<InvoiceReminder(invoice={self.invoice_id}, level={self.level}, sent={self.is_sent})>"

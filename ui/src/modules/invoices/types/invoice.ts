@@ -67,6 +67,20 @@ export interface Invoice {
   // Optional: Populated Relations
   customer?: any; // TODO: Type aus CRM-Modul importieren
   project?: any;  // TODO: Type aus Project-Modul importieren
+  reminders?: InvoiceReminder[];
+}
+
+export interface InvoiceReminder {
+  id: string;
+  invoice_id: string;
+  level: 1 | 2 | 3;
+  fee: number;
+  due_date?: string | null;
+  sent_at?: string | null;
+  notes?: string | null;
+  is_sent: boolean;
+  level_label: string;
+  created_at: string;
 }
 
 export interface Payment {
