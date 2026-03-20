@@ -774,6 +774,162 @@ def regenerate_pdf(
 
 
 # ============================================================================
+# SEND PER MAIL
+# ============================================================================
+
+@router.post("/{invoice_id}/send", status_code=200)
+@require_permissions(["backoffice.invoices.write", "backoffice.*"])
+def send_invoice_by_email(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    ctx: RequestContext = Depends()
+):
+    """
+    Rechnung per E-Mail an den Kunden senden.
+
+    - PDF wird generiert (falls nicht vorhanden)
+    - E-Mail geht an die Kunden-E-Mail-Adresse
+    - Status wird automatisch auf 'sent' gesetzt
+    - Audit Log Eintrag wird erstellt
+    """
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.application import MIMEApplication
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invoice {invoice_id} not found")
+
+    # Kunden-E-Mail ermitteln
+    customer = invoice.customer
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invoice has no customer assigned")
+
+    recipient_email = customer.email
+    recipient_name = customer.name or customer.company_name or "Kunde"
+
+    if not recipient_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Customer has no email address")
+
+    # PDF generieren / laden
+    storage = get_storage()
+    if not invoice.pdf_path or not storage.exists(invoice.pdf_path):
+        try:
+            pdf_filename = f"{invoice.invoice_number}.pdf"
+            storage_path = settings.INVOICE_STORAGE_PATH.rstrip("/")
+            remote_path = f"{storage_path}/{pdf_filename}"
+            pdf_content = generate_invoice_pdf(invoice, output_path=None)
+            if not pdf_content:
+                raise ValueError("PDF generation returned no content")
+            storage.upload(remote_path, pdf_content)
+            invoice.pdf_path = remote_path
+            db.commit()
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"PDF generation failed: {e}")
+
+    pdf_bytes = storage.download(invoice.pdf_path)
+    pdf_filename = f"{invoice.invoice_number}.pdf"
+
+    # Betreff & Typ-Label
+    doc_type_labels = {
+        "invoice": "Rechnung",
+        "quote": "Angebot",
+        "credit_note": "Gutschrift",
+        "order_confirmation": "Auftragsbestätigung",
+    }
+    doc_label = doc_type_labels.get(invoice.document_type, "Dokument")
+    subject = f"{doc_label} {invoice.invoice_number} – K.I.T. Solutions"
+
+    total_str = f"{float(invoice.total):,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+    <div style="height:4px;background:linear-gradient(90deg,#FF6B35 0%,#3B82F6 50%,#06B6D4 100%);border-radius:4px 4px 0 0;"></div>
+    <div style="background:#0F1629;padding:28px 32px 24px;border-left:1px solid #1E2D4A;border-right:1px solid #1E2D4A;">
+      <span style="font-size:22px;font-weight:700;color:#ffffff;">K.I.T.</span>
+      <span style="font-size:22px;font-weight:300;color:#FF6B35;"> Solutions</span>
+      <p style="margin:4px 0 0;color:#64748b;font-size:13px;letter-spacing:0.05em;text-transform:uppercase;">Buchhaltung</p>
+    </div>
+    <div style="background:#1E2D4A;padding:32px;border-left:1px solid #263a5a;border-right:1px solid #263a5a;">
+      <p style="color:#e2e8f0;font-size:16px;margin:0 0 12px;">Guten Tag {recipient_name},</p>
+      <p style="color:#94a3b8;font-size:15px;line-height:1.6;margin:0 0 24px;">
+        im Anhang finden Sie Ihre {doc_label} von K.I.T. Solutions.
+      </p>
+      <div style="background:#0F1629;border:1px solid #263a5a;border-left:4px solid #FF6B35;border-radius:8px;padding:20px 24px;margin:0 0 24px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;padding-bottom:6px;">{doc_label}</td>
+            <td style="color:#FF6B35;font-size:18px;font-weight:700;font-family:'Courier New',monospace;text-align:right;">{invoice.invoice_number}</td>
+          </tr>
+          <tr>
+            <td style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;padding-top:10px;border-top:1px solid #1E2D4A;">Betrag (brutto)</td>
+            <td style="color:#e2e8f0;font-size:16px;font-weight:600;text-align:right;padding-top:10px;border-top:1px solid #1E2D4A;">{total_str}</td>
+          </tr>
+        </table>
+      </div>
+      <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0;">
+        Bei Fragen stehen wir Ihnen jederzeit zur Verfügung.
+      </p>
+    </div>
+    <div style="background:#0F1629;padding:20px 32px;border:1px solid #1E2D4A;border-top:none;border-radius:0 0 4px 4px;">
+      <p style="margin:0;color:#475569;font-size:12px;line-height:1.8;">
+        <span style="color:#FF6B35;font-weight:600;">K.I.T. Solutions</span> &bull;
+        <a href="mailto:support@kit-it-koblenz.de" style="color:#3B82F6;text-decoration:none;">support@kit-it-koblenz.de</a>
+      </p>
+    </div>
+    <div style="height:2px;background:linear-gradient(90deg,#06B6D4 0%,#3B82F6 50%,#FF6B35 100%);border-radius:0 0 4px 4px;"></div>
+  </div>
+</body>
+</html>"""
+
+    plain_body = (
+        f"Guten Tag {recipient_name},\n\n"
+        f"im Anhang finden Sie Ihre {doc_label} {invoice.invoice_number} "
+        f"über {total_str} von K.I.T. Solutions.\n\n"
+        f"Bei Fragen: support@kit-it-koblenz.de\n\n"
+        f"Mit freundlichen Grüßen\nK.I.T. Solutions"
+    )
+
+    # Mail zusammenbauen
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = subject
+    msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM}>"
+    msg["To"] = recipient_email
+
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(plain_body, "plain", "utf-8"))
+    alt.attach(MIMEText(html_body, "html", "utf-8"))
+    msg.attach(alt)
+
+    pdf_attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
+    pdf_attachment.add_header("Content-Disposition", "attachment", filename=pdf_filename)
+    msg.attach(pdf_attachment)
+
+    # SMTP senden
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            smtp.sendmail(settings.SMTP_FROM, [recipient_email], msg.as_bytes())
+        logger.info("✉️ Rechnung %s an %s gesendet", invoice.invoice_number, recipient_email)
+    except Exception as e:
+        logger.error("❌ Mail-Versand fehlgeschlagen: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Mail-Versand fehlgeschlagen: {e}")
+
+    # Status auf 'sent' setzen (nur wenn noch draft)
+    if invoice.status == "draft":
+        crud.update_invoice_status(db, invoice_id, "sent", user_id=ctx.user_id, ip_address=ctx.ip_address)
+
+    return {"ok": True, "sent_to": recipient_email, "invoice_number": invoice.invoice_number}
+
+
+# ============================================================================
 # BULK OPERATIONS
 # ============================================================================
 
