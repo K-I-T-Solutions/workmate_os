@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, 
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 import uuid
 import os
 from io import BytesIO
@@ -927,6 +927,237 @@ def send_invoice_by_email(
         crud.update_invoice_status(db, invoice_id, "sent", user_id=ctx.user_id, ip_address=ctx.ip_address)
 
     return {"ok": True, "sent_to": recipient_email, "invoice_number": invoice.invoice_number}
+
+
+# ============================================================================
+# MAHNWESEN (INVOICE REMINDERS)
+# ============================================================================
+
+# Konfiguration der Mahnstufen
+REMINDER_DEFAULTS = {
+    1: {"fee": 0.00,  "label": "Zahlungserinnerung", "days_extra": 7},
+    2: {"fee": 5.00,  "label": "1. Mahnung",          "days_extra": 7},
+    3: {"fee": 15.00, "label": "2. Mahnung (Letzte)",  "days_extra": 7},
+}
+
+
+@router.get("/{invoice_id}/reminders", response_model=list[schemas.ReminderResponse])
+@require_permissions(["backoffice.invoices.view", "backoffice.*"])
+def list_reminders(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    """Alle Mahnungen einer Rechnung abrufen."""
+    from app.modules.backoffice.invoices.models import InvoiceReminder
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invoice {invoice_id} not found")
+    return db.query(InvoiceReminder).filter(InvoiceReminder.invoice_id == invoice_id).order_by(InvoiceReminder.level).all()
+
+
+@router.post("/{invoice_id}/reminders", response_model=schemas.ReminderResponse, status_code=201)
+@require_permissions(["backoffice.invoices.write", "backoffice.*"])
+def create_reminder(
+    invoice_id: uuid.UUID,
+    data: schemas.ReminderCreate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+    ctx: RequestContext = Depends()
+):
+    """
+    Mahnung erstellen und optional per E-Mail senden.
+
+    **Stufen:**
+    - 1 = Zahlungserinnerung (0 € Gebühr)
+    - 2 = 1. Mahnung (5 € Gebühr)
+    - 3 = 2. Mahnung / Letzte Mahnung (15 € Gebühr)
+
+    **Regeln:**
+    - Pro Stufe nur eine Mahnung pro Rechnung
+    - Rechnung muss Status sent/overdue haben
+    """
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from datetime import timedelta
+    from app.modules.backoffice.invoices.models import InvoiceReminder
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invoice {invoice_id} not found")
+
+    if invoice.status not in ("sent", "overdue", "partial"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Mahnungen nur für Rechnungen mit Status sent/overdue/partial möglich (aktuell: {invoice.status})"
+        )
+
+    # Doppelte Mahnstufe verhindern
+    existing = db.query(InvoiceReminder).filter(
+        InvoiceReminder.invoice_id == invoice_id,
+        InvoiceReminder.level == data.level
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Mahnstufe {data.level} für diese Rechnung existiert bereits"
+        )
+
+    # Fälligkeit berechnen
+    defaults = REMINDER_DEFAULTS[data.level]
+    due_date = data.due_date or (
+        (invoice.due_date or invoice.issued_date) + timedelta(days=defaults["days_extra"] * data.level)
+        if (invoice.due_date or invoice.issued_date) else None
+    )
+
+    fee = data.fee if data.fee is not None else defaults["fee"]
+    level_label = defaults["label"]
+
+    # Mahnung in DB anlegen
+    reminder = InvoiceReminder(
+        invoice_id=invoice_id,
+        level=data.level,
+        fee=fee,
+        due_date=due_date,
+        notes=data.notes,
+    )
+    db.add(reminder)
+    db.flush()  # ID erzeugen
+
+    # E-Mail senden
+    if data.send_email:
+        customer = invoice.customer
+        recipient_email = customer.email if customer else None
+        recipient_name = (customer.name or customer.company_name or "Kunde") if customer else "Kunde"
+
+        if not recipient_email:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Kunden-E-Mail-Adresse fehlt – Mahnung kann nicht gesendet werden"
+            )
+
+        total_str = f"{float(invoice.total):,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+        fee_str = f"{float(fee):,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+        due_str = due_date.strftime("%d.%m.%Y") if due_date else "–"
+        subject = f"{level_label} – {invoice.invoice_number} – K.I.T. Solutions"
+
+        # Border-Farbe nach Stufe
+        level_color = {1: "#06B6D4", 2: "#FF6B35", 3: "#ef4444"}.get(data.level, "#FF6B35")
+
+        if data.level == 1:
+            intro = (
+                f"wir möchten Sie freundlich daran erinnern, dass die Zahlung für "
+                f"Rechnung <strong>{invoice.invoice_number}</strong> noch aussteht."
+            )
+        elif data.level == 2:
+            intro = (
+                f"trotz unserer Zahlungserinnerung ist die Zahlung für Rechnung "
+                f"<strong>{invoice.invoice_number}</strong> noch nicht bei uns eingegangen."
+            )
+        else:
+            intro = (
+                f"leider müssen wir Sie letztmalig an die ausstehende Zahlung für Rechnung "
+                f"<strong>{invoice.invoice_number}</strong> erinnern. Bitte beachten Sie, dass "
+                f"bei weiterer Nichtbeachtung rechtliche Schritte eingeleitet werden."
+            )
+
+        fee_row = ""
+        if float(fee) > 0:
+            fee_row = f"""
+          <tr>
+            <td style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;padding-top:10px;border-top:1px solid #1E2D4A;">Mahngebühr</td>
+            <td style="color:#ef4444;font-size:14px;font-weight:600;text-align:right;padding-top:10px;border-top:1px solid #1E2D4A;">{fee_str}</td>
+          </tr>"""
+
+        html_body = f"""<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+    <div style="height:4px;background:linear-gradient(90deg,#FF6B35 0%,#3B82F6 50%,#06B6D4 100%);border-radius:4px 4px 0 0;"></div>
+    <div style="background:#0F1629;padding:28px 32px 24px;border-left:1px solid #1E2D4A;border-right:1px solid #1E2D4A;">
+      <span style="font-size:22px;font-weight:700;color:#ffffff;">K.I.T.</span>
+      <span style="font-size:22px;font-weight:300;color:#FF6B35;"> Solutions</span>
+      <p style="margin:4px 0 0;color:#64748b;font-size:13px;letter-spacing:0.05em;text-transform:uppercase;">{level_label}</p>
+    </div>
+    <div style="background:#1E2D4A;padding:32px;border-left:1px solid #263a5a;border-right:1px solid #263a5a;">
+      <p style="color:#e2e8f0;font-size:16px;margin:0 0 12px;">Guten Tag {recipient_name},</p>
+      <p style="color:#94a3b8;font-size:15px;line-height:1.6;margin:0 0 24px;">{intro}</p>
+      <div style="background:#0F1629;border:1px solid #263a5a;border-left:4px solid {level_color};border-radius:8px;padding:20px 24px;margin:0 0 24px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;padding-bottom:6px;">Rechnungsnummer</td>
+            <td style="color:#FF6B35;font-size:18px;font-weight:700;font-family:'Courier New',monospace;text-align:right;">{invoice.invoice_number}</td>
+          </tr>
+          <tr>
+            <td style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;padding-top:10px;border-top:1px solid #1E2D4A;">Offener Betrag</td>
+            <td style="color:#e2e8f0;font-size:16px;font-weight:600;text-align:right;padding-top:10px;border-top:1px solid #1E2D4A;">{total_str}</td>
+          </tr>{fee_row}
+          <tr>
+            <td style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;padding-top:10px;border-top:1px solid #1E2D4A;">Bitte zahlen bis</td>
+            <td style="color:{level_color};font-size:15px;font-weight:600;text-align:right;padding-top:10px;border-top:1px solid #1E2D4A;">{due_str}</td>
+          </tr>
+        </table>
+      </div>
+      <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0;">
+        Bitte überweisen Sie den Betrag auf unser Konto:<br>
+        <strong style="color:#e2e8f0;">IBAN:</strong> <span style="color:#94a3b8;">DE94 1001 1001 2706 4711 70</span> &bull; N26 Bank
+      </p>
+    </div>
+    <div style="background:#0F1629;padding:20px 32px;border:1px solid #1E2D4A;border-top:none;border-radius:0 0 4px 4px;">
+      <p style="margin:0;color:#475569;font-size:12px;line-height:1.8;">
+        <span style="color:#FF6B35;font-weight:600;">K.I.T. Solutions</span> &bull;
+        <a href="mailto:support@kit-it-koblenz.de" style="color:#3B82F6;text-decoration:none;">support@kit-it-koblenz.de</a>
+      </p>
+    </div>
+    <div style="height:2px;background:linear-gradient(90deg,#06B6D4 0%,#3B82F6 50%,#FF6B35 100%);border-radius:0 0 4px 4px;"></div>
+  </div>
+</body>
+</html>"""
+
+        plain_body = (
+            f"Guten Tag {recipient_name},\n\n"
+            f"{level_label}: Rechnung {invoice.invoice_number}\n"
+            f"Offener Betrag: {total_str}\n"
+            f"Bitte zahlen bis: {due_str}\n\n"
+            f"IBAN: DE94 1001 1001 2706 4711 70 (N26 Bank)\n\n"
+            f"Bei Fragen: support@kit-it-koblenz.de\n\nK.I.T. Solutions"
+        )
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM}>"
+        msg["To"] = recipient_email
+        msg.attach(MIMEText(plain_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        try:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:
+                smtp.ehlo()
+                smtp.starttls()
+                smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                smtp.sendmail(settings.SMTP_FROM, [recipient_email], msg.as_bytes())
+
+            from datetime import timezone
+            reminder.sent_at = datetime.now(timezone.utc)
+            logger.info("📬 Mahnstufe %d für %s an %s gesendet", data.level, invoice.invoice_number, recipient_email)
+        except Exception as e:
+            logger.error("❌ Mahnungs-Mail fehlgeschlagen: %s", e)
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Mahnung konnte nicht gesendet werden: {e}"
+            )
+
+    # Rechnung auf overdue setzen wenn noch sent
+    if invoice.status == "sent":
+        crud.update_invoice_status(db, invoice_id, "overdue", user_id=ctx.user_id, ip_address=ctx.ip_address)
+
+    db.commit()
+    db.refresh(reminder)
+    return reminder
 
 
 # ============================================================================

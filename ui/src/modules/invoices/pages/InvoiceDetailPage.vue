@@ -78,6 +78,19 @@ const sendLoading = ref(false);
 const sendSuccess = ref<string | null>(null);
 const sendError = ref<string | null>(null);
 
+// Mahnwesen State
+const showReminderModal = ref(false);
+const reminderLoading = ref(false);
+const reminderError = ref<string | null>(null);
+const reminderSuccess = ref<string | null>(null);
+const reminderForm = ref({ level: 1, fee: 0, due_date: '', notes: '', send_email: true });
+
+const REMINDER_DEFAULTS: Record<number, { fee: number; label: string }> = {
+  1: { fee: 0,  label: 'Zahlungserinnerung' },
+  2: { fee: 5,  label: '1. Mahnung' },
+  3: { fee: 15, label: '2. Mahnung (Letzte)' },
+};
+
 // Payment Form State
 const paymentForm = ref<PaymentCreateRequest>({
   amount: 0,
@@ -251,6 +264,41 @@ function formatDate(dateString: string | null): string {
   return new Date(dateString).toLocaleDateString('de-DE');
 }
 
+// Mahnwesen
+function getReminderForLevel(level: number) {
+  return invoice.value?.reminders?.find(r => r.level === level) ?? null;
+}
+
+function onReminderLevelChange() {
+  const defaults = REMINDER_DEFAULTS[reminderForm.value.level];
+  if (defaults) reminderForm.value.fee = defaults.fee;
+}
+
+async function handleCreateReminder() {
+  if (!invoice.value) return;
+  reminderLoading.value = true;
+  reminderError.value = null;
+
+  try {
+    const payload = {
+      level: reminderForm.value.level,
+      fee: reminderForm.value.fee,
+      due_date: reminderForm.value.due_date || null,
+      notes: reminderForm.value.notes || null,
+      send_email: reminderForm.value.send_email,
+    };
+    await apiClient.post(`/api/backoffice/invoices/${invoice.value.id}/reminders`, payload);
+    reminderSuccess.value = `Mahnstufe ${reminderForm.value.level} erfolgreich erstellt${payload.send_email ? ' und gesendet' : ''}.`;
+    showReminderModal.value = false;
+    await loadInvoice(props.invoiceId);
+    setTimeout(() => { reminderSuccess.value = null; }, 6000);
+  } catch (err: any) {
+    reminderError.value = err.response?.data?.detail || 'Fehler beim Erstellen der Mahnung';
+  } finally {
+    reminderLoading.value = false;
+  }
+}
+
 // Send by Email
 async function handleSendByEmail() {
   if (!invoice.value) return;
@@ -372,6 +420,11 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
 
 <template>
   <div class="h-full flex flex-col gap-4 p-4">
+    <!-- Mahnungs-Feedback -->
+    <div v-if="reminderSuccess" class="p-4 rounded-lg bg-orange-500/20 text-orange-300 border border-orange-500/30 flex items-center gap-2">
+      <AlertCircle :size="16" /> {{ reminderSuccess }}
+    </div>
+
     <!-- Mail-Versand Feedback -->
     <div v-if="sendSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30 flex items-center gap-2">
       <Mail :size="16" />
@@ -682,6 +735,78 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         </div>
       </div>
 
+      <!-- Mahnwesen -->
+      <div
+        v-if="invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'partial' || (invoice.reminders && invoice.reminders.length > 0)"
+        class="rounded-lg border border-white/10 bg-white/5 p-4"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2 text-white/60">
+            <AlertCircle :size="16" />
+            <h3 class="text-sm font-medium text-white">Mahnwesen</h3>
+          </div>
+          <button
+            v-if="invoice.status !== 'paid' && invoice.status !== 'cancelled' && invoice.status !== 'draft'"
+            @click="showReminderModal = true"
+            class="kit-btn-ghost text-xs py-1 px-2"
+          >
+            <Plus :size="14" />
+            Mahnung erstellen
+          </button>
+        </div>
+
+        <!-- Mahnstufen-Übersicht -->
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div
+            v-for="level in [1, 2, 3]"
+            :key="level"
+            :class="[
+              'rounded-lg border p-3 text-center',
+              getReminderForLevel(level)?.is_sent
+                ? level === 1 ? 'border-cyan-400/40 bg-cyan-500/10' : level === 2 ? 'border-orange-400/40 bg-orange-500/10' : 'border-red-400/40 bg-red-500/10'
+                : 'border-white/10 bg-white/5 opacity-50'
+            ]"
+          >
+            <div :class="['text-xs font-medium mb-1', level === 1 ? 'text-cyan-300' : level === 2 ? 'text-orange-300' : 'text-red-300']">
+              Stufe {{ level }}
+            </div>
+            <div class="text-white text-xs">{{ ['Erinnerung', '1. Mahnung', '2. Mahnung'][level - 1] }}</div>
+            <div v-if="getReminderForLevel(level)?.is_sent" class="text-white/40 text-xs mt-1">
+              {{ formatDate(getReminderForLevel(level)!.sent_at) }}
+            </div>
+            <div v-else class="text-white/30 text-xs mt-1">–</div>
+          </div>
+        </div>
+
+        <div v-if="invoice.reminders && invoice.reminders.length > 0" class="space-y-2">
+          <div
+            v-for="reminder in invoice.reminders"
+            :key="reminder.id"
+            class="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
+          >
+            <div class="flex items-center gap-3">
+              <div :class="['w-2 h-2 rounded-full', reminder.level === 1 ? 'bg-cyan-400' : reminder.level === 2 ? 'bg-orange-400' : 'bg-red-400']"></div>
+              <div>
+                <div class="text-white text-sm font-medium">{{ reminder.level_label }}</div>
+                <div class="text-white/40 text-xs">
+                  Fälligkeit: {{ formatDate(reminder.due_date) }}
+                  <span v-if="reminder.fee > 0" class="ml-2 text-red-300">+ {{ formatCurrency(reminder.fee) }} Gebühr</span>
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div v-if="reminder.is_sent" class="flex items-center gap-1 text-green-300 text-xs">
+                <CheckCircle :size="12" /> Gesendet
+              </div>
+              <div v-else class="text-white/40 text-xs">Nicht gesendet</div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-center py-4 text-white/40 text-sm">
+          Noch keine Mahnungen erstellt
+        </div>
+      </div>
+
       <!-- Notes & Terms -->
       <div v-if="invoice.notes || invoice.terms" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div v-if="invoice.notes" class="rounded-lg border border-white/10 bg-white/5 p-4">
@@ -691,6 +816,94 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         <div v-if="invoice.terms" class="rounded-lg border border-white/10 bg-white/5 p-4">
           <h3 class="text-sm font-medium text-white/60 mb-2">Zahlungsbedingungen</h3>
           <p class="text-white text-sm whitespace-pre-wrap">{{ invoice.terms }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mahnung Modal -->
+    <div
+      v-if="showReminderModal"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click="showReminderModal = false"
+    >
+      <div class="rounded-lg border border-white/10 bg-stone-900 p-6 max-w-md w-full" @click.stop>
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <AlertCircle :size="20" class="text-orange-400" />
+            Mahnung erstellen
+          </h3>
+          <button @click="showReminderModal = false" class="kit-btn-ghost p-1"><X :size="18" /></button>
+        </div>
+
+        <div v-if="reminderError" class="mb-4 p-3 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 text-sm">
+          {{ reminderError }}
+        </div>
+
+        <div class="space-y-4">
+          <!-- Mahnstufe -->
+          <div>
+            <label class="block text-sm font-medium text-white/60 mb-2">Mahnstufe</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                v-for="level in [1, 2, 3]"
+                :key="level"
+                @click="() => { reminderForm.level = level; onReminderLevelChange(); }"
+                :class="[
+                  'p-3 rounded-lg border text-center transition',
+                  reminderForm.level === level
+                    ? level === 1 ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-300' : level === 2 ? 'border-orange-400/60 bg-orange-500/20 text-orange-300' : 'border-red-400/60 bg-red-500/20 text-red-300'
+                    : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                ]"
+              >
+                <div class="text-xs font-semibold">Stufe {{ level }}</div>
+                <div class="text-xs mt-1">{{ REMINDER_DEFAULTS[level].label }}</div>
+                <div class="text-xs mt-1 font-mono">{{ REMINDER_DEFAULTS[level].fee === 0 ? 'kostenlos' : `+ ${REMINDER_DEFAULTS[level].fee} €` }}</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Mahngebühr -->
+          <div>
+            <label class="block text-sm font-medium text-white/60 mb-1">Mahngebühr (€)</label>
+            <input
+              v-model.number="reminderForm.fee"
+              type="number"
+              min="0"
+              step="0.01"
+              class="kit-input w-full"
+            />
+          </div>
+
+          <!-- Fälligkeitsdatum -->
+          <div>
+            <label class="block text-sm font-medium text-white/60 mb-1">Neue Zahlungsfrist</label>
+            <input v-model="reminderForm.due_date" type="date" class="kit-input w-full" />
+            <p class="text-xs text-white/40 mt-1">Leer lassen = automatisch +{{ reminderForm.level * 7 }} Tage</p>
+          </div>
+
+          <!-- Notizen -->
+          <div>
+            <label class="block text-sm font-medium text-white/60 mb-1">Interne Notizen</label>
+            <textarea v-model="reminderForm.notes" rows="2" class="kit-input w-full resize-none" placeholder="Optional..."></textarea>
+          </div>
+
+          <!-- Per Mail senden -->
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input v-model="reminderForm.send_email" type="checkbox" class="w-4 h-4 rounded accent-orange-400" />
+            <span class="text-sm text-white/80">Jetzt per E-Mail an Kunden senden</span>
+          </label>
+        </div>
+
+        <div class="flex gap-3 justify-end mt-6">
+          <button @click="showReminderModal = false" class="kit-btn-ghost">Abbrechen</button>
+          <button
+            @click="handleCreateReminder"
+            :disabled="reminderLoading"
+            :class="['kit-btn-primary', reminderForm.level === 3 ? 'bg-red-600 hover:bg-red-700' : '']"
+          >
+            <AlertCircle :size="16" />
+            {{ reminderLoading ? 'Erstelle...' : (reminderForm.send_email ? 'Erstellen & Senden' : 'Erstellen') }}
+          </button>
         </div>
       </div>
     </div>
