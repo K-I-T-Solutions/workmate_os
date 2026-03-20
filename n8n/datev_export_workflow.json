@@ -1,0 +1,149 @@
+{
+  "name": "DATEV Export – Monatlicher Versand an Steuerberater",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-monthly",
+      "name": "Monatlich am 1. (08:00 Uhr)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Vormonat berechnen\nconst now = new Date();\nconst firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);\nconst firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);\nconst lastOfLastMonth = new Date(firstOfThisMonth - 1);\n\nconst pad = (n) => String(n).padStart(2, '0');\nconst fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;\n\nconst monthLabel = firstOfLastMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });\n\nreturn [{\n  json: {\n    from_date: fmt(firstOfLastMonth),\n    to_date: fmt(lastOfLastMonth),\n    month_label: monthLabel,\n    filename: `DATEV_${firstOfLastMonth.getFullYear()}${pad(firstOfLastMonth.getMonth()+1)}.csv`\n  }\n}];"
+      },
+      "id": "calc-dates",
+      "name": "Vormonat berechnen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.workmate.kit-it-koblenz.de/api/v1/backoffice/invoices/datev-export",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "from_date",
+              "value": "={{ $json.from_date }}"
+            },
+            {
+              "name": "to_date",
+              "value": "={{ $json.to_date }}"
+            },
+            {
+              "name": "only_paid",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "fetch-datev",
+      "name": "DATEV CSV von WorkmateOS laden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "support@kit-it-koblenz.de",
+        "toEmail": "steuerberater@example.com",
+        "subject": "=DATEV Buchungsstapel {{ $('Vormonat berechnen').item.json.month_label }} – K.I.T. Solutions",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html>\n<html lang=\"de\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"margin:0;padding:0;background:#0a0f1e;font-family:'Segoe UI',Arial,sans-serif;\">\n  <div style=\"max-width:600px;margin:0 auto;padding:24px 16px;\">\n    <div style=\"height:4px;background:linear-gradient(90deg,#FF6B35 0%,#3B82F6 50%,#06B6D4 100%);border-radius:4px 4px 0 0;\"></div>\n    <div style=\"background:#0F1629;padding:28px 32px 24px;border-left:1px solid #1E2D4A;border-right:1px solid #1E2D4A;\">\n      <span style=\"font-size:22px;font-weight:700;color:#ffffff;\">K.I.T.</span>\n      <span style=\"font-size:22px;font-weight:300;color:#FF6B35;\"> Solutions</span>\n      <p style=\"margin:4px 0 0;color:#64748b;font-size:13px;text-transform:uppercase;\">Monatlicher DATEV-Export</p>\n    </div>\n    <div style=\"background:#1E2D4A;padding:32px;border-left:1px solid #263a5a;border-right:1px solid #263a5a;\">\n      <p style=\"color:#e2e8f0;font-size:16px;margin:0 0 12px;\">Guten Tag,</p>\n      <p style=\"color:#94a3b8;font-size:15px;line-height:1.6;margin:0 0 24px;\">im Anhang finden Sie den DATEV-Buchungsstapel für <strong style=\"color:#FF6B35;\">{{ $('Vormonat berechnen').item.json.month_label }}</strong>.</p>\n      <div style=\"background:#0F1629;border:1px solid #263a5a;border-left:4px solid #3B82F6;border-radius:8px;padding:20px 24px;margin:0 0 24px;\">\n        <p style=\"margin:0 0 6px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;\">Exportzeitraum</p>\n        <p style=\"margin:0;color:#e2e8f0;font-size:15px;font-weight:600;\">{{ $('Vormonat berechnen').item.json.from_date }} bis {{ $('Vormonat berechnen').item.json.to_date }}</p>\n        <p style=\"margin:8px 0 0;color:#94a3b8;font-size:13px;\">Format: DATEV EXTF Buchungsstapel v700 · Kontenrahmen SKR03</p>\n      </div>\n      <p style=\"color:#94a3b8;font-size:14px;line-height:1.6;margin:0;\">Die Datei kann direkt in DATEV Unternehmen online importiert werden.</p>\n    </div>\n    <div style=\"background:#0F1629;padding:20px 32px;border:1px solid #1E2D4A;border-top:none;border-radius:0 0 4px 4px;\">\n      <p style=\"margin:0;color:#475569;font-size:12px;\">\n        <span style=\"color:#FF6B35;font-weight:600;\">K.I.T. Solutions</span> · Automatisch generiert via WorkmateOS\n      </p>\n    </div>\n    <div style=\"height:2px;background:linear-gradient(90deg,#06B6D4 0%,#3B82F6 50%,#FF6B35 100%);border-radius:0 0 4px 4px;\"></div>\n  </div>\n</body>\n</html>",
+        "attachments": "data",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "data"
+              }
+            ]
+          }
+        }
+      },
+      "id": "send-email",
+      "name": "Per Mail an Steuerberater senden",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [900, 300],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-kit",
+          "name": "K.I.T. SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.workmate.kit-it-koblenz.de/api/v1/backoffice/invoices/datev-export",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event\": \"datev_export_sent\",\n  \"month\": \"{{ $('Vormonat berechnen').item.json.month_label }}\",\n  \"sent_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "log-success",
+      "name": "Erfolg loggen (optional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "disabled": true,
+      "notes": "Optional: Kann aktiviert werden wenn ein Logging-Endpoint existiert"
+    }
+  ],
+  "connections": {
+    "Monatlich am 1. (08:00 Uhr)": {
+      "main": [
+        [{ "node": "Vormonat berechnen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Vormonat berechnen": {
+      "main": [
+        [{ "node": "DATEV CSV von WorkmateOS laden", "type": "main", "index": 0 }]
+      ]
+    },
+    "DATEV CSV von WorkmateOS laden": {
+      "main": [
+        [{ "node": "Per Mail an Steuerberater senden", "type": "main", "index": 0 }]
+      ]
+    },
+    "Per Mail an Steuerberater senden": {
+      "main": [
+        [{ "node": "Erfolg loggen (optional)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["backoffice", "datev", "steuerberater"],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
