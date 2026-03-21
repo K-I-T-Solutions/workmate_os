@@ -6,6 +6,7 @@ import {
   ContactDetailPage,
   ContactListPage,
   CustomersListPage,
+  CrmPipelinePage,
 } from "./pages";
 
 import CustomerFormPage from "./pages/CustomerFormPage.vue";
@@ -33,6 +34,7 @@ const {
   openCreateCustomer,
   goEditCustomer,
   goEditContact,
+  goPipeline,
 } = useCrmNavigation();
 
 // Handle deep-linking on mount
@@ -68,6 +70,13 @@ onMounted(() => {
       v-if="view === 'customers'"
       @openCustomer="goCustomerDetail"
       @openDashboard="goDashboard"
+      @openPipeline="goPipeline"
+    />
+
+    <CrmPipelinePage
+      v-if="view === 'pipeline'"
+      @back="goCustomers"
+      @openCustomer="goCustomerDetail"
     />
 
     <CustomerDetailPage

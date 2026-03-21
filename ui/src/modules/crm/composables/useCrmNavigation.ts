@@ -9,7 +9,8 @@ export type CrmView =
   | "contacts"
   | "contact-detail"
   | "contact-create"
-  | "contact-edit";
+  | "contact-edit"
+  | "pipeline";
 
 export function useCrmNavigation() {
   // ─── STATE ────────────────────────────────────────────────
@@ -80,6 +81,12 @@ export function useCrmNavigation() {
     activeContactId.value = contactId;
   }
 
+  function goPipeline() {
+    view.value = "pipeline";
+    activeCustomerId.value = null;
+    activeContactId.value = null;
+  }
+
   // ─── EXPOSE API ───────────────────────────────────────────
   return {
     view,
@@ -95,5 +102,6 @@ export function useCrmNavigation() {
     openCreateContact,
     goEditCustomer,
     goEditContact,
+    goPipeline,
   };
 }

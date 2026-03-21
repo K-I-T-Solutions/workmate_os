@@ -25,6 +25,7 @@ class CustomerBase(BaseModel):
     website: Optional[str] = Field(None, max_length=255, description="Webseite")
     notes: Optional[str] = Field(None, description="Interne Notizen")
     status: str = Field(default="active", description="Status (active, inactive, lead, blocked)")
+    pipeline_stage: Optional[str] = Field(default="new_lead", max_length=50, description="Pipeline-Stage (new_lead, qualified, proposal, negotiation, won, lost)")
 
     # Address Fields
     street: Optional[str] = Field(None, max_length=255, description="Straße und Hausnummer")
@@ -48,6 +49,7 @@ class CustomerUpdate(BaseModel):
     website: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     status: Optional[str] = None
+    pipeline_stage: Optional[str] = Field(None, max_length=50)
     street: Optional[str] = Field(None, max_length=255)
     zip_code: Optional[str] = Field(None, max_length=20)
     city: Optional[str] = Field(None, max_length=100)
@@ -155,6 +157,21 @@ class ActivityResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+# === CSV Import ===
+
+class PipelineStageUpdate(BaseModel):
+    """Schema für Pipeline-Stage Update."""
+    stage: str = Field(..., description="Neue Pipeline-Stage")
+
+
+class CsvImportResponse(BaseModel):
+    """Response für CSV-Import."""
+    imported: int
+    skipped: int
+    errors: list[str]
+    preview: Optional[list[dict]] = None
+
 
 # === CRM Stats ===
 class CrmStatsResponse(BaseModel):

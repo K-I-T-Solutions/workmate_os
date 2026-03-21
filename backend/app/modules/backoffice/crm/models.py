@@ -47,6 +47,16 @@ class CustomerType(str, Enum):
     GOVERNMENT = "government"
 
 
+class PipelineStage(str, Enum):
+    """Pipeline-Stage für Sales-Tracking."""
+    NEW_LEAD = "new_lead"
+    QUALIFIED = "qualified"
+    PROPOSAL = "proposal"
+    NEGOTIATION = "negotiation"
+    WON = "won"
+    LOST = "lost"
+
+
 # ============================================================================
 # MODELS
 # ============================================================================
@@ -74,6 +84,7 @@ class Customer(Base, UUIDMixin, TimestampMixin):
         Index("ix_customers_tax_id", "tax_id"),
         Index("ix_customers_status", "status"),
         Index("ix_customers_type", "type"),
+        Index("ix_customers_pipeline_stage", "pipeline_stage"),
         CheckConstraint(
             "status IN ('active', 'inactive', 'lead', 'blocked')",
             name="check_customer_status_valid"
@@ -145,6 +156,12 @@ class Customer(Base, UUIDMixin, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(
         Text,
         comment="Interne Notizen"
+    )
+    pipeline_stage: Mapped[str | None] = mapped_column(
+        String(50),
+        default=PipelineStage.NEW_LEAD.value,
+        server_default=PipelineStage.NEW_LEAD.value,
+        comment="Pipeline-Stage: new_lead, qualified, proposal, negotiation, won, lost"
     )
     status: Mapped[str] = mapped_column(
         String(50),

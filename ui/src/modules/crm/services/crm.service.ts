@@ -1,5 +1,5 @@
 import api from "@/services/api/client";
-import type { Customer } from "../types/customer";
+import type { Customer, CsvImportResult } from "../types/customer";
 import type { Contact } from "../types/contact";
 import type { CrmStats } from "../types/stats";
 import type { CrmActivity, CreateCrmActivity } from "../types/activity";
@@ -110,12 +110,53 @@ export const crmService = {
   async searchCustomers(search: string) {
     return api.get("/api/backoffice/crm/customers", {
       params: {
-        search,        // Suche in Name + Email (laut API)
-        limit: 5,      // für Auto-Suggestion klein halten
+        search,
+        limit: 5,
         skip: 0,
-        status: "active", // optional, aber sinnvoll
+        status: "active",
       },
     });
-  }
+  },
+
+  //
+  // PIPELINE
+  //
+  async getPipeline(): Promise<Record<string, Customer[]>> {
+    const { data } = await api.get("/api/backoffice/crm/pipeline");
+    return data;
+  },
+
+  async updatePipelineStage(customerId: string, stage: string): Promise<Customer> {
+    const { data } = await api.patch(
+      `/api/backoffice/crm/customers/${customerId}/pipeline-stage`,
+      { stage }
+    );
+    return data;
+  },
+
+  //
+  // CSV IMPORT
+  //
+  async importCsvDryRun(file: File): Promise<CsvImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post(
+      "/api/backoffice/crm/customers/import-csv?dry_run=true",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return data;
+  },
+
+  async importCsv(file: File, skipDuplicates = true): Promise<CsvImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post(
+      `/api/backoffice/crm/customers/import-csv?skip_duplicates=${skipDuplicates}`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return data;
+  },
 
 };
