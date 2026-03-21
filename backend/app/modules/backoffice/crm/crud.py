@@ -400,6 +400,53 @@ def activities_by_customer(
 
     return query.all()
 
+def get_pipeline_customers(db: Session) -> dict:
+    """
+    Liefert alle Kunden gruppiert nach Pipeline-Stage.
+
+    Returns:
+        Dict mit Stage-Keys und Listen von Customers
+    """
+    from .models import PipelineStage
+
+    all_stages = [s.value for s in PipelineStage]
+    pipeline: dict = {stage: [] for stage in all_stages}
+
+    customers = db.query(models.Customer).all()
+    for customer in customers:
+        stage = customer.pipeline_stage or PipelineStage.NEW_LEAD.value
+        if stage in pipeline:
+            pipeline[stage].append(customer)
+
+    return pipeline
+
+
+def update_pipeline_stage(
+    db: Session,
+    customer_id: UUID,
+    stage: str,
+) -> models.Customer | None:
+    """
+    Aktualisiert die Pipeline-Stage eines Kunden.
+
+    Args:
+        db: Database Session
+        customer_id: Customer UUID
+        stage: Neue Pipeline-Stage
+
+    Returns:
+        Updated Customer oder None
+    """
+    customer = get_customer(db, customer_id)
+    if customer is None:
+        return None
+
+    customer.pipeline_stage = stage
+    db.commit()
+    db.refresh(customer)
+    return customer
+
+
 def get_stats(db: Session):
     customers = db.query(models.Customer).all()
 

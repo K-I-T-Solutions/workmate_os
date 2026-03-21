@@ -5,7 +5,7 @@
 
 import { ref, computed } from 'vue';
 import { crmService } from '../services/crm.service';
-import type { Customer } from '../types/customer';
+import type { Customer, PipelineStage } from '../types/customer';
 
 export interface CustomerFilters {
   status?: string;
@@ -18,6 +18,7 @@ export function useCustomers() {
   // ─── STATE ────────────────────────────────────────────────
   const customers = ref<Customer[]>([]);
   const currentCustomer = ref<Customer | null>(null);
+  const pipeline = ref<Record<string, Customer[]>>({});
   const total = ref(0);
   const page = ref(1);
   const pages = ref(1);
@@ -202,6 +203,49 @@ export function useCustomers() {
   }
 
   /**
+   * Pipeline laden (Kunden nach Stage gruppiert)
+   */
+  async function loadPipeline() {
+    loading.value = true;
+    error.value = null;
+    try {
+      pipeline.value = await crmService.getPipeline();
+    } catch (e: any) {
+      error.value = e.message || 'Fehler beim Laden der Pipeline';
+      console.error('Error loading pipeline:', e);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Pipeline-Stage eines Kunden aktualisieren
+   */
+  async function updatePipelineStage(customerId: string, stage: PipelineStage): Promise<Customer | null> {
+    try {
+      const updated = await crmService.updatePipelineStage(customerId, stage);
+
+      // In pipeline optimistisch aktualisieren
+      for (const stageKey of Object.keys(pipeline.value)) {
+        const idx = pipeline.value[stageKey].findIndex(c => c.id === customerId);
+        if (idx !== -1) {
+          pipeline.value[stageKey].splice(idx, 1);
+          break;
+        }
+      }
+      if (pipeline.value[stage]) {
+        pipeline.value[stage].push(updated);
+      }
+
+      return updated;
+    } catch (e: any) {
+      error.value = e.message || 'Fehler beim Aktualisieren der Pipeline-Stage';
+      console.error('Error updating pipeline stage:', e);
+      return null;
+    }
+  }
+
+  /**
    * Fehler zurücksetzen
    */
   function clearError() {
@@ -226,6 +270,7 @@ export function useCustomers() {
     // State
     customers,
     currentCustomer,
+    pipeline,
     total,
     page,
     pages,
@@ -244,6 +289,8 @@ export function useCustomers() {
     updateCustomer,
     deleteCustomer,
     searchCustomers,
+    loadPipeline,
+    updatePipelineStage,
     clearError,
     reset,
   };

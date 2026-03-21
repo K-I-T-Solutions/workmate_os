@@ -14,3 +14,6 @@ export { default as ContactDetailPage } from './contacts/ContactDetailPage.vue';
 // Form Pages
 export { default as CustomerFormPage } from './CustomerFormPage.vue';
 export { default as ContactFormPage } from './ContactFormPage.vue';
+
+// Pipeline
+export { default as CrmPipelinePage } from './CrmPipelinePage.vue';

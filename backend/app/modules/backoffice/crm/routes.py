@@ -4,7 +4,7 @@ FastAPI Routes für CRM Module.
 
 REST API Endpoints für Customer und Contact Management.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from uuid import UUID
@@ -16,6 +16,7 @@ from app.core.auth.auth import get_current_user
 from app.core.auth.roles import require_permissions
 from app.modules.backoffice.invoices.models import AuditLog
 from . import schemas, crud
+from .csv_import import import_customers_csv
 
 
 router = APIRouter(
@@ -109,6 +110,89 @@ def delete_customer(
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Customer with id {customer_id} not found")
     return None
+
+
+# === Pipeline Endpoints ===
+
+@router.get("/pipeline")
+@require_permissions(["backoffice.crm.view", "backoffice.*"])
+def get_pipeline(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Pipeline-Übersicht: Kunden gruppiert nach Pipeline-Stage.
+
+    Returns:
+        Dict mit Stage-Keys und Listen von Customers
+    """
+    pipeline = crud.get_pipeline_customers(db)
+    result = {}
+    for stage, customers in pipeline.items():
+        result[stage] = [
+            schemas.CustomerResponse.model_validate(c).model_dump()
+            for c in customers
+        ]
+    return result
+
+
+@router.patch("/customers/{customer_id}/pipeline-stage", response_model=schemas.CustomerResponse)
+@require_permissions(["backoffice.crm.write", "backoffice.*"])
+def update_pipeline_stage(
+    customer_id: UUID,
+    data: schemas.PipelineStageUpdate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Aktualisiert die Pipeline-Stage eines Kunden.
+    """
+    from .models import PipelineStage
+    valid_stages = [s.value for s in PipelineStage]
+    if data.stage not in valid_stages:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungültige Stage. Erlaubt: {valid_stages}"
+        )
+    updated = crud.update_pipeline_stage(db, customer_id, data.stage)
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Customer with id {customer_id} not found"
+        )
+    return updated
+
+
+@router.post("/customers/import-csv", response_model=schemas.CsvImportResponse)
+@require_permissions(["backoffice.crm.write", "backoffice.*"])
+async def import_csv(
+    file: UploadFile = File(...),
+    skip_duplicates: bool = Query(True, description="Duplikate per E-Mail überspringen"),
+    dry_run: bool = Query(False, description="Preview ohne Speichern"),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Importiert Kunden aus einer CSV-Datei.
+
+    - dry_run=true: Gibt Vorschau zurück ohne zu speichern
+    - skip_duplicates=true: Überspringt Einträge mit bereits vorhandener E-Mail
+    """
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nur CSV-Dateien (.csv) werden unterstützt."
+        )
+
+    file_bytes = await file.read()
+    result = import_customers_csv(db, file_bytes, skip_duplicates=skip_duplicates, dry_run=dry_run)
+
+    return schemas.CsvImportResponse(
+        imported=result.imported,
+        skipped=result.skipped,
+        errors=result.errors,
+        preview=result.preview if dry_run else None,
+    )
 
 
 # === Contact Endpoints ===
