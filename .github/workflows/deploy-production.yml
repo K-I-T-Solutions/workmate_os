@@ -90,6 +90,14 @@ jobs:
             sudo systemctl restart workmate
           ENDSSH
 
+      - name: Run database migrations
+        run: |
+          sleep 15
+          ssh joshua@77.42.17.200 << 'ENDSSH'
+            cd /srv/workmate/infra
+            docker compose --env-file ../env/.env.prod exec -T backend alembic upgrade head
+          ENDSSH
+
       - name: Verify backend is running
         run: |
           MAX=24

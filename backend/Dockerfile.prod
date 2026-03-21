@@ -30,12 +30,16 @@ COPY . .
 # Create upload directory
 RUN mkdir -p /app/uploads /app/assets
 
+# Copy and make entrypoint executable
+COPY entrypoint.prod.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose port
 EXPOSE 8000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
     CMD curl -f http://localhost:8000/system/health || exit 1
 
-# Production command (no reload)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Run migrations then start server
+ENTRYPOINT ["/entrypoint.sh"]
