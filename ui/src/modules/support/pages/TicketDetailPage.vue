@@ -18,16 +18,33 @@ const submittingComment = ref(false);
 const showReplyModal = ref(false);
 const replyBody = ref('');
 const sendingReply = ref(false);
+const replyError = ref('');
+const replySent = ref(false);
+
+const reporterEmail = computed(() => {
+  if (ticket.value?.reporter_email) return ticket.value.reporter_email;
+  // Fallback: E-Mail aus Beschreibung extrahieren (mailto-Link)
+  const match = ticket.value?.description?.match(/href="mailto:([^"?]+)/);
+  return match?.[1] ?? null;
+});
 
 async function sendReply() {
   if (!replyBody.value.trim()) return;
   sendingReply.value = true;
+  replyError.value = '';
   try {
-    await apiClient.post(`/api/v1/email/tickets/${props.ticketId}/reply?body=${encodeURIComponent(replyBody.value)}`);
-    showReplyModal.value = false;
+    await apiClient.post(`/api/support/tickets/${props.ticketId}/reply`, {
+      body: replyBody.value,
+    });
+    replySent.value = true;
     replyBody.value = '';
-  } catch (e) {
-    console.error('Reply fehlgeschlagen', e);
+    await loadTicket();
+    setTimeout(() => {
+      showReplyModal.value = false;
+      replySent.value = false;
+    }, 2000);
+  } catch (e: any) {
+    replyError.value = e.response?.data?.detail || 'E-Mail konnte nicht gesendet werden.';
   } finally {
     sendingReply.value = false;
   }
@@ -201,25 +218,40 @@ function formatDate(d: string) {
                 <h3 class="text-base font-semibold text-white">Antwort an Kunden</h3>
                 <button @click="showReplyModal = false" class="text-white/40 hover:text-white/80 text-xl leading-none">&times;</button>
               </div>
-              <div class="text-xs text-white/40 mb-1">An: {{ ticket.description?.match(/href="mailto:([^"?]+)/)?.[1] ?? '–' }}</div>
+              <div class="text-xs text-white/40 mb-1">An: {{ reporterEmail ?? '–' }}</div>
               <div class="text-xs text-white/40 mb-4">Betreff: Re: {{ ticket.title }}</div>
-              <textarea
-                v-model="replyBody"
-                rows="6"
-                placeholder="Antworttext eingeben..."
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
-              ></textarea>
-              <div class="flex justify-end gap-3 mt-4">
-                <button @click="showReplyModal = false" class="px-4 py-2 text-sm text-white/60 hover:text-white">Abbrechen</button>
-                <button
-                  @click="sendReply"
-                  :disabled="sendingReply || !replyBody.trim()"
-                  class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  <Send :size="14" />
-                  {{ sendingReply ? 'Wird gesendet...' : 'Absenden' }}
-                </button>
+
+              <!-- Success state -->
+              <div v-if="replySent" class="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 text-sm mb-4">
+                <Send :size="14" />
+                E-Mail erfolgreich gesendet!
               </div>
+
+              <template v-else>
+                <textarea
+                  v-model="replyBody"
+                  rows="6"
+                  placeholder="Antworttext eingeben..."
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
+                ></textarea>
+
+                <!-- Error state -->
+                <div v-if="replyError" class="mt-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  {{ replyError }}
+                </div>
+
+                <div class="flex justify-end gap-3 mt-4">
+                  <button @click="showReplyModal = false" class="px-4 py-2 text-sm text-white/60 hover:text-white">Abbrechen</button>
+                  <button
+                    @click="sendReply"
+                    :disabled="sendingReply || !replyBody.trim() || !reporterEmail"
+                    class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    <Send :size="14" />
+                    {{ sendingReply ? 'Wird gesendet...' : 'Absenden' }}
+                  </button>
+                </div>
+              </template>
             </div>
           </div>
 

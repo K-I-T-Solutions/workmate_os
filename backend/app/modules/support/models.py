@@ -36,6 +36,9 @@ class Ticket(Base):
     )
     assignee_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     reporter_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    reporter_email: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, comment="E-Mail des Erstellers für Antwort"
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Re: {{ ticket_title }}{% endblock %}
+
+{% block header_title %}K.I.T. Solutions Support{% endblock %}
+{% block header_subtitle %}Antwort auf Ihre Supportanfrage{% endblock %}
+
+{% block content %}
+<p>Hallo{{ (' ' + reporter_name) if reporter_name else '' }},</p>
+
+<p>wir haben Ihre Supportanfrage bearbeitet und möchten Ihnen folgende Antwort zukommen lassen:</p>
+
+<div class="info-box">
+    <strong>Ihre Anfrage:</strong> {{ ticket_number }} – {{ ticket_title }}
+</div>
+
+<div style="margin: 24px 0; padding: 16px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #3b82f6;">
+    <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.7; color: #333;">{{ reply_body }}</div>
+</div>
+
+<p style="color: #666; font-size: 14px;">
+    Sollten Sie weitere Fragen haben, antworten Sie einfach auf diese E-Mail oder wenden Sie sich direkt an uns.
+</p>
+{% endblock %}
+
+{% block footer %}
+<p>
+    Mit freundlichen Grüßen<br>
+    <strong>K.I.T. Solutions Support-Team</strong>
+</p>
+<p style="margin-top: 8px; color: #999; font-size: 12px;">
+    Ticketnummer: {{ ticket_number }}<br>
+    <a href="mailto:support@kit-it-koblenz.de">support@kit-it-koblenz.de</a>
+</p>
+{% endblock %}

@@ -310,6 +310,47 @@ async def send_leave_request_rejected(
     )
 
 
+async def send_ticket_reply(
+    db: Session,
+    to_email: str,
+    ticket_number: str,
+    ticket_title: str,
+    reply_body: str,
+    reporter_name: Optional[str] = None,
+) -> bool:
+    """
+    Sendet eine Antwort-E-Mail auf ein Support-Ticket an den Kunden.
+
+    Args:
+        db: Database session
+        to_email: Empfänger-E-Mail (reporter)
+        ticket_number: Ticketnummer (z.B. TKT-000042)
+        ticket_title: Titel des Tickets
+        reply_body: Antworttext
+        reporter_name: Optionaler Name des Empfängers
+
+    Returns:
+        bool: True wenn E-Mail erfolgreich gesendet
+    """
+    email_service = EmailService(db)
+
+    text, html = email_service._render_template('ticket_reply', {
+        'ticket_number': ticket_number,
+        'ticket_title': ticket_title,
+        'reply_body': reply_body,
+        'reporter_name': reporter_name or '',
+    })
+
+    subject = f"Re: [{ticket_number}] {ticket_title}"
+
+    return await email_service.send_email(
+        to_emails=[to_email],
+        subject=subject,
+        body=text,
+        html_body=html,
+    )
+
+
 async def send_password_reset_notification(
     db: Session,
     employee_name: str,

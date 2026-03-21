@@ -354,6 +354,7 @@ def ingest_email(
             description=description,
             category=MAILBOX_TO_TYPE.get(payload.mailbox, payload.mailbox),
             priority="medium",
+            reporter_email=str(payload.from_email).strip().lower(),
         ),
         reporter_id=f"email:{payload.from_email}",
     )

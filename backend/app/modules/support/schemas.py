@@ -27,6 +27,7 @@ class TicketCreate(BaseModel):
     category: str = "general"
     customer_id: Optional[UUID] = None
     assignee_id: Optional[str] = None
+    reporter_email: Optional[str] = None
 
 
 class TicketUpdate(BaseModel):
@@ -37,6 +38,11 @@ class TicketUpdate(BaseModel):
     category: Optional[str] = None
     customer_id: Optional[UUID] = None
     assignee_id: Optional[str] = None
+    reporter_email: Optional[str] = None
+
+
+class TicketReplyRequest(BaseModel):
+    body: str = Field(..., min_length=1, description="Antworttext an den Kunden")
 
 
 class TicketResponse(BaseModel):
@@ -50,6 +56,7 @@ class TicketResponse(BaseModel):
     customer_id: Optional[UUID] = None
     assignee_id: Optional[str] = None
     reporter_id: Optional[str] = None
+    reporter_email: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     resolved_at: Optional[datetime] = None

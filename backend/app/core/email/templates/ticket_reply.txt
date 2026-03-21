@@ -1,0 +1,17 @@
+Hallo{% if reporter_name %} {{ reporter_name }}{% endif %},
+
+wir haben Ihre Supportanfrage bearbeitet und möchten Ihnen folgende Antwort zukommen lassen:
+
+Ihre Anfrage: {{ ticket_number }} – {{ ticket_title }}
+
+---
+
+{{ reply_body }}
+
+---
+
+Sollten Sie weitere Fragen haben, antworten Sie einfach auf diese E-Mail.
+
+Mit freundlichen Grüßen
+K.I.T. Solutions Support-Team
+support@kit-it-koblenz.de
