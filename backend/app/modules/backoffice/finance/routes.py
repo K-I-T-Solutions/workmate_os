@@ -848,7 +848,7 @@ def n8n_webhook_endpoint(
     transactions = [
         {
             "account_id": str(payload.account_id),
-            "date": txn.date,
+            "date": txn.booking_date,
             "amount": txn.amount,
             "purpose": txn.purpose,
             "counterpart_name": txn.counterpart_name,

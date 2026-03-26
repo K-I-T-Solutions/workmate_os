@@ -744,7 +744,7 @@ class StripePaymentLinkResponse(BaseModel):
 
 class N8nTransactionItem(BaseModel):
     """Einzelne Transaktion aus n8n."""
-    date: date = Field(description="Buchungsdatum (YYYY-MM-DD)")
+    booking_date: date = Field(description="Buchungsdatum (YYYY-MM-DD)")
     amount: Decimal = Field(description="Betrag (negativ = Ausgabe, positiv = Einnahme)")
     purpose: Optional[str] = Field(None, description="Verwendungszweck")
     counterpart_name: Optional[str] = Field(None, description="Name des Gegenübers")
