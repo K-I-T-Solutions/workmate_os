@@ -114,15 +114,24 @@ async function handleSubmit() {
 
   saving.value = true;
 
+  // Leere Strings für EmailStr-Felder in null umwandeln
+  const payload = {
+    ...formData.value,
+    email: formData.value.email?.trim() || null,
+    website: formData.value.website?.trim() || null,
+    tax_id: formData.value.tax_id?.trim() || null,
+    phone: formData.value.phone?.trim() || null,
+  };
+
   try {
     let result: Customer | null = null;
 
     if (isEditMode.value && props.customerId) {
       // Update existing customer
-      result = await updateCustomer(props.customerId, formData.value);
+      result = await updateCustomer(props.customerId, payload);
     } else {
       // Create new customer
-      result = await createCustomer(formData.value);
+      result = await createCustomer(payload);
     }
 
     if (result) {
@@ -278,7 +287,7 @@ async function handleSubmit() {
           <div>
             <label class="kit-label">Straße und Hausnummer</label>
             <input
-              v-model="formData.address"
+              v-model="formData.street"
               type="text"
               placeholder="Musterstraße 123"
               class="kit-input"
@@ -290,7 +299,7 @@ async function handleSubmit() {
             <div>
               <label class="kit-label">Postleitzahl</label>
               <input
-                v-model="formData.zip"
+                v-model="formData.zip_code"
                 type="text"
                 placeholder="12345"
                 class="kit-input"
