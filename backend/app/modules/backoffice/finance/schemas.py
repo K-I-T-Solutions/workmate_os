@@ -736,3 +736,35 @@ class StripePaymentLinkResponse(BaseModel):
     currency: str
     invoice_id: str
     invoice_number: str
+
+
+# ============================================================================
+# N8N WEBHOOK SCHEMAS
+# ============================================================================
+
+class N8nTransactionItem(BaseModel):
+    """Einzelne Transaktion aus n8n."""
+    date: date = Field(description="Buchungsdatum (YYYY-MM-DD)")
+    amount: Decimal = Field(description="Betrag (negativ = Ausgabe, positiv = Einnahme)")
+    purpose: Optional[str] = Field(None, description="Verwendungszweck")
+    counterpart_name: Optional[str] = Field(None, description="Name des Gegenübers")
+    counterpart_iban: Optional[str] = Field(None, description="IBAN des Gegenübers")
+    reference: Optional[str] = Field(None, description="Eindeutige Referenz zur Duplikaterkennung")
+
+
+class N8nWebhookPayload(BaseModel):
+    """Payload vom n8n-Workflow."""
+    account_id: uuid.UUID = Field(description="ID des Bankkontos in WorkmateOS")
+    transactions: list[N8nTransactionItem] = Field(description="Liste der Transaktionen")
+    skip_duplicates: bool = Field(True, description="Doppelte Transaktionen überspringen")
+    auto_reconcile: bool = Field(False, description="Automatisch mit offenen Rechnungen abgleichen")
+
+
+class N8nWebhookResponse(BaseModel):
+    """Antwort nach n8n-Webhook-Verarbeitung."""
+    success: bool
+    total: int
+    imported: int
+    skipped: int
+    reconciled: int
+    errors: list[str] = Field(default_factory=list)

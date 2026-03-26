@@ -29,25 +29,8 @@ from .schemas import (
     ReconcileRequest,
     CsvImportRequest,
     CsvImportResponse,
-    FinTsSyncRequest,
-    FinTsSyncResponse,
-    FinTsAccountSyncResponse,
-    FinTsBalanceRequest,
-    FinTsBalanceResponse,
-)
-from .psd2_integration import (
-    PSD2Credentials,
-    PSD2ConsentRequest,
-    PSD2ConsentResponse,
-    PSD2TokenRequest,
-    PSD2TokenResponse,
-    initiate_consent,
-    request_application_access_token,
-    exchange_authorization_code,
-    get_accounts as psd2_get_accounts,
-    get_transactions as psd2_get_transactions,
-    convert_psd2_account_to_bank_account,
-    convert_psd2_transaction_to_bank_transaction,
+    N8nWebhookPayload,
+    N8nWebhookResponse,
 )
 from .crud import (
     create_expense,
@@ -816,50 +799,45 @@ async def import_csv_transactions_endpoint(
 
 
 # ============================================================================
-# BANKING - FINTS/HBCI INTEGRATION
+# N8N WEBHOOK – Kontoauszüge importieren
 # ============================================================================
 
 @router.post(
-    "/fints/sync-transactions",
-    response_model=FinTsSyncResponse,
+    "/bank-transactions/n8n-webhook",
+    response_model=N8nWebhookResponse,
+    summary="n8n Webhook: Banktransaktionen importieren",
 )
-def sync_fints_transactions_endpoint(
-    payload: FinTsSyncRequest,
+def n8n_webhook_endpoint(
+    payload: N8nWebhookPayload,
     db: Session = Depends(get_db),
-) -> FinTsSyncResponse:
+) -> N8nWebhookResponse:
     """
-    Importiert Transaktionen direkt von Bank via FinTS/HBCI.
+    Nimmt Banktransaktionen von n8n entgegen und importiert sie.
 
-    **Unterstützt:**
-    - Alle deutschen Banken mit FinTS 3.0+ Support
-    - PIN/TAN-Verfahren
-    - PSD2-konform
+    n8n holt Kontoauszüge (z.B. via FinTS-Node oder Bank-API) und
+    schickt die Daten normalisiert an diesen Endpoint.
 
-    **Sicherheit:**
-    - Credentials werden NICHT in DB gespeichert
-    - PIN nur temporär im Memory
-    - HTTPS erforderlich
-
-    **Anforderungen:**
-    - Online-Banking aktiviert
-    - FinTS/HBCI freigeschaltet
-    - PIN/TAN verfügbar
-
-    **Zeitraum:**
-    - Default: Letzte 90 Tage
-    - Max: Abhängig von Bank (meist 90-180 Tage)
-
-    **Features:**
-    - Automatische Duplikat-Erkennung
-    - Automatische Reconciliation
-    - Balance-Update
-
-    Returns:
-        FinTsSyncResponse mit Import-Statistiken
+    **Beispiel n8n-Payload:**
+    ```json
+    {
+      "account_id": "uuid-des-bankkontos",
+      "transactions": [
+        {
+          "date": "2026-03-21",
+          "amount": -49.90,
+          "purpose": "Rechnung #2026-001",
+          "counterpart_name": "Musterfirma GmbH",
+          "counterpart_iban": "DE89370400440532013000",
+          "reference": "eindeutige-referenz-123"
+        }
+      ],
+      "skip_duplicates": true,
+      "auto_reconcile": true
+    }
+    ```
     """
-    from .fints_integration import sync_fints_transactions
+    from .csv_import import import_transactions
 
-    # Validate account
     account = get_bank_account(db, payload.account_id)
     if not account:
         raise HTTPException(
@@ -867,459 +845,33 @@ def sync_fints_transactions_endpoint(
             detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NOT_FOUND),
         )
 
-    if not account.iban:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=get_error_detail(ErrorCode.BANK_ACCOUNT_NO_IBAN),
-        )
-
-    try:
-        stats = sync_fints_transactions(
-            db=db,
-            account_id=str(payload.account_id),
-            blz=payload.credentials.blz,
-            login=payload.credentials.login,
-            pin=payload.credentials.pin,
-            sepa_account_iban=account.iban,
-            from_date=payload.from_date,
-            to_date=payload.to_date,
-            skip_duplicates=payload.skip_duplicates,
-            auto_reconcile=payload.auto_reconcile,
-        )
-
-        return FinTsSyncResponse(
-            success=len(stats["errors"]) == 0,
-            total=stats["total"],
-            imported=stats["imported"],
-            skipped=stats["skipped"],
-            reconciled=stats["reconciled"],
-            errors=stats["errors"],
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=get_error_detail(ErrorCode.FINTS_SYNC_FAILED, error=str(e)),
-        )
-
-
-@router.post(
-    "/fints/sync-accounts",
-    response_model=FinTsAccountSyncResponse,
-)
-def sync_fints_accounts_endpoint(
-    blz: str = Query(..., min_length=8, max_length=8, description="Bankleitzahl"),
-    login: str = Query(..., description="Online-Banking Login"),
-    pin: str = Query(..., description="PIN"),
-    create_missing: bool = Query(True, description="Fehlende Konten erstellen"),
-    db: Session = Depends(get_db),
-) -> FinTsAccountSyncResponse:
-    """
-    Synchronisiert Bankkonten via FinTS.
-
-    Ruft alle verfügbaren SEPA-Konten ab und erstellt fehlende
-    BankAccount-Einträge automatisch.
-
-    **Use Case:**
-    - Initiales Setup: Alle Konten importieren
-    - Regelmäßige Sync: Neue Konten erkennen
-
-    **Hinweis:**
-    Credentials werden als Query-Parameter übergeben (nicht in DB gespeichert).
-    In Produktion: HTTPS erforderlich!
-
-    Returns:
-        Statistiken über gefundene/erstellte Konten
-    """
-    from .fints_integration import sync_fints_accounts
-
-    try:
-        stats = sync_fints_accounts(
-            db=db,
-            blz=blz,
-            login=login,
-            pin=pin,
-            create_missing=create_missing,
-        )
-
-        return FinTsAccountSyncResponse(
-            success=len(stats["errors"]) == 0,
-            total_accounts=stats["total_accounts"],
-            existing=stats["existing"],
-            created=stats["created"],
-            errors=stats["errors"],
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=get_error_detail(ErrorCode.FINTS_SYNC_FAILED, error=str(e)),
-        )
-
-
-@router.post(
-    "/fints/check-balance",
-    response_model=FinTsBalanceResponse,
-)
-def check_fints_balance_endpoint(
-    payload: FinTsBalanceRequest,
-    db: Session = Depends(get_db),
-) -> FinTsBalanceResponse:
-    """
-    Prüft aktuellen Kontostand via FinTS.
-
-    **Use Case:**
-    - Balance-Verifikation gegen FinTS
-    - Abgleich mit gespeichertem Balance
-
-    **Hinweis:**
-    Viele Banken erlauben max. 1-2 Balance-Abfragen pro Minute.
-
-    Returns:
-        Aktueller Kontostand
-    """
-    from .fints_integration import get_fints_balance
-
-    try:
-        balance = get_fints_balance(
-            blz=payload.credentials.blz,
-            login=payload.credentials.login,
-            pin=payload.credentials.pin,
-            sepa_account_iban=payload.iban,
-        )
-
-        if balance is None:
-            return FinTsBalanceResponse(
-                success=False,
-                balance=None,
-                iban=payload.iban,
-                error="Kontostand konnte nicht abgerufen werden",
-            )
-
-        return FinTsBalanceResponse(
-            success=True,
-            balance=balance,
-            iban=payload.iban,
-            error=None,
-        )
-
-    except Exception as e:
-        return FinTsBalanceResponse(
-            success=False,
-            balance=None,
-            iban=payload.iban,
-            error=str(e),
-        )
-
-
-# ============================================================================
-# PSD2 OPEN BANKING API (ING)
-# ============================================================================
-
-@router.post("/psd2/consent/initiate", response_model=PSD2ConsentResponse)
-def initiate_psd2_consent(
-    payload: PSD2ConsentRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    Initiiert PSD2 OAuth2 Consent Flow.
-
-    **Flow:**
-    1. Client ruft diesen Endpoint auf
-    2. Endpoint gibt authorization_url zurück
-    3. Client redirectet User zu authorization_url
-    4. User gibt Consent in ING App
-    5. ING redirectet zurück zu redirect_uri mit authorization_code
-    6. Client ruft /psd2/consent/callback mit authorization_code auf
-
-    **Hinweis:**
-    - Erfordert mTLS-Zertifikate (QWAC/QSealC)
-    - redirect_uri muss mit registrierter URI übereinstimmen
-
-    **Beispiel redirect_uri:**
-    - https://workmateOS.example.com/banking/callback
-    - http://localhost:5173/banking/callback (für Dev)
-    """
-    try:
-        credentials = PSD2Credentials(
-            client_id=payload.client_id,
-            environment=settings.PSD2_ENVIRONMENT,
-        )
-
-        consent_response = initiate_consent(
-            credentials=credentials,
-            redirect_uri=payload.redirect_uri,
-            scope=payload.scope,
-        )
-
-        return consent_response
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
-        )
-
-
-@router.post("/psd2/consent/callback", response_model=PSD2TokenResponse)
-def psd2_consent_callback(
-    payload: PSD2TokenRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    Callback nach User-Consent.
-
-    Tauscht authorization_code gegen customer access_token.
-
-    **ING mTLS Flow:**
-    1. Request Application Access Token (mTLS-only)
-    2. Exchange authorization code with this token
-    3. Return Customer Access Token
-
-    **Parameter:**
-    - client_id: ING Client ID
-    - authorization_code: Code aus ING Redirect
-
-    **Returns:**
-    - access_token: Customer Access Token (gültig 15 min)
-    - refresh_token: Für Token-Refresh (gültig 30 Tage)
-
-    **Hinweis:**
-    - access_token muss sicher gespeichert werden
-    - Token ist personenbezogen
-    """
-    try:
-        credentials = PSD2Credentials(
-            client_id=payload.client_id,
-            environment=settings.PSD2_ENVIRONMENT,
-        )
-
-        # Step 1: Get Application Access Token via mTLS
-        app_token_response = request_application_access_token(credentials)
-        app_access_token = app_token_response["access_token"]
-
-        # Step 2: Exchange authorization code
-        token_response = exchange_authorization_code(
-            credentials=credentials,
-            authorization_code=payload.authorization_code,
-            application_access_token=app_access_token,
-        )
-
-        return token_response
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
-        )
-
-
-@router.post("/psd2/accounts/sync")
-def sync_psd2_accounts(
-    client_id: str,
-    access_token: str,
-    create_missing: bool = Query(default=True),
-    db: Session = Depends(get_db),
-):
-    """
-    Synct Konten von ING PSD2 API.
-
-    **Prerequisite:**
-    - User muss Consent gegeben haben (/psd2/consent/initiate)
-    - access_token muss valid sein
-
-    **Parameter:**
-    - client_id: ING Client ID
-    - access_token: OAuth2 Access Token
-    - create_missing: Neue Konten automatisch anlegen?
-
-    **Returns:**
-    - Liste der synchronisierten Konten
-    - Neu erstellte Konten werden markiert
-    """
-    try:
-        credentials = PSD2Credentials(
-            client_id=client_id,
-            environment=settings.PSD2_ENVIRONMENT,
-        )
-
-        # Get accounts from PSD2 API
-        psd2_accounts = psd2_get_accounts(
-            credentials=credentials,
-            access_token=access_token,
-        )
-
-        synced_accounts = []
-
-        for psd2_account in psd2_accounts:
-            # Check if account exists
-            existing_account = None
-            if psd2_account.iban:
-                from sqlalchemy import select
-                from .models import BankAccount
-                stmt = select(BankAccount).where(BankAccount.iban == psd2_account.iban)
-                existing_account = db.scalars(stmt).first()
-
-            if existing_account:
-                # Update existing account
-                account_data = convert_psd2_account_to_bank_account(psd2_account)
-                for key, value in account_data.items():
-                    if key not in ["id", "created_at", "updated_at"]:
-                        setattr(existing_account, key, value)
-                db.commit()
-                db.refresh(existing_account)
-
-                synced_accounts.append({
-                    "account": BankAccountRead.model_validate(existing_account),
-                    "created": False,
-                })
-
-            elif create_missing:
-                # Create new account
-                account_data = convert_psd2_account_to_bank_account(psd2_account)
-                new_account = create_bank_account(
-                    db,
-                    BankAccountCreate(**account_data)
-                )
-
-                synced_accounts.append({
-                    "account": new_account,
-                    "created": True,
-                })
-
-        return {
-            "success": True,
-            "accounts_synced": len(synced_accounts),
-            "accounts": synced_accounts,
+    transactions = [
+        {
+            "account_id": str(payload.account_id),
+            "date": txn.date,
+            "amount": txn.amount,
+            "purpose": txn.purpose,
+            "counterpart_name": txn.counterpart_name,
+            "counterpart_iban": txn.counterpart_iban,
+            "reference": txn.reference,
+            "transaction_type": "credit" if txn.amount >= 0 else "debit",
         }
+        for txn in payload.transactions
+    ]
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
-        )
+    stats = import_transactions(
+        db=db,
+        transactions=transactions,
+        skip_duplicates=payload.skip_duplicates,
+        auto_reconcile=payload.auto_reconcile,
+    )
 
-
-@router.post("/psd2/transactions/sync")
-def sync_psd2_transactions(
-    client_id: str,
-    access_token: str,
-    account_id: uuid.UUID,
-    psd2_account_id: str,
-    date_from: Optional[str] = Query(default=None),
-    date_to: Optional[str] = Query(default=None),
-    skip_duplicates: bool = Query(default=True),
-    auto_reconcile: bool = Query(default=True),
-    db: Session = Depends(get_db),
-):
-    """
-    Synct Transaktionen von ING PSD2 API.
-
-    **Prerequisite:**
-    - User muss Consent gegeben haben
-    - access_token muss valid sein
-    - account_id muss existieren (WorkmateOS BankAccount)
-    - psd2_account_id ist der ING resource_id
-
-    **Parameter:**
-    - client_id: ING Client ID
-    - access_token: OAuth2 Access Token
-    - account_id: WorkmateOS BankAccount UUID
-    - psd2_account_id: ING Account Resource ID
-    - date_from: Start-Datum (YYYY-MM-DD)
-    - date_to: End-Datum (YYYY-MM-DD)
-    - skip_duplicates: Duplikate überspringen?
-    - auto_reconcile: Automatisches Reconciliation?
-
-    **Returns:**
-    - Anzahl importierter Transaktionen
-    - Anzahl übersprungener Duplikate
-    - Anzahl auto-reconciled Transaktionen
-    """
-    try:
-        credentials = PSD2Credentials(
-            client_id=client_id,
-            environment=settings.PSD2_ENVIRONMENT,
-        )
-
-        # Get transactions from PSD2 API
-        psd2_transactions = psd2_get_transactions(
-            credentials=credentials,
-            access_token=access_token,
-            account_id=psd2_account_id,
-            date_from=date_from,
-            date_to=date_to,
-        )
-
-        imported_count = 0
-        skipped_count = 0
-        reconciled_count = 0
-
-        for psd2_txn in psd2_transactions:
-            # Check for duplicates
-            if skip_duplicates:
-                from sqlalchemy import select
-                from .models import BankTransaction
-                stmt = select(BankTransaction).where(
-                    BankTransaction.reference == psd2_txn.transaction_id
-                )
-                existing_txn = db.scalars(stmt).first()
-
-                if existing_txn:
-                    skipped_count += 1
-                    continue
-
-            # Convert and create transaction
-            txn_data = convert_psd2_transaction_to_bank_transaction(
-                psd2_txn,
-                account_id=account_id
-            )
-
-            new_txn = create_bank_transaction(
-                db,
-                BankTransactionCreate(**txn_data)
-            )
-            imported_count += 1
-
-            # Auto-reconciliation
-            if auto_reconcile:
-                try:
-                    result = auto_reconcile_transaction(db, new_txn.id)
-                    if result["reconciled"]:
-                        reconciled_count += 1
-                except Exception as reconcile_error:
-                    # Reconciliation failure should not stop import
-                    pass
-
-        return {
-            "success": True,
-            "imported": imported_count,
-            "skipped": skipped_count,
-            "auto_reconciled": reconciled_count,
-            "total_fetched": len(psd2_transactions),
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=get_error_detail(ErrorCode.SYSTEM_ERROR),
-        )
-
-
-# ============================================================================
-# SEVDESK INTEGRATION
-# ============================================================================
-
-from .sevdesk_router import router as sevdesk_router
-
-router.include_router(sevdesk_router)
-
-
-# ============================================================================
-# STRIPE PAYMENT INTEGRATION
-# ============================================================================
-
-from .stripe_router import router as stripe_router
-
-router.include_router(stripe_router)
+    return N8nWebhookResponse(
+        success=True,
+        total=stats["total"],
+        imported=stats["imported"],
+        skipped=stats["skipped"],
+        reconciled=stats["reconciled"],
+        errors=stats["errors"],
+    )
 

@@ -4,25 +4,18 @@ import FinanceDashboardPage from './pages/dashboard/FinanceDashboardPage.vue';
 import AuditLogsPage from './pages/AuditLogsPage.vue';
 import BankAccountsPage from './pages/banking/BankAccountsPage.vue';
 import BankTransactionsPage from './pages/banking/BankTransactionsPage.vue';
-import SevDeskSettingsPage from './pages/SevDeskSettingsPage.vue';
-import StripeSettingsPage from './pages/StripeSettingsPage.vue';
 
-// Props for deep-linking from other apps (if needed in future)
 const props = defineProps<{
   initialView?: string;
 }>();
 
-// Current view state
 const currentView = ref(props.initialView || 'dashboard');
 
-// Navigation tabs
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'bank-accounts', label: 'Bank-Konten', icon: '🏦' },
   { id: 'transactions', label: 'Transaktionen', icon: '💳' },
   { id: 'audit', label: 'Audit Trail', icon: '📋' },
-  { id: 'sevdesk', label: 'SevDesk', icon: '💼' },
-  { id: 'stripe', label: 'Stripe', icon: '💳' }
 ];
 </script>
 
@@ -54,8 +47,6 @@ const tabs = [
       <BankAccountsPage v-if="currentView === 'bank-accounts'" />
       <BankTransactionsPage v-if="currentView === 'transactions'" />
       <AuditLogsPage v-if="currentView === 'audit'" />
-      <SevDeskSettingsPage v-if="currentView === 'sevdesk'" />
-      <StripeSettingsPage v-if="currentView === 'stripe'" />
     </div>
   </div>
 </template>
