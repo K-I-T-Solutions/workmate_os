@@ -803,7 +803,7 @@ async def import_csv_transactions_endpoint(
 # ============================================================================
 
 @router.post(
-    "/bank-transactions/n8n-webhook",
+    "/n8n/import-transactions",
     response_model=N8nWebhookResponse,
     summary="n8n Webhook: Banktransaktionen importieren",
 )
