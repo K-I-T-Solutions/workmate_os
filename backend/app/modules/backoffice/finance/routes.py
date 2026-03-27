@@ -837,6 +837,7 @@ def n8n_webhook_endpoint(
     ```
     """
     from .csv_import import import_transactions
+    from .schemas import BankTransactionCreate
 
     account = get_bank_account(db, payload.account_id)
     if not account:
@@ -846,16 +847,16 @@ def n8n_webhook_endpoint(
         )
 
     transactions = [
-        {
-            "account_id": str(payload.account_id),
-            "date": txn.booking_date,
-            "amount": txn.amount,
-            "purpose": txn.purpose,
-            "counterpart_name": txn.counterpart_name,
-            "counterpart_iban": txn.counterpart_iban,
-            "reference": txn.reference,
-            "transaction_type": "credit" if txn.amount >= 0 else "debit",
-        }
+        BankTransactionCreate(
+            account_id=payload.account_id,
+            date=txn.booking_date,
+            amount=txn.amount,
+            purpose=txn.purpose,
+            counterpart_name=txn.counterpart_name,
+            counterpart_iban=txn.counterpart_iban,
+            reference=txn.reference,
+            transaction_type="credit" if txn.amount >= 0 else "debit",
+        )
         for txn in payload.transactions
     ]
 
