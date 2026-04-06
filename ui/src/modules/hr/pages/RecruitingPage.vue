@@ -7,16 +7,17 @@ import { apiClient } from '@/services/api/client';
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const jobs = ref<any[]>([]);
 const showCreateForm = ref(false);
 const submitting = ref(false);
 const departments = ref<any[]>([]);
 
 const statusConfig: Record<string, { label: string; class: string }> = {
-  draft:     { label: 'Entwurf',     class: 'text-white/50 bg-white/5 border-white/10' },
-  published: { label: 'Veröffentlicht', class: 'text-green-300 bg-green-500/10 border-green-500/30' },
-  closed:    { label: 'Geschlossen', class: 'text-red-300 bg-red-500/10 border-red-500/30' },
-  archived:  { label: 'Archiviert',  class: 'text-white/30 bg-white/5 border-white/10' },
+  draft:     { label: 'Entwurf',        class: 'badge badge-gray' },
+  published: { label: 'Veröffentlicht', class: 'badge badge-green' },
+  closed:    { label: 'Geschlossen',    class: 'badge badge-red' },
+  archived:  { label: 'Archiviert',     class: 'badge badge-gray' },
 };
 
 const employmentLabels: Record<string, string> = {
@@ -42,9 +43,12 @@ onMounted(async () => {
 
 async function loadJobs() {
   loading.value = true;
+  error.value = null;
   try {
     const { data } = await apiClient.get('/api/hr/recruiting/jobs', { params: { limit: 100 } });
     jobs.value = data.items || data;
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -120,7 +124,7 @@ function formatDate(d?: string) {
     </div>
 
     <!-- Create Form -->
-    <div v-if="showCreateForm" class="p-5 rounded-xl bg-white/5 border border-blue-400/20 space-y-4">
+    <div v-if="showCreateForm" class="kit-card p-5 space-y-4">
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-white">Neue Stellenausschreibung</h3>
         <button @click="showCreateForm = false; resetForm()" class="text-white/40 hover:text-white">
@@ -193,6 +197,12 @@ function formatDate(d?: string) {
       <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadJobs()">Erneut versuchen</button>
+    </div>
+
     <!-- Empty -->
     <div v-else-if="filteredJobs.length === 0" class="text-center py-14 text-white/40">
       <Briefcase :size="36" class="mx-auto mb-3 opacity-40" />
@@ -202,7 +212,7 @@ function formatDate(d?: string) {
     <!-- Jobs List -->
     <div v-else class="space-y-3">
       <div v-for="job in filteredJobs" :key="job.id"
-        class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+        class="kit-card p-4 hover:bg-white/10 transition-colors"
       >
         <div class="flex items-start gap-3">
           <div class="p-2 bg-blue-500/15 border border-blue-400/20 rounded-lg flex-shrink-0">
@@ -213,7 +223,7 @@ function formatDate(d?: string) {
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-medium text-white">{{ job.title }}</span>
-                  <span class="text-xs px-2 py-0.5 rounded border" :class="statusConfig[job.status]?.class">
+                  <span :class="statusConfig[job.status]?.class">
                     {{ statusConfig[job.status]?.label }}
                   </span>
                 </div>

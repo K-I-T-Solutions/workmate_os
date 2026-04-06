@@ -26,6 +26,9 @@ const emit = defineEmits<{
 // Composables
 const { expenses, isLoading, loadExpenses, deleteExpense } = useExpenses();
 
+// Error State
+const error = ref<string | null>(null);
+
 // Filter State
 const showFilters = ref(false);
 const filters = ref<ExpenseFilters>({
@@ -42,6 +45,7 @@ onMounted(() => {
 
 // Actions
 async function applyFilters() {
+  error.value = null;
   const activeFilters: ExpenseFilters = {};
 
   if (filters.value.title) activeFilters.title = filters.value.title;
@@ -49,7 +53,11 @@ async function applyFilters() {
   if (filters.value.from_date) activeFilters.from_date = filters.value.from_date;
   if (filters.value.to_date) activeFilters.to_date = filters.value.to_date;
 
-  await loadExpenses(activeFilters);
+  try {
+    await loadExpenses(activeFilters);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
+  }
 }
 
 function clearFilters() {
@@ -92,25 +100,18 @@ const totalAmount = computed(() => {
 
 // Helpers
 function getCategoryColor(category: ExpenseCategory): string {
-  const colors = {
-    [ExpenseCategory.TRAVEL]: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    [ExpenseCategory.MATERIAL]:
-      'bg-purple-500/20 border-purple-400/30 text-purple-200',
-    [ExpenseCategory.SOFTWARE]:
-      'bg-cyan-500/20 border-cyan-400/30 text-cyan-200',
-    [ExpenseCategory.HARDWARE]:
-      'bg-green-500/20 border-green-400/30 text-green-200',
-    [ExpenseCategory.CONSULTING]:
-      'bg-orange-500/20 border-orange-400/30 text-orange-200',
-    [ExpenseCategory.MARKETING]:
-      'bg-pink-500/20 border-pink-400/30 text-pink-200',
-    [ExpenseCategory.OFFICE]:
-      'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    [ExpenseCategory.TRAINING]:
-      'bg-indigo-500/20 border-indigo-400/30 text-indigo-200',
-    [ExpenseCategory.OTHER]: 'bg-white/5 border-white/10 text-white/60',
+  const colors: Record<string, string> = {
+    [ExpenseCategory.TRAVEL]:     'badge badge-blue',
+    [ExpenseCategory.MATERIAL]:   'badge badge-cyan',
+    [ExpenseCategory.SOFTWARE]:   'badge badge-cyan',
+    [ExpenseCategory.HARDWARE]:   'badge badge-green',
+    [ExpenseCategory.CONSULTING]: 'badge badge-orange',
+    [ExpenseCategory.MARKETING]:  'badge badge-red',
+    [ExpenseCategory.OFFICE]:     'badge badge-amber',
+    [ExpenseCategory.TRAINING]:   'badge badge-blue',
+    [ExpenseCategory.OTHER]:      'badge badge-gray',
   };
-  return colors[category];
+  return colors[category] || 'badge badge-gray';
 }
 
 function formatCurrency(value: number): string {
@@ -175,7 +176,7 @@ function formatDate(dateString: string): string {
       <!-- Filters Panel -->
       <div
         v-if="showFilters"
-        class="mt-4 p-4 bg-white/5 rounded-lg border border-white/10 space-y-3"
+        class="kit-card mt-4 p-4 space-y-3"
       >
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <!-- Title Search -->
@@ -276,6 +277,12 @@ function formatDate(dateString: string): string {
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !isLoading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="applyFilters()">Erneut versuchen</button>
+    </div>
+
     <!-- Empty State -->
     <div
       v-else-if="filteredExpenses.length === 0"
@@ -301,31 +308,18 @@ function formatDate(dateString: string): string {
         <div
           v-for="expense in filteredExpenses"
           :key="expense.id"
-          class="p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
+          class="kit-card p-4 hover:bg-white/10 transition-colors"
         >
           <div class="flex items-start justify-between gap-4">
             <!-- Left: Info -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-2">
                 <h3 class="font-semibold text-white truncate">{{ expense.title }}</h3>
-                <span
-                  :class="getCategoryColor(expense.category)"
-                  class="px-2 py-0.5 rounded text-xs font-medium border whitespace-nowrap"
-                >
+                <span :class="getCategoryColor(expense.category)">
                   {{ ExpenseCategoryLabels[expense.category] }}
                 </span>
-                <span
-                  v-if="expense.is_billable"
-                  class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/20 border-emerald-400/30 text-emerald-200 border whitespace-nowrap"
-                >
-                  Abrechenbar
-                </span>
-                <span
-                  v-if="expense.is_invoiced"
-                  class="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 border-yellow-400/30 text-yellow-200 border whitespace-nowrap"
-                >
-                  Abgerechnet
-                </span>
+                <span v-if="expense.is_billable" class="badge badge-green">Abrechenbar</span>
+                <span v-if="expense.is_invoiced" class="badge badge-amber">Abgerechnet</span>
               </div>
               <p class="text-sm text-white/60 line-clamp-2 mb-2">
                 {{ expense.description }}

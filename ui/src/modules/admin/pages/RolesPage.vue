@@ -80,6 +80,12 @@
       Lade Rollen...
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="fetchRoles()">Erneut versuchen</button>
+    </div>
+
     <!-- Create/Edit Dialog (Placeholder) -->
     <div v-if="showCreateDialog" class="dialog-overlay" @click.self="showCreateDialog = false">
       <div class="dialog">
@@ -95,10 +101,14 @@
 import { ref, onMounted } from 'vue';
 import { Plus, Pencil, Trash2, Shield, Key } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
+import { useToast } from '@/composables/useToast';
+
+const toast = useToast();
 
 // State
 const roles = ref<any[]>([]);
 const loading = ref(false);
+const error = ref<string | null>(null);
 const showCreateDialog = ref(false);
 
 // System roles that cannot be deleted
@@ -107,11 +117,12 @@ const systemRoles = ['Admin', 'CEO', 'Manager', 'Employee'];
 // Fetch roles
 async function fetchRoles() {
   loading.value = true;
+  error.value = null;
   try {
     const response = await apiClient.get('/api/roles');
     roles.value = response.data;
-  } catch (error) {
-    console.error('Failed to fetch roles:', error);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -133,13 +144,13 @@ function getRoleColorClass(roleName: string): string {
 }
 
 // Actions
-function editRole(role: any) {
-  alert(`Edit ${role.name} - TODO`);
+function editRole(_role: any) {
+  // TODO: Implement edit role modal
 }
 
 async function deleteRole(role: any) {
   if (isSystemRole(role.name)) {
-    alert('Systemrollen können nicht gelöscht werden!');
+    toast.warning('Systemrollen können nicht gelöscht werden!');
     return;
   }
 
@@ -152,7 +163,7 @@ async function deleteRole(role: any) {
     await fetchRoles();
   } catch (error) {
     console.error('Failed to delete role:', error);
-    alert('Fehler beim Löschen');
+    toast.error('Fehler beim Löschen');
   }
 }
 

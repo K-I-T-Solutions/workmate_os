@@ -84,7 +84,7 @@
             <td>{{ emp.department?.name || '-' }}</td>
             <td>{{ emp.role?.name || '-' }}</td>
             <td>
-              <span :class="['status-badge', emp.status]">
+              <span :class="['badge', getStatusBadgeClass(emp.status)]">
                 <CircleDot :size="10" />
                 {{ getStatusLabel(emp.status) }}
               </span>
@@ -128,6 +128,12 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Error State -->
+      <div v-if="error && !loading" class="kit-card p-6 text-center">
+        <p class="text-red-400 text-sm">{{ error }}</p>
+        <button class="kit-btn-secondary mt-3 text-xs" @click="loadData()">Erneut versuchen</button>
+      </div>
 
       <!-- Loading State -->
       <table v-if="loading" class="data-table skeleton-table">
@@ -210,8 +216,11 @@ import { Plus, Pencil, Trash2, Users, X, Power, Key, CircleDot } from 'lucide-vu
 import { useEmployees } from '@/composables/useEmployees';
 import { usePermissions } from '@/composables/usePermissions';
 import { useAuth } from '@/composables/useAuth';
+import { useToast } from '@/composables/useToast';
 import EmployeeFormModal from '../components/EmployeeFormModal.vue';
 import PasswordResetModal from '../components/PasswordResetModal.vue';
+
+const toast = useToast();
 
 // Composables
 const {
@@ -237,6 +246,7 @@ const { user } = useAuth();
 const page = ref(1);
 const pageSize = ref(20);
 const searchQuery = ref('');
+const error = ref<string | null>(null);
 const showCreateDialog = ref(false);
 const editingEmployee = ref<any>(null);
 const resettingPasswordFor = ref<any>(null);
@@ -271,6 +281,15 @@ function getStatusLabel(status: string): string {
   return labels[status] || status;
 }
 
+function getStatusBadgeClass(status: string): string {
+  const classes: Record<string, string> = {
+    active:   'badge-green',
+    inactive: 'badge-red',
+    on_leave: 'badge-amber',
+  };
+  return classes[status] || 'badge-gray';
+}
+
 // Actions
 function editEmployee(emp: any) {
   editingEmployee.value = emp;
@@ -294,10 +313,10 @@ async function handleSaveEmployee(data: any) {
     }
     closeEmployeeModal();
     await loadData();
-    alert('Mitarbeiter erfolgreich gespeichert');
+    toast.success('Mitarbeiter erfolgreich gespeichert');
   } catch (error: any) {
     console.error('Failed to save employee:', error);
-    alert(error.response?.data?.detail || 'Fehler beim Speichern');
+    toast.error(error.response?.data?.detail || 'Fehler beim Speichern');
   }
 }
 
@@ -311,10 +330,10 @@ async function handlePasswordReset(data: { newPassword: string; sendNotification
       data.sendNotification
     );
     resettingPasswordFor.value = null;
-    alert('Passwort erfolgreich zurückgesetzt');
+    toast.success('Passwort erfolgreich zurückgesetzt');
   } catch (error: any) {
     console.error('Failed to reset password:', error);
-    alert(error.response?.data?.detail || 'Fehler beim Zurücksetzen des Passworts');
+    toast.error(error.response?.data?.detail || 'Fehler beim Zurücksetzen des Passworts');
   }
 }
 
@@ -329,10 +348,10 @@ async function toggleStatus(emp: any) {
   try {
     await updateStatus(emp.id, newStatus);
     await loadData();
-    alert(`Mitarbeiter erfolgreich ${action === 'aktivieren' ? 'aktiviert' : 'deaktiviert'}`);
+    toast.success(`Mitarbeiter erfolgreich ${action === 'aktivieren' ? 'aktiviert' : 'deaktiviert'}`);
   } catch (error: any) {
     console.error('Failed to update status:', error);
-    alert(error.response?.data?.detail || 'Fehler beim Ändern des Status');
+    toast.error(error.response?.data?.detail || 'Fehler beim Ändern des Status');
   }
 }
 
@@ -344,10 +363,10 @@ async function deleteEmployee(emp: any) {
   try {
     await deleteEmployeeAPI(emp.id);
     await loadData();
-    alert('Mitarbeiter erfolgreich gelöscht');
+    toast.success('Mitarbeiter erfolgreich gelöscht');
   } catch (error: any) {
     console.error('Failed to delete employee:', error);
-    alert(error.response?.data?.detail || 'Fehler beim Löschen');
+    toast.error(error.response?.data?.detail || 'Fehler beim Löschen');
   }
 }
 
@@ -360,12 +379,17 @@ function clearFilters() {
 }
 
 async function loadData() {
-  await fetchEmployees({
-    skip: (page.value - 1) * pageSize.value,
-    limit: pageSize.value,
-    search: searchQuery.value,
-    ...filters.value,
-  });
+  error.value = null;
+  try {
+    await fetchEmployees({
+      skip: (page.value - 1) * pageSize.value,
+      limit: pageSize.value,
+      search: searchQuery.value,
+      ...filters.value,
+    });
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
+  }
 }
 
 // Watch for changes
@@ -544,18 +568,18 @@ onMounted(async () => {
 }
 
 .btn-icon.btn-danger:hover {
-  background: #fee2e2;
-  color: #dc2626;
+  background: rgb(239 68 68 / 0.15);
+  color: #fca5a5;
 }
 
 .btn-icon.btn-warning:hover {
-  background: #fef3c7;
-  color: #d97706;
+  background: rgb(245 158 11 / 0.15);
+  color: #fcd34d;
 }
 
 .btn-icon.btn-success:hover {
-  background: #d1fae5;
-  color: #059669;
+  background: rgb(34 197 94 / 0.15);
+  color: #86efac;
 }
 
 /* Table */
@@ -606,30 +630,7 @@ onMounted(async () => {
   font-family: 'Courier New', monospace;
 }
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-badge.active {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-badge.inactive {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.status-badge.on_leave {
-  background: #fff3cd;
-  color: #856404;
-}
+/* status badges now use global .badge .badge-* classes */
 
 .action-buttons {
   display: flex;

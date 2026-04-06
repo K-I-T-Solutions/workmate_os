@@ -248,6 +248,9 @@
 import { ref, onMounted } from 'vue';
 import { Building2, Globe, Clock, Settings, Save, CheckCircle, Mail } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
+import { useToast } from '@/composables/useToast';
+
+const toast = useToast();
 
 // State
 const settings = ref({
@@ -322,7 +325,7 @@ async function saveSettings() {
     }, 3000);
   } catch (error) {
     console.error('Failed to save settings:', error);
-    alert('Fehler beim Speichern der Einstellungen');
+    toast.error('Fehler beim Speichern der Einstellungen');
   } finally {
     saving.value = false;
   }

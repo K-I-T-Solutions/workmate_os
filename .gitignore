@@ -51,3 +51,4 @@ app/uploads/
 ../assets/openapi.yaml
 assets/openapi.yaml
 assets/_banking_certs_bak/
+.claude/worktrees/

@@ -27,10 +27,16 @@ const {
 // SevDesk Sync State
 const syncSuccess = ref<string | null>(null);
 const syncError = ref<string | null>(null);
+const loadError = ref<string | null>(null);
 
 // Lifecycle
 onMounted(async () => {
-  loadOverview();
+  loadError.value = null;
+  try {
+    await loadOverview();
+  } catch (e) {
+    loadError.value = 'Daten konnten nicht geladen werden.';
+  }
   // Load SevDesk config to check if it's configured
   try {
     await fetchConfig();
@@ -88,13 +94,13 @@ const expenseCategoryLabels: Record<string, string> = {
 // Get status badge color
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    draft: 'bg-white/5 border-white/10 text-white/60',
-    sent: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    paid: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    overdue: 'bg-red-500/20 border-red-400/30 text-red-200',
-    cancelled: 'bg-white/5 border-white/10 text-white/60',
+    draft:     'badge-gray',
+    sent:      'badge-blue',
+    paid:      'badge-green',
+    overdue:   'badge-red',
+    cancelled: 'badge-gray',
   };
-  return colors[status] || colors.draft;
+  return colors[status] || 'badge-gray';
 }
 
 // Get category bar color
@@ -187,12 +193,18 @@ function formatDateTime(dateString?: string) {
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
     </div>
 
+    <!-- Error State -->
+    <div v-if="loadError && !isLoading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ loadError }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadOverview()">Erneut versuchen</button>
+    </div>
+
     <!-- Dashboard Content -->
     <div v-else-if="overview" class="flex-1 overflow-y-auto space-y-4">
       <!-- KPI Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <!-- Total Revenue -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm text-white/60">Gesamtumsatz</span>
             <div class="p-2 bg-emerald-500/20 rounded-lg border border-emerald-400/30">
@@ -208,7 +220,7 @@ function formatDateTime(dateString?: string) {
         </div>
 
         <!-- Total Expenses -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm text-white/60">Gesamtausgaben</span>
             <div class="p-2 bg-red-500/20 rounded-lg border border-red-400/30">
@@ -224,7 +236,7 @@ function formatDateTime(dateString?: string) {
         </div>
 
         <!-- Profit -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm text-white/60">Gewinn</span>
             <div :class="[
@@ -245,7 +257,7 @@ function formatDateTime(dateString?: string) {
         </div>
 
         <!-- Profit Margin -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm text-white/60">Gewinnmarge</span>
             <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
@@ -264,7 +276,7 @@ function formatDateTime(dateString?: string) {
       <!-- Outstanding & Overdue -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <!-- Outstanding Revenue -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-yellow-500/20 rounded-lg border border-yellow-400/30">
               <ArrowUpCircle :size="18" class="text-yellow-200" />
@@ -280,7 +292,7 @@ function formatDateTime(dateString?: string) {
         </div>
 
         <!-- Overdue Revenue -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-red-500/20 rounded-lg border border-red-400/30">
               <ArrowDownCircle :size="18" class="text-red-200" />
@@ -299,7 +311,7 @@ function formatDateTime(dateString?: string) {
       <!-- Charts Row -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <!-- Invoices by Status -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <h3 class="text-sm font-semibold text-white mb-4">Rechnungen nach Status</h3>
           <div class="space-y-3">
             <div
@@ -308,9 +320,7 @@ function formatDateTime(dateString?: string) {
               class="flex items-center justify-between"
             >
               <div class="flex items-center gap-2 flex-1">
-                <span
-                  :class="['px-2 py-0.5 rounded text-xs font-medium border', getStatusColor(status)]"
-                >
+                <span class="badge" :class="getStatusColor(status)">
                   {{ invoiceStatusLabels[status] || status }}
                 </span>
               </div>
@@ -322,7 +332,7 @@ function formatDateTime(dateString?: string) {
         </div>
 
         <!-- Expenses by Category -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <h3 class="text-sm font-semibold text-white mb-4">Ausgaben nach Kategorie</h3>
           <div class="space-y-3">
             <div

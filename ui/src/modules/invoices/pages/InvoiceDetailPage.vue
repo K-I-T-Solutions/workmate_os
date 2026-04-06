@@ -4,6 +4,7 @@ import { useInvoices } from '../composables/useInvoices';
 import { useSevDesk, useStripe } from '@/modules/finance/composables';
 import type { InvoiceStatus, Payment, PaymentMethod, PaymentCreateRequest, PaymentUpdateRequest } from '../types';
 import { apiClient } from '@/services/api/client';
+import { useToast } from '@/composables/useToast';
 import { useAppManager } from '@/layouts/app-manager/useAppManager';
 import {
   ChevronLeft,
@@ -38,6 +39,7 @@ const emit = defineEmits<{
 }>();
 
 // Composables
+const toast = useToast();
 const {
   currentInvoice,
   loading,
@@ -229,15 +231,15 @@ function handleProjectClick() {
 
 // Helpers
 function getStatusBadgeClass(status: InvoiceStatus): string {
-  const classes = {
-    draft: 'bg-white/5 border-white/10 text-white/80',
-    sent: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    paid: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    partial: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    overdue: 'bg-red-500/20 border-red-400/30 text-red-200',
-    cancelled: 'bg-white/5 border-white/10 text-white/60',
+  const classes: Record<string, string> = {
+    draft:     'badge-gray',
+    sent:      'badge-blue',
+    paid:      'badge-green',
+    partial:   'badge-amber',
+    overdue:   'badge-red',
+    cancelled: 'badge-gray',
   };
-  return classes[status] || classes.draft;
+  return classes[status] || 'badge-gray';
 }
 
 function getStatusLabel(status: InvoiceStatus): string {
@@ -406,7 +408,7 @@ async function handleDeletePayment(paymentId: string) {
     await apiClient.delete(`/api/backoffice/invoices/payments/${paymentId}`);
     await loadInvoice(props.invoiceId);
   } catch (err: any) {
-    alert(err.response?.data?.detail || 'Fehler beim Löschen der Zahlung');
+    toast.error(err.response?.data?.detail || 'Fehler beim Löschen der Zahlung');
   } finally {
     paymentLoading.value = false;
   }
@@ -459,7 +461,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         <div v-if="invoice">
           <h1 class="text-2xl font-bold text-white flex items-center gap-3">
             {{ invoice.invoice_number }}
-            <span :class="['px-2 py-1 rounded text-sm font-medium border', getStatusBadgeClass(invoice.status)]">
+            <span class="badge" :class="getStatusBadgeClass(invoice.status)">
               {{ getStatusLabel(invoice.status) }}
             </span>
           </h1>
@@ -547,7 +549,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Customer Info -->
         <div
-          class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition cursor-pointer"
+          class="kit-card p-4 hover:bg-white/10 transition cursor-pointer"
           @click="handleCustomerClick"
         >
           <div class="flex items-center gap-2 text-white/60 mb-3">
@@ -565,7 +567,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         <!-- Project Info (if available) -->
         <div
           v-if="invoice.project_id"
-          class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition cursor-pointer"
+          class="kit-card p-4 hover:bg-white/10 transition cursor-pointer"
           @click="handleProjectClick"
         >
           <div class="flex items-center gap-2 text-white/60 mb-3">
@@ -581,7 +583,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         </div>
 
         <!-- Dates -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 text-white/60 mb-3">
             <Calendar :size="16" />
             <h3 class="text-sm font-medium">Datum</h3>
@@ -605,7 +607,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         </div>
 
         <!-- Amounts -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 text-white/60 mb-3">
             <CreditCard :size="16" />
             <h3 class="text-sm font-medium">Beträge</h3>
@@ -632,7 +634,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       </div>
 
       <!-- Line Items -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Positionen</h3>
         <div class="space-y-3">
           <div
@@ -684,7 +686,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       </div>
 
       <!-- Payments -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-white">Zahlungen</h3>
           <button @click="openPaymentModal" class="kit-btn-primary text-sm">
@@ -738,7 +740,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       <!-- Mahnwesen -->
       <div
         v-if="invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'partial' || (invoice.reminders && invoice.reminders.length > 0)"
-        class="rounded-lg border border-white/10 bg-white/5 p-4"
+        class="kit-card p-4"
       >
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2 text-white/60">
@@ -809,11 +811,11 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
 
       <!-- Notes & Terms -->
       <div v-if="invoice.notes || invoice.terms" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div v-if="invoice.notes" class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div v-if="invoice.notes" class="kit-card p-4">
           <h3 class="text-sm font-medium text-white/60 mb-2">Notizen</h3>
           <p class="text-white text-sm whitespace-pre-wrap">{{ invoice.notes }}</p>
         </div>
-        <div v-if="invoice.terms" class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div v-if="invoice.terms" class="kit-card p-4">
           <h3 class="text-sm font-medium text-white/60 mb-2">Zahlungsbedingungen</h3>
           <p class="text-white text-sm whitespace-pre-wrap">{{ invoice.terms }}</p>
         </div>
@@ -826,7 +828,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       @click="showReminderModal = false"
     >
-      <div class="rounded-lg border border-white/10 bg-stone-900 p-6 max-w-md w-full" @click.stop>
+      <div class="kit-card p-6 max-w-md w-full" @click.stop>
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-xl font-bold text-white flex items-center gap-2">
             <AlertCircle :size="20" class="text-orange-400" />
@@ -915,7 +917,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       @click="showDeleteConfirm = false"
     >
       <div
-        class="rounded-lg border border-white/10 bg-stone-900 p-6 max-w-md"
+        class="kit-card p-6 max-w-md"
         @click.stop
       >
         <h3 class="text-xl font-bold text-white mb-2">Rechnung löschen?</h3>
@@ -942,7 +944,7 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       @click="closePaymentModal"
     >
       <div
-        class="rounded-lg border border-white/10 bg-stone-900 p-6 max-w-lg w-full"
+        class="kit-card p-6 max-w-lg w-full"
         @click.stop
       >
         <!-- Modal Header -->

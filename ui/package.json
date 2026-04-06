@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "api:generate": "openapi-typescript ../assets/openapi.yaml -o src/types/openapi.ts"
   },
   "dependencies": {
     "axios": "^1.13.2",

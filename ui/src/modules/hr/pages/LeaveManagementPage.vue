@@ -4,11 +4,15 @@ import { useRoute, useRouter } from 'vue-router';
 import { Plus, Calendar, Search } from 'lucide-vue-next';
 import { getLeaveRequests, createLeaveRequest, deleteLeaveRequest, getEmployees } from '../services/hr.service';
 import type { LeaveRequest, LeaveRequestCreate, LeaveType, LeaveStatus, Employee } from '../types';
+import { useToast } from '@/composables/useToast';
+
+const toast = useToast();
 
 const route = useRoute();
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const leaveRequests = ref<LeaveRequest[]>([]);
 const employees = ref<Employee[]>([]);
 const showCreateForm = ref(false);
@@ -79,14 +83,15 @@ async function loadEmployees() {
 
 async function loadLeaveRequests() {
   loading.value = true;
+  error.value = null;
   try {
     const response = await getLeaveRequests({
       status: filterStatus.value || undefined,
       leave_type: filterType.value || undefined,
     });
     leaveRequests.value = response.items;
-  } catch (error) {
-    console.error('Failed to load leave requests:', error);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -100,7 +105,7 @@ async function handleCreateRequest() {
     await loadLeaveRequests();
   } catch (error) {
     console.error('Failed to create leave request:', error);
-    alert('Fehler beim Erstellen des Antrags');
+    toast.error('Fehler beim Erstellen des Antrags');
   }
 }
 
@@ -112,7 +117,7 @@ async function handleDeleteRequest(id: string) {
     await loadLeaveRequests();
   } catch (error) {
     console.error('Failed to delete leave request:', error);
-    alert('Fehler beim Löschen des Antrags');
+    toast.error('Fehler beim Löschen des Antrags');
   }
 }
 
@@ -134,12 +139,12 @@ function openDetails(request: LeaveRequest) {
 
 const getStatusColor = (status: LeaveStatus): string => {
   const colors: Record<LeaveStatus, string> = {
-    pending: 'text-yellow-400 bg-yellow-500/20',
-    approved: 'text-green-400 bg-green-500/20',
-    rejected: 'text-red-400 bg-red-500/20',
-    cancelled: 'text-gray-400 bg-gray-500/20',
+    pending:   'badge badge-amber',
+    approved:  'badge badge-green',
+    rejected:  'badge badge-red',
+    cancelled: 'badge badge-gray',
   };
-  return colors[status] || 'text-gray-400 bg-gray-500/20';
+  return colors[status] || 'badge badge-gray';
 };
 
 const getStatusLabel = (status: LeaveStatus): string => {
@@ -189,7 +194,7 @@ const formatDate = (date: string): string => {
     </div>
 
     <!-- Create Form -->
-    <div v-if="showCreateForm" class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 mb-6">
+    <div v-if="showCreateForm" class="kit-card p-6 mb-6">
       <h3 class="text-xl font-semibold text-white mb-4">Neuer Urlaubsantrag</h3>
       <form @submit.prevent="handleCreateRequest" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -297,7 +302,7 @@ const formatDate = (date: string): string => {
     </div>
 
     <!-- Filters -->
-    <div class="bg-white/10 backdrop-blur-lg rounded-lg p-4 border border-white/20 mb-6">
+    <div class="kit-card p-4 mb-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Search -->
         <div class="relative">
@@ -350,7 +355,13 @@ const formatDate = (date: string): string => {
       <div class="text-white/60">Lade Anträge...</div>
     </div>
 
-    <div v-else-if="leaveRequests.length === 0" class="bg-white/10 backdrop-blur-lg rounded-lg p-12 border border-white/20 text-center">
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadLeaveRequests()">Erneut versuchen</button>
+    </div>
+
+    <div v-else-if="leaveRequests.length === 0" class="kit-card p-12 text-center">
       <Calendar :size="64" class="mx-auto text-white/40 mb-4" />
       <p class="text-white/60 text-lg">Keine Urlaubsanträge gefunden</p>
     </div>
@@ -362,7 +373,7 @@ const formatDate = (date: string): string => {
         :id="`request-${request.id}`"
         @click="openDetails(request)"
         :class="[
-          'bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 hover:bg-white/15 transition-all duration-500 cursor-pointer',
+          'kit-card p-6 hover:bg-white/15 transition-all duration-500 cursor-pointer',
           highlightedRequestId === request.id ? 'ring-4 ring-blue-500 bg-blue-500/20 scale-105' : ''
         ]"
       >
@@ -376,20 +387,15 @@ const formatDate = (date: string): string => {
               <span class="text-white/80 ml-2">({{ request.total_days }} Tage)</span>
             </p>
             <div v-if="request.half_day_start || request.half_day_end" class="flex gap-2 mt-2">
-              <span v-if="request.half_day_start" class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+              <span v-if="request.half_day_start" class="badge badge-blue">
                 ½ Tag Start
               </span>
-              <span v-if="request.half_day_end" class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+              <span v-if="request.half_day_end" class="badge badge-blue">
                 ½ Tag Ende
               </span>
             </div>
           </div>
-          <span
-            :class="[
-              'px-3 py-1 rounded-full text-sm font-semibold',
-              getStatusColor(request.status)
-            ]"
-          >
+          <span :class="getStatusColor(request.status)">
             {{ getStatusLabel(request.status) }}
           </span>
         </div>

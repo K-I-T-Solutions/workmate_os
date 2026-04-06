@@ -59,6 +59,12 @@
       Lade Abteilungen...
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="fetchDepartments()">Erneut versuchen</button>
+    </div>
+
     <!-- Create/Edit Dialog (Placeholder) -->
     <div v-if="showCreateDialog" class="dialog-overlay" @click.self="showCreateDialog = false">
       <div class="dialog">
@@ -74,28 +80,33 @@
 import { ref, onMounted } from 'vue';
 import { Plus, Pencil, Trash2, Building2, Users } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
+import { useToast } from '@/composables/useToast';
+
+const toast = useToast();
 
 // State
 const departments = ref<any[]>([]);
 const loading = ref(false);
+const error = ref<string | null>(null);
 const showCreateDialog = ref(false);
 
 // Fetch departments
 async function fetchDepartments() {
   loading.value = true;
+  error.value = null;
   try {
     const response = await apiClient.get('/api/departments');
     departments.value = response.data;
-  } catch (error) {
-    console.error('Failed to fetch departments:', error);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
 }
 
 // Actions
-function editDepartment(dept: any) {
-  alert(`Edit ${dept.name} - TODO`);
+function editDepartment(_dept: any) {
+  // TODO: Implement edit department modal
 }
 
 async function deleteDepartment(dept: any) {
@@ -108,7 +119,7 @@ async function deleteDepartment(dept: any) {
     await fetchDepartments();
   } catch (error) {
     console.error('Failed to delete department:', error);
-    alert('Fehler beim Löschen');
+    toast.error('Fehler beim Löschen');
   }
 }
 

@@ -7,6 +7,7 @@ import { apiClient } from '@/services/api/client';
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const tickets = ref<any[]>([]);
 const total = ref(0);
 const showCreateForm = ref(false);
@@ -15,18 +16,18 @@ const search = ref('');
 const filterStatus = ref('');
 const filterPriority = ref('');
 
-const statusConfig: Record<string, { label: string; class: string; icon: any }> = {
-  open:        { label: 'Offen',        class: 'text-blue-300 bg-blue-500/10 border-blue-500/20',   icon: Ticket },
-  in_progress: { label: 'In Bearbeitung', class: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20', icon: Clock },
-  resolved:    { label: 'Gelöst',       class: 'text-green-300 bg-green-500/10 border-green-500/20', icon: CheckCircle },
-  closed:      { label: 'Geschlossen',  class: 'text-white/30 bg-white/5 border-white/10',           icon: XCircle },
+const statusConfig: Record<string, { label: string; class: string; iconClass: string; icon: any }> = {
+  open:        { label: 'Offen',          class: 'badge badge-blue',   iconClass: 'bg-blue-500/10 border-blue-500/20 text-blue-300',     icon: Ticket },
+  in_progress: { label: 'In Bearbeitung', class: 'badge badge-amber',  iconClass: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-300', icon: Clock },
+  resolved:    { label: 'Gelöst',         class: 'badge badge-green',  iconClass: 'bg-green-500/10 border-green-500/20 text-green-300',   icon: CheckCircle },
+  closed:      { label: 'Geschlossen',    class: 'badge badge-gray',   iconClass: 'bg-white/5 border-white/10 text-white/30',             icon: XCircle },
 };
 
 const priorityConfig: Record<string, { label: string; class: string }> = {
-  low:      { label: 'Niedrig',  class: 'text-white/40 bg-white/5 border-white/10' },
-  medium:   { label: 'Mittel',   class: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
-  high:     { label: 'Hoch',     class: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
-  critical: { label: 'Kritisch', class: 'text-red-300 bg-red-500/10 border-red-500/20' },
+  low:      { label: 'Niedrig',  class: 'badge badge-gray' },
+  medium:   { label: 'Mittel',   class: 'badge badge-blue' },
+  high:     { label: 'Hoch',     class: 'badge badge-orange' },
+  critical: { label: 'Kritisch', class: 'badge badge-red' },
 };
 
 const categoryLabels: Record<string, string> = {
@@ -42,6 +43,7 @@ onMounted(loadTickets);
 
 async function loadTickets() {
   loading.value = true;
+  error.value = null;
   try {
     const params: any = { limit: 100, skip: 0 };
     if (filterStatus.value) params.status = filterStatus.value;
@@ -50,6 +52,8 @@ async function loadTickets() {
     const { data } = await apiClient.get('/api/support/tickets', { params });
     tickets.value = data.items || data;
     total.value = data.total || tickets.value.length;
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -111,7 +115,7 @@ function onSearch() {
     </div>
 
     <!-- Create Form -->
-    <div v-if="showCreateForm" class="p-5 rounded-xl bg-white/5 border border-blue-400/20 space-y-3">
+    <div v-if="showCreateForm" class="kit-card p-5 space-y-3">
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-white">Neues Ticket</h3>
         <button @click="showCreateForm = false" class="text-white/40 hover:text-white"><X :size="16" /></button>
@@ -152,6 +156,12 @@ function onSearch() {
       <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadTickets()">Erneut versuchen</button>
+    </div>
+
     <!-- Empty -->
     <div v-else-if="tickets.length === 0" class="text-center py-14 text-white/40">
       <Ticket :size="36" class="mx-auto mb-3 opacity-40" />
@@ -162,11 +172,11 @@ function onSearch() {
     <div v-else class="space-y-2">
       <div v-for="ticket in tickets" :key="ticket.id"
         @click="router.push(`/app/support/tickets/${ticket.id}`)"
-        class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors cursor-pointer"
+        class="kit-card p-4 hover:bg-white/8 transition-colors cursor-pointer"
       >
         <div class="flex items-start gap-3">
           <div class="p-1.5 rounded-lg border flex-shrink-0 mt-0.5"
-            :class="statusConfig[ticket.status]?.class">
+            :class="statusConfig[ticket.status]?.iconClass">
             <component :is="statusConfig[ticket.status]?.icon" :size="14" />
           </div>
           <div class="flex-1 min-w-0">
@@ -177,7 +187,7 @@ function onSearch() {
                   <span class="text-sm font-medium text-white">{{ ticket.title }}</span>
                 </div>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
-                  <span class="text-xs px-1.5 py-0.5 rounded border" :class="priorityConfig[ticket.priority]?.class">
+                  <span :class="priorityConfig[ticket.priority]?.class">
                     {{ priorityConfig[ticket.priority]?.label }}
                   </span>
                   <span class="text-xs text-white/40">{{ categoryLabels[ticket.category] || ticket.category }}</span>

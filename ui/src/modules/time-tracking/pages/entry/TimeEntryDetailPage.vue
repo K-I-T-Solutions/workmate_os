@@ -80,9 +80,7 @@ const totalAmount = computed(() => {
 
 const statusBadge = computed(() => {
   if (!currentEntry.value) return '';
-  return currentEntry.value.end_time === null
-    ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
-    : 'bg-white/5 border-white/10 text-white/60';
+  return currentEntry.value.end_time === null ? 'badge-green' : 'badge-gray';
 });
 
 const statusLabel = computed(() => {
@@ -93,15 +91,15 @@ const statusLabel = computed(() => {
 const taskTypeBadge = computed(() => {
   if (!currentEntry.value?.task_type) return '';
   const badges: Record<string, string> = {
-    development: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    meeting: 'bg-purple-500/20 border-purple-400/30 text-purple-200',
-    support: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
-    documentation: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    testing: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    planning: 'bg-indigo-500/20 border-indigo-400/30 text-indigo-200',
-    other: 'bg-white/5 border-white/10 text-white/60',
+    development:   'badge-blue',
+    meeting:       'badge-cyan',
+    support:       'badge-orange',
+    documentation: 'badge-amber',
+    testing:       'badge-green',
+    planning:      'badge-blue',
+    other:         'badge-gray',
   };
-  return badges[currentEntry.value.task_type] || badges.other;
+  return badges[currentEntry.value.task_type] || 'badge-gray';
 });
 
 const taskTypeLabel = computed(() => {
@@ -206,7 +204,7 @@ function formatDateTime(dateString: string): string {
           <div class="flex-1">
             <div class="flex items-center gap-3 mb-2">
               <h1 class="text-2xl font-bold text-white">Zeiteintrag</h1>
-              <span :class="['px-3 py-1 rounded-full text-sm font-medium border', statusBadge]">
+              <span class="badge" :class="statusBadge">
                 {{ statusLabel }}
               </span>
             </div>
@@ -252,7 +250,7 @@ function formatDateTime(dateString: string): string {
       <!-- Main Info Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Zeitraum -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
               <Clock :size="18" class="text-blue-200" />
@@ -277,7 +275,7 @@ function formatDateTime(dateString: string): string {
         </div>
 
         <!-- Details -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-purple-500/20 rounded-lg border border-purple-400/30">
               <FileText :size="18" class="text-purple-200" />
@@ -287,7 +285,7 @@ function formatDateTime(dateString: string): string {
           <div class="space-y-2">
             <div>
               <div class="text-xs text-white/50">Aufgabentyp</div>
-              <span :class="['px-2 py-1 rounded text-xs font-medium border inline-block', taskTypeBadge]">
+              <span class="badge" :class="taskTypeBadge">
                 {{ taskTypeLabel }}
               </span>
             </div>
@@ -315,7 +313,7 @@ function formatDateTime(dateString: string): string {
         </div>
 
         <!-- Finanzen -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-emerald-500/20 rounded-lg border border-emerald-400/30">
               <DollarSign :size="18" class="text-emerald-200" />
@@ -357,7 +355,7 @@ function formatDateTime(dateString: string): string {
       </div>
 
       <!-- Notiz Section -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <div class="flex items-center gap-2 mb-3">
           <FileText :size="18" class="text-white/60" />
           <h3 class="font-semibold text-white">Notiz</h3>
@@ -369,7 +367,7 @@ function formatDateTime(dateString: string): string {
       </div>
 
       <!-- Meta Information -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <div class="flex items-center gap-2 mb-3">
           <Calendar :size="18" class="text-white/60" />
           <h3 class="font-semibold text-white">Meta-Informationen</h3>

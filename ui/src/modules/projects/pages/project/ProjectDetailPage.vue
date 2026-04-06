@@ -30,7 +30,7 @@ const emit = defineEmits<{
 }>();
 
 // Composables
-const { currentProject, loading, loadProject, deleteProject } = useProjects();
+const { currentProject, loading, error, loadProject, deleteProject } = useProjects();
 const { openWindow } = useAppManager();
 
 // State
@@ -90,14 +90,14 @@ function createInvoice() {
 
 // Helpers
 function getStatusBadge(status: string) {
-  const badges = {
-    planning: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    on_hold: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    completed: 'bg-white/5 border-white/10 text-white/60',
-    cancelled: 'bg-red-500/20 border-red-400/30 text-red-200',
+  const badges: Record<string, string> = {
+    planning:  'badge-blue',
+    active:    'badge-green',
+    on_hold:   'badge-amber',
+    completed: 'badge-gray',
+    cancelled: 'badge-red',
   };
-  return badges[status as keyof typeof badges] || badges.active;
+  return badges[status] || 'badge-gray';
 }
 
 function getStatusLabel(status: string): string {
@@ -112,15 +112,15 @@ function getStatusLabel(status: string): string {
 }
 
 function getPriorityBadge(priority: string | null) {
-  if (!priority) return 'bg-white/5 border-white/10 text-white/60';
+  if (!priority) return 'badge-gray';
 
-  const badges = {
-    low: 'bg-white/5 border-white/10 text-white/60',
-    medium: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    high: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
-    urgent: 'bg-red-500/20 border-red-400/30 text-red-200',
+  const badges: Record<string, string> = {
+    low:    'badge-gray',
+    medium: 'badge-blue',
+    high:   'badge-orange',
+    urgent: 'badge-red',
   };
-  return badges[priority as keyof typeof badges] || badges.medium;
+  return badges[priority] || 'badge-gray';
 }
 
 function getPriorityLabel(priority: string | null): string {
@@ -159,6 +159,12 @@ function formatCurrency(value: number | null): string {
       </div>
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadProject(projectId)">Erneut versuchen</button>
+    </div>
+
     <!-- Project Content -->
     <template v-else-if="project">
       <!-- Header -->
@@ -170,20 +176,13 @@ function formatCurrency(value: number | null): string {
           <div class="flex-1">
             <h1 class="text-2xl font-bold text-white flex items-center gap-3">
               {{ project.title }}
-              <span
-                :class="[
-                  'px-2 py-1 rounded text-sm font-medium border',
-                  getStatusBadge(project.status),
-                ]"
-              >
+              <span class="badge" :class="getStatusBadge(project.status)">
                 {{ getStatusLabel(project.status) }}
               </span>
               <span
                 v-if="project.priority"
-                :class="[
-                  'px-2 py-1 rounded text-sm font-medium border',
-                  getPriorityBadge(project.priority),
-                ]"
+                class="badge"
+                :class="getPriorityBadge(project.priority)"
               >
                 {{ getPriorityLabel(project.priority) }}
               </span>
@@ -206,7 +205,7 @@ function formatCurrency(value: number | null): string {
       </div>
 
       <!-- Description -->
-      <div v-if="project.description" class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div v-if="project.description" class="kit-card p-4">
         <h3 class="text-sm font-semibold text-white/60 mb-2">Beschreibung</h3>
         <p class="text-white/80">{{ project.description }}</p>
       </div>
@@ -214,7 +213,7 @@ function formatCurrency(value: number | null): string {
       <!-- Info Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Zeitraum Card -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
               <Calendar :size="18" class="text-blue-200" />
@@ -238,7 +237,7 @@ function formatCurrency(value: number | null): string {
         </div>
 
         <!-- Budget Card -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-emerald-500/20 rounded-lg border border-emerald-400/30">
               <Euro :size="18" class="text-emerald-200" />
@@ -258,7 +257,7 @@ function formatCurrency(value: number | null): string {
         </div>
 
         <!-- Stats Card -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-2 bg-orange-500/20 rounded-lg border border-orange-400/30">
               <TrendingUp :size="18" class="text-orange-200" />
@@ -279,7 +278,7 @@ function formatCurrency(value: number | null): string {
       </div>
 
       <!-- Related Data Section -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <h3 class="font-semibold text-white mb-4">Verknüpfte Daten</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <!-- Customer Link -->
@@ -337,7 +336,7 @@ function formatCurrency(value: number | null): string {
       @click="showDeleteConfirm = false"
     >
       <div
-        class="rounded-lg border border-white/10 bg-stone-900 p-6 max-w-md"
+        class="kit-card p-6 max-w-md"
         @click.stop
       >
         <h3 class="text-xl font-bold text-white mb-2">Projekt löschen?</h3>

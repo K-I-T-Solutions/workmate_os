@@ -106,15 +106,15 @@ const connectionTypeLabels: Record<string, string> = {
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div class="kit-card p-4">
         <div class="text-white/60 text-sm mb-1">Anzahl Konten</div>
         <div class="text-2xl font-bold text-white">{{ accounts.length }}</div>
       </div>
-      <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div class="kit-card p-4">
         <div class="text-white/60 text-sm mb-1">Gesamtsaldo</div>
         <div class="text-2xl font-bold text-white">{{ formatCurrency(totalBalance) }}</div>
       </div>
-      <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div class="kit-card p-4">
         <div class="text-white/60 text-sm mb-1">Letzte Synchronisation</div>
         <div class="text-sm text-white">Noch nie</div>
       </div>
@@ -133,7 +133,7 @@ const connectionTypeLabels: Record<string, string> = {
     <!-- Empty State -->
     <div
       v-else-if="!loading && accounts.length === 0"
-      class="text-center py-12 bg-white/5 rounded-lg border border-white/10"
+      class="kit-card text-center py-12"
     >
       <div class="text-white/60 mb-4">
         <div class="text-4xl mb-2">🏦</div>
@@ -151,7 +151,7 @@ const connectionTypeLabels: Record<string, string> = {
     </div>
 
     <!-- Accounts Table -->
-    <div v-else class="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
+    <div v-else class="kit-card overflow-hidden" style="padding:0">
       <table class="w-full">
         <thead class="bg-white/5 border-b border-white/10">
           <tr>
@@ -184,12 +184,10 @@ const connectionTypeLabels: Record<string, string> = {
             <td class="px-4 py-3">
               <span
                 :class="[
-                  'px-2 py-1 rounded text-xs',
-                  account.connection_type === 'psd2_api'
-                    ? 'bg-green-500/20 text-green-300'
-                    : account.connection_type === 'csv_import'
-                    ? 'bg-blue-500/20 text-blue-300'
-                    : 'bg-white/10 text-white/60',
+                  'badge',
+                  account.connection_type === 'psd2_api'    ? 'badge-green'
+                  : account.connection_type === 'csv_import' ? 'badge-blue'
+                  : 'badge-gray',
                 ]"
               >
                 {{ connectionTypeLabels[account.connection_type] || account.connection_type }}
@@ -214,7 +212,7 @@ const connectionTypeLabels: Record<string, string> = {
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
       @click.self="showCreateModal = false"
     >
-      <div class="bg-[#1a1a1a] rounded-lg p-6 w-full max-w-md border border-white/10">
+      <div class="kit-card p-6 w-full max-w-md">
         <h2 class="text-xl font-bold text-white mb-4">Neues Konto hinzufügen</h2>
 
         <form @submit.prevent="handleCreateAccount" class="space-y-4">

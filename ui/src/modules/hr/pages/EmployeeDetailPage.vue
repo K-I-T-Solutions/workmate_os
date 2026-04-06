@@ -22,6 +22,7 @@ const props = defineProps<{ employeeId: string }>();
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const employee = ref<Employee | null>(null);
 const leaveRequests = ref<LeaveRequest[]>([]);
 const leaveBalance = ref<any>(null);
@@ -36,10 +37,10 @@ const leaveTypeLabels: Record<string, string> = {
 };
 
 const statusConfig: Record<string, { label: string; class: string }> = {
-  pending:   { label: 'Ausstehend', class: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/30' },
-  approved:  { label: 'Genehmigt',  class: 'text-green-300 bg-green-500/10 border-green-500/30' },
-  rejected:  { label: 'Abgelehnt', class: 'text-red-300 bg-red-500/10 border-red-500/30' },
-  cancelled: { label: 'Storniert', class: 'text-white/40 bg-white/5 border-white/10' },
+  pending:   { label: 'Ausstehend', class: 'badge badge-amber' },
+  approved:  { label: 'Genehmigt',  class: 'badge badge-green' },
+  rejected:  { label: 'Abgelehnt',  class: 'badge badge-red' },
+  cancelled: { label: 'Storniert',  class: 'badge badge-gray' },
 };
 
 const employmentTypeLabels: Record<string, string> = {
@@ -49,9 +50,9 @@ const employmentTypeLabels: Record<string, string> = {
 
 const statusBadge = computed(() => {
   const s = employee.value?.status;
-  if (s === 'active') return { label: 'Aktiv', class: 'text-green-300 bg-green-500/10 border-green-500/30' };
-  if (s === 'on_leave') return { label: 'Im Urlaub', class: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/30' };
-  return { label: 'Inaktiv', class: 'text-white/40 bg-white/5 border-white/10' };
+  if (s === 'active')   return { label: 'Aktiv',     class: 'badge badge-green' };
+  if (s === 'on_leave') return { label: 'Im Urlaub', class: 'badge badge-amber' };
+  return { label: 'Inaktiv', class: 'badge badge-gray' };
 });
 
 const fullName = computed(() =>
@@ -69,8 +70,14 @@ const vacationBalance = computed(() => leaveBalance.value?.find((b: any) => b.le
 const sickBalance = computed(() => leaveBalance.value?.find((b: any) => b.leave_type === 'sick'));
 
 onMounted(async () => {
-  await Promise.all([loadEmployee(), loadLeaveHistory(), loadBalance()]);
-  loading.value = false;
+  error.value = null;
+  try {
+    await Promise.all([loadEmployee(), loadLeaveHistory(), loadBalance()]);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
+  } finally {
+    loading.value = false;
+  }
 });
 
 async function loadEmployee() {
@@ -119,6 +126,12 @@ function goBack() {
       <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="$router.go(0)">Erneut versuchen</button>
+    </div>
+
     <template v-else-if="employee">
 
       <!-- Back + Header -->
@@ -138,7 +151,7 @@ function goBack() {
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <h2 class="text-lg font-semibold text-white">{{ fullName }}</h2>
-              <span class="text-xs px-2 py-0.5 rounded border" :class="statusBadge.class">
+              <span :class="statusBadge.class">
                 {{ statusBadge.label }}
               </span>
             </div>
@@ -178,7 +191,7 @@ function goBack() {
       <div v-if="activeTab === 'overview'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <!-- Kontakt -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+        <div class="kit-card p-4 space-y-3">
           <h3 class="text-sm font-medium text-white/60 uppercase tracking-wide">Kontakt</h3>
           <div class="space-y-2">
             <div class="flex items-center gap-2 text-sm text-white/80">
@@ -201,7 +214,7 @@ function goBack() {
         </div>
 
         <!-- Anstellung -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+        <div class="kit-card p-4 space-y-3">
           <h3 class="text-sm font-medium text-white/60 uppercase tracking-wide">Anstellung</h3>
           <div class="space-y-2">
             <div class="flex justify-between text-sm">
@@ -228,7 +241,7 @@ function goBack() {
         </div>
 
         <!-- Urlaubskonto aktuelles Jahr -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3 sm:col-span-2">
+        <div class="kit-card p-4 space-y-3 sm:col-span-2">
           <h3 class="text-sm font-medium text-white/60 uppercase tracking-wide">Urlaubskonto {{ currentYear }}</h3>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div v-if="vacationBalance">
@@ -262,7 +275,7 @@ function goBack() {
         <div
           v-for="req in leaveRequests"
           :key="req.id"
-          class="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between gap-4"
+          class="kit-card p-4 flex items-center justify-between gap-4"
         >
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-2 h-2 rounded-full flex-shrink-0"
@@ -280,7 +293,7 @@ function goBack() {
                 <span class="text-white/40">{{ req.total_days }} Tag(e)</span>
               </div>
               <div class="flex items-center gap-2 mt-0.5">
-                <span class="text-xs px-2 py-0.5 rounded border" :class="statusConfig[req.status]?.class">
+                <span :class="statusConfig[req.status]?.class">
                   {{ statusConfig[req.status]?.label || req.status }}
                 </span>
                 <span v-if="req.reason" class="text-xs text-white/40 truncate">{{ req.reason }}</span>

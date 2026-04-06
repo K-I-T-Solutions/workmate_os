@@ -42,10 +42,10 @@ const leaveTypeLabels: Record<string, string> = {
 };
 
 const statusConfig: Record<string, { label: string; icon: any; class: string }> = {
-  pending:   { label: 'Ausstehend',  icon: Clock,        class: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/30' },
-  approved:  { label: 'Genehmigt',   icon: CheckCircle,  class: 'text-green-300 bg-green-500/10 border-green-500/30' },
-  rejected:  { label: 'Abgelehnt',   icon: XCircle,      class: 'text-red-300 bg-red-500/10 border-red-500/30' },
-  cancelled: { label: 'Storniert',   icon: Ban,          class: 'text-white/40 bg-white/5 border-white/10' },
+  pending:   { label: 'Ausstehend',  icon: Clock,       class: 'badge badge-amber' },
+  approved:  { label: 'Genehmigt',   icon: CheckCircle, class: 'badge badge-green' },
+  rejected:  { label: 'Abgelehnt',   icon: XCircle,     class: 'badge badge-red' },
+  cancelled: { label: 'Storniert',   icon: Ban,         class: 'badge badge-gray' },
 };
 
 const filteredRequests = computed(() =>
@@ -128,7 +128,7 @@ function formatDate(dateStr: string) {
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
         <!-- Urlaub -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+        <div class="kit-card p-4">
           <div class="flex items-center justify-between mb-3">
             <span class="text-sm text-white/60">Urlaubstage {{ currentYear }}</span>
             <span class="text-xs text-white/40">{{ balance ? `${balance.vacation_used} / ${balance.vacation_total}` : '–' }}</span>
@@ -146,7 +146,7 @@ function formatDate(dateStr: string) {
         </div>
 
         <!-- Krankheit -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+        <div class="kit-card p-4">
           <div class="flex items-center justify-between mb-3">
             <span class="text-sm text-white/60">Krankheitstage {{ currentYear }}</span>
             <span class="text-xs text-white/40">{{ balance ? `${balance.sick_used} / ${balance.sick_total}` : '–' }}</span>
@@ -158,7 +158,7 @@ function formatDate(dateStr: string) {
         </div>
 
         <!-- Anträge -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+        <div class="kit-card p-4">
           <div class="flex items-center justify-between mb-3">
             <span class="text-sm text-white/60">Meine Anträge</span>
           </div>
@@ -190,7 +190,7 @@ function formatDate(dateStr: string) {
       </div>
 
       <!-- Create Form -->
-      <div v-if="showCreateForm" class="p-5 rounded-xl bg-white/5 border border-blue-400/20">
+      <div v-if="showCreateForm" class="kit-card p-5">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-semibold text-white">Urlaubsantrag stellen</h3>
           <button @click="showCreateForm = false" class="text-white/40 hover:text-white">
@@ -265,7 +265,7 @@ function formatDate(dateStr: string) {
         <div
           v-for="req in filteredRequests"
           :key="req.id"
-          class="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between gap-4"
+          class="kit-card p-4 flex items-center justify-between gap-4"
         >
           <div class="flex items-center gap-3 min-w-0">
             <div
@@ -284,10 +284,7 @@ function formatDate(dateStr: string) {
                 <span class="text-xs text-white/40">{{ req.total_days }} Tag(e)</span>
               </div>
               <div class="flex items-center gap-2 mt-0.5">
-                <span
-                  class="text-xs px-2 py-0.5 rounded border"
-                  :class="statusConfig[req.status]?.class"
-                >
+                <span :class="statusConfig[req.status]?.class">
                   {{ statusConfig[req.status]?.label || req.status }}
                 </span>
                 <span v-if="req.reason" class="text-xs text-white/40 truncate">{{ req.reason }}</span>

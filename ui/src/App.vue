@@ -3,6 +3,7 @@ import { RouterView } from 'vue-router';
 import { onMounted } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 import { useTheme } from '@/composables/useTheme';
+import ToastContainer from '@/components/ToastContainer.vue';
 
 const { user } = useAuth();
 const { initializeTheme } = useTheme();
@@ -15,7 +16,8 @@ onMounted(() => {
 </script>
 
 <template>
-<RouterView />
+  <RouterView />
+  <ToastContainer />
 </template>
 
 <style scoped>

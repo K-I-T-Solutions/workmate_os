@@ -26,7 +26,7 @@ const emit = defineEmits<{
 }>();
 
 // Composables
-const { settings, loading, loadSettings, updateSettings, resetToDefaults } = useUserSettings();
+const { settings, loading, error, loadSettings, updateSettings, resetToDefaults } = useUserSettings();
 const { currentUser } = useCurrentUser();
 const { availableThemes, currentTheme, updateUserTheme, applyTheme } = useTheme();
 
@@ -225,6 +225,12 @@ async function handleChangePassword() {
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
         <p class="mt-4 text-white/60">Lade Einstellungen...</p>
       </div>
+    </div>
+
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadSettings()">Erneut versuchen</button>
     </div>
 
     <!-- Content -->

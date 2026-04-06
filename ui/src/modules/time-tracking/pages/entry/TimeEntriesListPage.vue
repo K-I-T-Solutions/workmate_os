@@ -147,9 +147,7 @@ function formatDate(dateString: string): string {
 }
 
 function getStatusBadge(entry: any) {
-  return entry.end_time === null
-    ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200'
-    : 'bg-white/5 border-white/10 text-white/60';
+  return entry.end_time === null ? 'badge-green' : 'badge-gray';
 }
 
 function getStatusLabel(entry: any): string {
@@ -177,7 +175,7 @@ function getStatusLabel(entry: any): string {
     </div>
 
     <!-- Filters -->
-    <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+    <div class="kit-card p-4">
       <!-- Search -->
       <div class="mb-3">
         <div class="relative">
@@ -304,7 +302,7 @@ function getStatusLabel(entry: any): string {
         <div
           v-for="entry in entries"
           :key="entry.id"
-          class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition cursor-pointer"
+          class="kit-card p-4 hover:bg-white/10 transition cursor-pointer"
           @click="emit('openEntry', entry.id)"
         >
           <div class="flex items-start justify-between gap-4">
@@ -318,12 +316,7 @@ function getStatusLabel(entry: any): string {
                 <span class="font-semibold text-white">
                   {{ formatDate(entry.start_time) }}
                 </span>
-                <span
-                  :class="[
-                    'px-2 py-1 rounded text-xs font-medium border',
-                    getStatusBadge(entry),
-                  ]"
-                >
+                <span class="badge" :class="getStatusBadge(entry)">
                   {{ getStatusLabel(entry) }}
                 </span>
               </div>

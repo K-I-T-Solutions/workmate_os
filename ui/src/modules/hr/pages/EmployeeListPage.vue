@@ -5,6 +5,9 @@ import { Plus, Search, Edit, Trash2, Mail, Phone, Calendar } from 'lucide-vue-ne
 import md5 from 'md5';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getDepartments } from '../services/hr.service';
 import type { Employee, EmployeeCreate, EmploymentType, Department } from '../types';
+import { useToast } from '@/composables/useToast';
+
+const toast = useToast();
 
 const router = useRouter();
 
@@ -18,6 +21,7 @@ function gravatarUrl(email?: string, size = 40): string {
 }
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const employees = ref<Employee[]>([]);
 const departments = ref<Department[]>([]);
 const showCreateForm = ref(false);
@@ -58,6 +62,7 @@ async function loadDepartments() {
 
 async function loadEmployees() {
   loading.value = true;
+  error.value = null;
   try {
     const response = await getEmployees({
       department: filterDepartment.value || undefined,
@@ -65,8 +70,8 @@ async function loadEmployees() {
       search: searchQuery.value || undefined,
     });
     employees.value = response.items;
-  } catch (error) {
-    console.error('Failed to load employees:', error);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -80,7 +85,7 @@ async function handleCreateEmployee() {
     await loadEmployees();
   } catch (error) {
     console.error('Failed to create employee:', error);
-    alert('Fehler beim Erstellen des Mitarbeiters');
+    toast.error('Fehler beim Erstellen des Mitarbeiters');
   }
 }
 
@@ -104,7 +109,7 @@ async function handleUpdateEmployee() {
     await loadEmployees();
   } catch (error) {
     console.error('Failed to update employee:', error);
-    alert('Fehler beim Aktualisieren des Mitarbeiters');
+    toast.error('Fehler beim Aktualisieren des Mitarbeiters');
   }
 }
 
@@ -116,7 +121,7 @@ async function handleDeleteEmployee(id: string) {
     await loadEmployees();
   } catch (error) {
     console.error('Failed to delete employee:', error);
-    alert('Fehler beim Löschen des Mitarbeiters');
+    toast.error('Fehler beim Löschen des Mitarbeiters');
   }
 }
 
@@ -180,7 +185,7 @@ const formatDate = (date: string): string => {
     </div>
 
     <!-- Create Form -->
-    <div v-if="showCreateForm" class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 mb-6">
+    <div v-if="showCreateForm" class="kit-card p-6 mb-6">
       <h3 class="text-xl font-semibold text-white mb-4">Neuer Mitarbeiter</h3>
       <form @submit.prevent="handleCreateEmployee" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -286,7 +291,7 @@ const formatDate = (date: string): string => {
     </div>
 
     <!-- Filters -->
-    <div class="bg-white/10 backdrop-blur-lg rounded-lg p-4 border border-white/20 mb-6">
+    <div class="kit-card p-4 mb-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="relative">
           <Search :size="20" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
@@ -331,7 +336,13 @@ const formatDate = (date: string): string => {
       <div class="text-white/60">Lade Mitarbeiter...</div>
     </div>
 
-    <div v-else-if="employees.length === 0" class="bg-white/10 backdrop-blur-lg rounded-lg p-12 border border-white/20 text-center">
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadEmployees()">Erneut versuchen</button>
+    </div>
+
+    <div v-else-if="employees.length === 0" class="kit-card p-12 text-center">
       <p class="text-white/60 text-lg">Keine Mitarbeiter gefunden</p>
     </div>
 
@@ -339,7 +350,7 @@ const formatDate = (date: string): string => {
       <div
         v-for="employee in employees"
         :key="employee.id"
-        class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 hover:bg-white/15 transition-colors"
+        class="kit-card p-6 hover:bg-white/15 transition-colors"
       >
         <div class="mb-4 cursor-pointer flex items-center gap-3" @click="viewEmployee(employee.id)">
           <img
@@ -372,15 +383,15 @@ const formatDate = (date: string): string => {
         </div>
 
         <div class="flex items-center justify-between mb-4">
-          <span class="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-xs font-semibold">
+          <span class="badge badge-blue">
             {{ getEmploymentTypeLabel(employee.employment_type) }}
           </span>
           <span
             :class="[
-              'px-3 py-1 rounded-full text-xs font-semibold',
-              employee.status === 'active'
-                ? 'bg-green-500/20 text-green-300'
-                : 'bg-gray-500/20 text-gray-300'
+              'badge',
+              employee.status === 'active'   ? 'badge-green'
+              : employee.status === 'on_leave' ? 'badge-amber'
+              : 'badge-gray'
             ]"
           >
             {{ employee.status === 'active' ? 'Aktiv' : (employee.status === 'on_leave' ? 'Beurlaubt' : 'Inaktiv') }}
@@ -411,7 +422,7 @@ const formatDate = (date: string): string => {
       class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       @click.self="showEditForm = false"
     >
-      <div class="bg-slate-800 rounded-lg p-6 w-full max-w-2xl border border-white/20 max-h-screen overflow-y-auto">
+      <div class="kit-card p-6 w-full max-w-2xl max-h-screen overflow-y-auto">
         <h3 class="text-xl font-semibold text-white mb-4">Mitarbeiter bearbeiten</h3>
         <form @submit.prevent="handleUpdateEmployee" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

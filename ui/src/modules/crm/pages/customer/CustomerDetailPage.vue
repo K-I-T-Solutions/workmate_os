@@ -41,7 +41,7 @@ const emit = defineEmits<{
 }>();
 
 // Composables
-const { currentCustomer, loading: customerLoading, loadCustomer, deleteCustomer } = useCustomers();
+const { currentCustomer, loading: customerLoading, error: customerError, loadCustomer, deleteCustomer } = useCustomers();
 const { contacts, loading: contactsLoading, loadContacts, setPrimaryContact } = useContacts();
 const { activities, loading: activitiesLoading, fetchCustomerActivities } = useCrmActivity();
 const { openWindow } = useAppManager();
@@ -163,13 +163,13 @@ function handleCreateInvoice() {
 
 // Helpers
 function getStatusBadge(status: string) {
-  const badges = {
-    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    inactive: 'bg-white/5 border-white/10 text-white/60',
-    lead: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    blocked: 'bg-red-500/20 border-red-400/30 text-red-200',
+  const badges: Record<string, string> = {
+    active:   'badge-green',
+    inactive: 'badge-gray',
+    lead:     'badge-blue',
+    blocked:  'badge-red',
   };
-  return badges[status as keyof typeof badges] || badges.inactive;
+  return badges[status] || 'badge-gray';
 }
 
 function getStatusLabel(status: string): string {
@@ -183,13 +183,13 @@ function getStatusLabel(status: string): string {
 }
 
 function getTypeBadge(type: string | null) {
-  const badges = {
-    creator: 'bg-purple-500/20 border-purple-400/30 text-purple-200',
-    individual: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    business: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    government: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
+  const badges: Record<string, string> = {
+    creator:    'badge-cyan',
+    individual: 'badge-blue',
+    business:   'badge-green',
+    government: 'badge-orange',
   };
-  return type ? (badges[type as keyof typeof badges] || badges.business) : badges.business;
+  return type ? (badges[type] || 'badge-gray') : 'badge-gray';
 }
 
 function getTypeLabel(type: string | null): string {
@@ -251,13 +251,13 @@ function formatCurrency(value: number): string {
 
 function getProjectStatusBadge(status: string) {
   const badges: Record<string, string> = {
-    planning: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    on_hold: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
-    completed: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    cancelled: 'bg-red-500/20 border-red-400/30 text-red-200',
+    planning:  'badge-amber',
+    active:    'badge-green',
+    on_hold:   'badge-orange',
+    completed: 'badge-blue',
+    cancelled: 'badge-red',
   };
-  return badges[status] || 'bg-white/5 border-white/10 text-white/60';
+  return badges[status] || 'badge-gray';
 }
 
 function getProjectStatusLabel(status: string): string {
@@ -273,14 +273,14 @@ function getProjectStatusLabel(status: string): string {
 
 function getInvoiceStatusBadge(status: string) {
   const badges: Record<string, string> = {
-    draft: 'bg-white/5 border-white/10 text-white/60',
-    sent: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    paid: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    partial: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    overdue: 'bg-red-500/20 border-red-400/30 text-red-200',
-    cancelled: 'bg-red-500/20 border-red-400/30 text-red-200',
+    draft:     'badge-gray',
+    sent:      'badge-blue',
+    paid:      'badge-green',
+    partial:   'badge-amber',
+    overdue:   'badge-red',
+    cancelled: 'badge-gray',
   };
-  return badges[status] || 'bg-white/5 border-white/10 text-white/60';
+  return badges[status] || 'badge-gray';
 }
 
 function getInvoiceStatusLabel(status: string): string {
@@ -307,20 +307,10 @@ function getInvoiceStatusLabel(status: string): string {
         <div v-if="customer">
           <h1 class="text-2xl font-bold text-white flex items-center gap-3">
             {{ customer.name }}
-            <span
-              :class="[
-                'px-2 py-1 rounded text-sm font-medium border',
-                getStatusBadge(customer.status),
-              ]"
-            >
+            <span class="badge" :class="getStatusBadge(customer.status)">
               {{ getStatusLabel(customer.status) }}
             </span>
-            <span
-              :class="[
-                'px-2 py-1 rounded text-sm font-medium border',
-                getTypeBadge(customer.type),
-              ]"
-            >
+            <span class="badge" :class="getTypeBadge(customer.type)">
               {{ getTypeLabel(customer.type) }}
             </span>
           </h1>
@@ -353,12 +343,18 @@ function getInvoiceStatusLabel(status: string): string {
       </div>
     </div>
 
+    <!-- Error State -->
+    <div v-if="customerError && !customerLoading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ customerError }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadCustomer(customerId)">Erneut versuchen</button>
+    </div>
+
     <!-- Content -->
     <div v-else-if="customer" class="flex-1 overflow-auto space-y-4">
       <!-- Main Info Grid (3 Spalten) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Kontaktdaten -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 text-white/60 mb-3">
             <Mail :size="16" />
             <h3 class="text-sm font-medium">Kontaktdaten</h3>
@@ -390,7 +386,7 @@ function getInvoiceStatusLabel(status: string): string {
         </div>
 
         <!-- Adresse -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 text-white/60 mb-3">
             <MapPin :size="16" />
             <h3 class="text-sm font-medium">Adresse</h3>
@@ -408,7 +404,7 @@ function getInvoiceStatusLabel(status: string): string {
         </div>
 
         <!-- Statistiken -->
-        <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+        <div class="kit-card p-4">
           <div class="flex items-center gap-2 text-white/60 mb-3">
             <Briefcase :size="16" />
             <h3 class="text-sm font-medium">Übersicht</h3>
@@ -438,13 +434,13 @@ function getInvoiceStatusLabel(status: string): string {
       </div>
 
       <!-- Notizen -->
-      <div v-if="customer.notes" class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div v-if="customer.notes" class="kit-card p-4">
         <h3 class="text-sm font-medium text-white/60 mb-2">Notizen</h3>
         <p class="text-white text-sm whitespace-pre-wrap">{{ customer.notes }}</p>
       </div>
 
       <!-- Kontakte Section -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-white">Kontakte</h3>
           <button @click="$emit('openContacts')" class="kit-btn-primary text-sm">
@@ -478,7 +474,7 @@ function getInvoiceStatusLabel(status: string): string {
                   </span>
                   <span
                     v-if="contact.is_primary"
-                    class="text-xs font-medium text-emerald-200 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-400/30"
+                    class="badge badge-green"
                   >
                     Primär
                   </span>
@@ -508,7 +504,7 @@ function getInvoiceStatusLabel(status: string): string {
       </div>
 
       <!-- Projekte Section -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-white">Projekte</h3>
           <div class="flex gap-2">
@@ -550,12 +546,7 @@ function getInvoiceStatusLabel(status: string): string {
                   <span class="font-medium text-white">
                     {{ project.title }}
                   </span>
-                  <span
-                    :class="[
-                      'text-xs font-medium px-2 py-0.5 rounded border',
-                      getProjectStatusBadge(project.status)
-                    ]"
-                  >
+                  <span class="badge" :class="getProjectStatusBadge(project.status)">
                     {{ getProjectStatusLabel(project.status) }}
                   </span>
                 </div>
@@ -576,7 +567,7 @@ function getInvoiceStatusLabel(status: string): string {
       </div>
 
       <!-- Rechnungen Section -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-white">Rechnungen</h3>
           <div class="flex gap-2">
@@ -618,12 +609,7 @@ function getInvoiceStatusLabel(status: string): string {
                   <span class="font-medium text-white">
                     {{ invoice.invoice_number }}
                   </span>
-                  <span
-                    :class="[
-                      'text-xs font-medium px-2 py-0.5 rounded border',
-                      getInvoiceStatusBadge(invoice.status)
-                    ]"
-                  >
+                  <span class="badge" :class="getInvoiceStatusBadge(invoice.status)">
                     {{ getInvoiceStatusLabel(invoice.status) }}
                   </span>
                 </div>
@@ -644,7 +630,7 @@ function getInvoiceStatusLabel(status: string): string {
       </div>
 
       <!-- Aktivitäten Timeline -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div class="kit-card p-4">
         <h3 class="text-lg font-semibold text-white mb-4">Letzte Aktivitäten</h3>
 
         <!-- Loading -->
@@ -666,9 +652,7 @@ function getInvoiceStatusLabel(status: string): string {
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2">
                 <div>
-                  <span
-                    class="text-xs font-medium text-blue-200 bg-blue-500/20 px-2 py-0.5 rounded border border-blue-400/30"
-                  >
+                  <span class="badge badge-blue">
                     {{ getActivityLabel(activity.type) }}
                   </span>
                   <p class="text-white mt-1">{{ activity.description }}</p>
@@ -695,7 +679,7 @@ function getInvoiceStatusLabel(status: string): string {
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
       @click="showDeleteConfirm = false"
     >
-      <div class="rounded-lg border border-white/10 bg-stone-900 p-6 max-w-md" @click.stop>
+      <div class="kit-card p-6 max-w-md" @click.stop>
         <h3 class="text-xl font-bold text-white mb-2">Kunde löschen?</h3>
         <p class="text-white/60 mb-6">
           Möchten Sie {{ customer?.name }} wirklich löschen? Diese Aktion kann nicht rückgängig

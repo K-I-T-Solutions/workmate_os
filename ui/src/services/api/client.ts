@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import type { APIErrorResponse, ErrorDetail } from '@/types/errors';
 import { isStructuredError } from '@/types/errors';
+import { useToast } from '@/composables/useToast';
 
 // Base URL aus Environment oder Fallback
 const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://api.workmate.intern.phudevelopement.xyz';
@@ -52,27 +53,14 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Helper: Zeigt User-Benachrichtigung an
- *
- * TODO: Integriere eine Toast Notification Library (z.B. vue-toastification)
- * Aktuell: Console-Ausgabe als Fallback
+ * Helper: Zeigt User-Benachrichtigung als Toast an
  */
 function showUserNotification(errorDetail: ErrorDetail) {
-  // TODO: Replace with actual toast notification
-  // import { useToast } from 'vue-toastification';
-  // const toast = useToast();
-  // toast.error(errorDetail.message, {
-  //   description: errorDetail.hint,
-  //   timeout: 5000,
-  // });
-
-  // Fallback: Strukturierte Console-Ausgabe
-  console.group(`🔴 ${errorDetail.message}`);
-  if (errorDetail.hint) {
-    console.info(`💡 ${errorDetail.hint}`);
-  }
-  console.info(`🔢 Error Code: ${errorDetail.error_code}`);
-  console.groupEnd();
+  const { error } = useToast();
+  const message = errorDetail.hint
+    ? `${errorDetail.message} — ${errorDetail.hint}`
+    : errorDetail.message;
+  error(message);
 }
 
 /**
@@ -150,14 +138,8 @@ apiClient.interceptors.response.use(
         });
       }
     } else if (error.request) {
-      console.error('❌ Network Error - keine Antwort vom Server');
-
-      // TODO: Show user notification
-      // showUserNotification({
-      //   error_code: 'NETWORK_ERROR',
-      //   message: 'Keine Verbindung zum Server',
-      //   hint: 'Bitte überprüfen Sie Ihre Internetverbindung',
-      // });
+      const { error: toastError } = useToast();
+      toastError('Keine Verbindung zum Server — Bitte überprüfen Sie Ihre Internetverbindung');
     } else {
       console.error('❌ Error:', error.message);
     }

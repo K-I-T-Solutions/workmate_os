@@ -84,14 +84,14 @@ async function confirmDelete() {
 
 // ─── HELPERS ──────────────────────────────────────────────
 function getStatusBadge(status: string) {
-  const badges = {
-    planning: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    on_hold: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    completed: 'bg-white/5 border-white/10 text-white/60',
-    cancelled: 'bg-red-500/20 border-red-400/30 text-red-200',
+  const badges: Record<string, string> = {
+    planning:  'badge-blue',
+    active:    'badge-green',
+    on_hold:   'badge-amber',
+    completed: 'badge-gray',
+    cancelled: 'badge-red',
   };
-  return badges[status as keyof typeof badges] || badges.active;
+  return badges[status] || 'badge-gray';
 }
 
 function getStatusLabel(status: string): string {
@@ -106,15 +106,15 @@ function getStatusLabel(status: string): string {
 }
 
 function getPriorityBadge(priority: string | null) {
-  if (!priority) return 'bg-white/5 border-white/10 text-white/60';
+  if (!priority) return 'badge-gray';
 
-  const badges = {
-    low: 'bg-white/5 border-white/10 text-white/60',
-    medium: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    high: 'bg-orange-500/20 border-orange-400/30 text-orange-200',
-    urgent: 'bg-red-500/20 border-red-400/30 text-red-200',
+  const badges: Record<string, string> = {
+    low:    'badge-gray',
+    medium: 'badge-blue',
+    high:   'badge-orange',
+    urgent: 'badge-red',
   };
-  return badges[priority as keyof typeof badges] || badges.medium;
+  return badges[priority] || 'badge-gray';
 }
 
 function getPriorityLabel(priority: string | null): string {
@@ -163,7 +163,7 @@ function formatCurrency(value: number | null): string {
     </div>
 
     <!-- Filters -->
-    <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+    <div class="kit-card p-4">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <!-- Status Filter -->
         <div>
@@ -245,7 +245,7 @@ function formatCurrency(value: number | null): string {
         <div
           v-for="project in projects"
           :key="project.id"
-          class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition cursor-pointer"
+          class="kit-card p-4 hover:bg-white/10 transition cursor-pointer"
           @click="emit('openProject', project.id)"
         >
           <div class="flex items-start justify-between gap-4">
@@ -258,20 +258,13 @@ function formatCurrency(value: number | null): string {
                 <span class="font-semibold text-lg text-white truncate">
                   {{ project.title }}
                 </span>
-                <span
-                  :class="[
-                    'px-2 py-1 rounded text-xs font-medium border',
-                    getStatusBadge(project.status),
-                  ]"
-                >
+                <span class="badge" :class="getStatusBadge(project.status)">
                   {{ getStatusLabel(project.status) }}
                 </span>
                 <span
                   v-if="project.priority"
-                  :class="[
-                    'px-2 py-1 rounded text-xs font-medium border',
-                    getPriorityBadge(project.priority),
-                  ]"
+                  class="badge"
+                  :class="getPriorityBadge(project.priority)"
                 >
                   {{ getPriorityLabel(project.priority) }}
                 </span>

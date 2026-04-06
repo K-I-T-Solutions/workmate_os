@@ -2,6 +2,9 @@
 import { ref, onMounted, computed } from 'vue';
 import { useBanking } from '../../composables/useBanking';
 import type { BankTransaction } from '../../types/banking';
+import { useToast } from '@/composables/useToast';
+
+const toast = useToast();
 
 const {
   accounts,
@@ -121,7 +124,7 @@ function handleFileChange(event: Event) {
 
 async function handleImport() {
   if (!importFile.value || !importAccountId.value) {
-    alert('Bitte wähle eine Datei und ein Konto aus');
+    toast.warning('Bitte wähle eine Datei und ein Konto aus');
     return;
   }
 
@@ -175,30 +178,30 @@ function closeImportModal() {
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-      <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div class="kit-card p-4">
         <div class="text-white/60 text-sm mb-1">Anzahl</div>
         <div class="text-2xl font-bold text-white">{{ stats.total }}</div>
       </div>
-      <div class="bg-green-500/10 rounded-lg p-4 border border-green-500/20">
+      <div class="kit-card p-4">
         <div class="text-green-300 text-sm mb-1">Einnahmen</div>
         <div class="text-2xl font-bold text-green-300">{{ formatCurrency(stats.income) }}</div>
       </div>
-      <div class="bg-red-500/10 rounded-lg p-4 border border-red-500/20">
+      <div class="kit-card p-4">
         <div class="text-red-300 text-sm mb-1">Ausgaben</div>
         <div class="text-2xl font-bold text-red-300">{{ formatCurrency(stats.expense) }}</div>
       </div>
-      <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div class="kit-card p-4">
         <div class="text-white/60 text-sm mb-1">Zugeordnet</div>
         <div class="text-2xl font-bold text-white">{{ stats.reconciled }}</div>
       </div>
-      <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+      <div class="kit-card p-4">
         <div class="text-white/60 text-sm mb-1">Offen</div>
         <div class="text-2xl font-bold text-white">{{ stats.unreconciled }}</div>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white/5 rounded-lg p-4 border border-white/10 mb-6">
+    <div class="kit-card p-4 mb-6">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Account Filter -->
         <div>
@@ -268,7 +271,7 @@ function closeImportModal() {
     <!-- Empty State -->
     <div
       v-else-if="!loading && filteredTransactions.length === 0"
-      class="text-center py-12 bg-white/5 rounded-lg border border-white/10"
+      class="kit-card text-center py-12"
     >
       <div class="text-white/60 mb-4">
         <div class="text-4xl mb-2">💳</div>
@@ -286,7 +289,7 @@ function closeImportModal() {
     </div>
 
     <!-- Transactions Table -->
-    <div v-else class="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
+    <div v-else class="kit-card overflow-hidden" style="padding:0">
       <table class="w-full">
         <thead class="bg-white/5 border-b border-white/10">
           <tr>
@@ -326,14 +329,12 @@ function closeImportModal() {
             </td>
             <td class="px-4 py-3 text-center">
               <span
-                :class="[
-                  'px-2 py-1 rounded text-xs',
-                  transaction.reconciliation_status === 'reconciled'
-                    ? 'bg-green-500/20 text-green-300'
-                    : transaction.reconciliation_status === 'partial'
-                    ? 'bg-yellow-500/20 text-yellow-300'
-                    : 'bg-white/10 text-white/60',
-                ]"
+                class="badge"
+                :class="
+                  transaction.reconciliation_status === 'reconciled' ? 'badge-green'
+                  : transaction.reconciliation_status === 'partial' ? 'badge-amber'
+                  : 'badge-gray'
+                "
               >
                 {{
                   transaction.reconciliation_status === 'reconciled'
@@ -363,7 +364,7 @@ function closeImportModal() {
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
       @click.self="closeImportModal"
     >
-      <div class="bg-[#1a1a1a] rounded-lg p-6 w-full max-w-md border border-white/10">
+      <div class="kit-card p-6 w-full max-w-md">
         <h2 class="text-xl font-bold text-white mb-4">CSV-Import</h2>
 
         <!-- Import Result -->

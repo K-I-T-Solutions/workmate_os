@@ -5,10 +5,12 @@ import { getLeaveStatistics, getEmployeeStatistics } from '../services/hr.servic
 import type { LeaveStatistics, EmployeeStatistics } from '../types';
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const leaveStats = ref<LeaveStatistics | null>(null);
 const employeeStats = ref<EmployeeStatistics | null>(null);
 
 onMounted(async () => {
+  error.value = null;
   try {
     const [leave, employees] = await Promise.all([
       getLeaveStatistics(),
@@ -16,8 +18,8 @@ onMounted(async () => {
     ]);
     leaveStats.value = leave;
     employeeStats.value = employees;
-  } catch (error) {
-    console.error('Failed to load HR statistics:', error);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -46,12 +48,18 @@ const getLeaveTypeLabel = (type: string): string => {
       <div class="text-white/60">Lade Statistiken...</div>
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="$router.go(0)">Erneut versuchen</button>
+    </div>
+
     <!-- Dashboard Content -->
     <div v-else class="space-y-6">
       <!-- KPI Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Total Employees -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div class="kit-card p-6">
           <div class="flex items-center justify-between mb-4">
             <Users :size="32" class="text-blue-400" />
           </div>
@@ -65,7 +73,7 @@ const getLeaveTypeLabel = (type: string): string => {
         </div>
 
         <!-- Pending Leave Requests -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div class="kit-card p-6">
           <div class="flex items-center justify-between mb-4">
             <Clock :size="32" class="text-yellow-400" />
           </div>
@@ -79,7 +87,7 @@ const getLeaveTypeLabel = (type: string): string => {
         </div>
 
         <!-- Approved Requests -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div class="kit-card p-6">
           <div class="flex items-center justify-between mb-4">
             <TrendingUp :size="32" class="text-green-400" />
           </div>
@@ -93,7 +101,7 @@ const getLeaveTypeLabel = (type: string): string => {
         </div>
 
         <!-- Total Requests -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div class="kit-card p-6">
           <div class="flex items-center justify-between mb-4">
             <Calendar :size="32" class="text-purple-400" />
           </div>
@@ -110,7 +118,7 @@ const getLeaveTypeLabel = (type: string): string => {
       <!-- Charts Row -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Leave Requests by Type -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div class="kit-card p-6">
           <h3 class="text-xl font-semibold text-white mb-4">Anträge nach Typ</h3>
           <div v-if="leaveStats?.by_type" class="space-y-3">
             <div
@@ -126,7 +134,7 @@ const getLeaveTypeLabel = (type: string): string => {
         </div>
 
         <!-- Employees by Department -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+        <div class="kit-card p-6">
           <h3 class="text-xl font-semibold text-white mb-4">Mitarbeiter nach Abteilung</h3>
           <div v-if="employeeStats?.by_department" class="space-y-3">
             <div
@@ -143,7 +151,7 @@ const getLeaveTypeLabel = (type: string): string => {
       </div>
 
       <!-- Quick Actions -->
-      <div class="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+      <div class="kit-card p-6">
         <h3 class="text-xl font-semibold text-white mb-4">Schnellzugriff</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button class="kit-btn-primary py-3">

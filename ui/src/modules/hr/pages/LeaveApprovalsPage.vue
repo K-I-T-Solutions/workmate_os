@@ -8,6 +8,7 @@ import type { LeaveRequest, Employee } from '../types';
 
 const router = useRouter();
 const loading = ref(true);
+const error = ref<string | null>(null);
 const pendingRequests = ref<LeaveRequest[]>([]);
 const employeeCache = ref<Record<string, Employee>>({});
 const showRejectDialog = ref(false);
@@ -27,6 +28,7 @@ onMounted(async () => {
 
 async function loadPendingRequests() {
   loading.value = true;
+  error.value = null;
   try {
     const response = await getLeaveRequests({ status: 'pending' });
     pendingRequests.value = response.items;
@@ -37,6 +39,8 @@ async function loadPendingRequests() {
         try { employeeCache.value[id] = await getEmployee(id); } catch { /* ignore */ }
       }
     }));
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -106,7 +110,7 @@ function openDetail(request: LeaveRequest) {
         <h1 class="text-xl font-semibold text-white">Genehmigungen</h1>
         <p class="text-sm text-white/50 mt-0.5">Ausstehende Urlaubsanträge</p>
       </div>
-      <span v-if="!loading" class="text-sm px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-300">
+      <span v-if="!loading" class="badge badge-amber">
         {{ pendingRequests.length }} ausstehend
       </span>
     </div>
@@ -114,6 +118,12 @@ function openDetail(request: LeaveRequest) {
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center py-16">
       <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+    </div>
+
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadPendingRequests()">Erneut versuchen</button>
     </div>
 
     <!-- Empty -->
@@ -128,7 +138,7 @@ function openDetail(request: LeaveRequest) {
       <div
         v-for="request in pendingRequests"
         :key="request.id"
-        class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+        class="kit-card p-4 hover:bg-white/10 transition-colors"
       >
         <div class="flex items-start gap-4">
 
@@ -154,7 +164,7 @@ function openDetail(request: LeaveRequest) {
                   </span>
                 </div>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
-                  <span class="text-xs px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                  <span class="badge badge-blue">
                     {{ leaveTypeLabels[request.leave_type] || request.leave_type }}
                   </span>
                   <span class="text-xs text-white/50 flex items-center gap-1">
@@ -204,7 +214,7 @@ function openDetail(request: LeaveRequest) {
       class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       @click.self="showRejectDialog = false"
     >
-      <div class="w-full max-w-md p-5 rounded-xl bg-slate-800 border border-white/10 shadow-2xl">
+      <div class="kit-card p-5 w-full max-w-md shadow-2xl">
         <div class="flex items-center gap-3 mb-4">
           <img
             :src="gravatarUrl(emp(selectedRequest)?.email, 36)"

@@ -7,6 +7,7 @@ import { apiClient } from '@/services/api/client';
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const categories = ref<any[]>([]);
 const recentArticles = ref<any[]>([]);
 const search = ref('');
@@ -30,8 +31,14 @@ const colorClasses: Record<string, string> = {
 const newCategory = ref({ name: '', description: '', slug: '', icon: 'BookOpen', color: 'blue', order: 0 });
 
 onMounted(async () => {
-  await Promise.all([loadCategories(), loadRecent()]);
-  loading.value = false;
+  error.value = null;
+  try {
+    await Promise.all([loadCategories(), loadRecent()]);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
+  } finally {
+    loading.value = false;
+  }
 });
 
 async function loadCategories() {
@@ -94,7 +101,7 @@ function formatDate(d: string) {
       </div>
 
       <!-- Search Results -->
-      <div v-if="search && (searchResults.length > 0 || searching)" class="mt-2 p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+      <div v-if="search && (searchResults.length > 0 || searching)" class="kit-card mt-2 p-3 space-y-1">
         <div v-if="searching" class="text-sm text-white/40 py-2 text-center">Suche...</div>
         <div v-else-if="searchResults.length === 0" class="text-sm text-white/40 py-2 text-center">Keine Ergebnisse</div>
         <div v-for="a in searchResults" :key="a.id"
@@ -117,7 +124,7 @@ function formatDate(d: string) {
     </div>
 
     <!-- Create Category Form -->
-    <div v-if="showCategoryForm" class="p-4 rounded-xl bg-white/5 border border-blue-400/20 space-y-3">
+    <div v-if="showCategoryForm" class="kit-card p-4 space-y-3">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-white">Neue Kategorie</h3>
         <button @click="showCategoryForm = false" class="text-white/40 hover:text-white"><X :size="16" /></button>
@@ -158,6 +165,12 @@ function formatDate(d: string) {
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center py-10">
       <div class="w-7 h-7 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+    </div>
+
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="$router.go(0)">Erneut versuchen</button>
     </div>
 
     <!-- No Categories -->

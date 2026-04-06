@@ -21,10 +21,27 @@ const emit = defineEmits<{
 // Composables
 const { expenses, kpis, isLoading, loadExpenses, loadKpis } = useExpenses();
 
+// Error State
+const error = ref<string | null>(null);
+
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([loadExpenses(), loadKpis()]);
+  error.value = null;
+  try {
+    await Promise.all([loadExpenses(), loadKpis()]);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
+  }
 });
+
+async function reload() {
+  error.value = null;
+  try {
+    await Promise.all([loadExpenses(), loadKpis()]);
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
+  }
+}
 
 // Computed Stats
 const stats = computed(() => {
@@ -68,25 +85,18 @@ const categoryBreakdown = computed(() => {
 
 // Helpers
 function getCategoryColor(category: ExpenseCategory): string {
-  const colors = {
-    [ExpenseCategory.TRAVEL]: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    [ExpenseCategory.MATERIAL]:
-      'bg-purple-500/20 border-purple-400/30 text-purple-200',
-    [ExpenseCategory.SOFTWARE]:
-      'bg-cyan-500/20 border-cyan-400/30 text-cyan-200',
-    [ExpenseCategory.HARDWARE]:
-      'bg-green-500/20 border-green-400/30 text-green-200',
-    [ExpenseCategory.CONSULTING]:
-      'bg-orange-500/20 border-orange-400/30 text-orange-200',
-    [ExpenseCategory.MARKETING]:
-      'bg-pink-500/20 border-pink-400/30 text-pink-200',
-    [ExpenseCategory.OFFICE]:
-      'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    [ExpenseCategory.TRAINING]:
-      'bg-indigo-500/20 border-indigo-400/30 text-indigo-200',
-    [ExpenseCategory.OTHER]: 'bg-white/5 border-white/10 text-white/60',
+  const colors: Record<string, string> = {
+    [ExpenseCategory.TRAVEL]:     'badge badge-blue',
+    [ExpenseCategory.MATERIAL]:   'badge badge-cyan',
+    [ExpenseCategory.SOFTWARE]:   'badge badge-cyan',
+    [ExpenseCategory.HARDWARE]:   'badge badge-green',
+    [ExpenseCategory.CONSULTING]: 'badge badge-orange',
+    [ExpenseCategory.MARKETING]:  'badge badge-red',
+    [ExpenseCategory.OFFICE]:     'badge badge-amber',
+    [ExpenseCategory.TRAINING]:   'badge badge-blue',
+    [ExpenseCategory.OTHER]:      'badge badge-gray',
   };
-  return colors[category];
+  return colors[category] || 'badge badge-gray';
 }
 
 function formatCurrency(value: number): string {
@@ -129,12 +139,18 @@ function formatDate(dateString: string): string {
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !isLoading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="reload()">Erneut versuchen</button>
+    </div>
+
     <template v-else>
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <!-- Total Expenses -->
         <div
-          class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
+          class="kit-card p-4"
         >
           <div class="flex items-center justify-between">
             <div class="p-2 bg-emerald-500/20 rounded-lg">
@@ -147,7 +163,7 @@ function formatDate(dateString: string): string {
 
         <!-- Total Amount -->
         <div
-          class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
+          class="kit-card p-4"
         >
           <div class="flex items-center justify-between">
             <div class="p-2 bg-blue-500/20 rounded-lg">
@@ -162,7 +178,7 @@ function formatDate(dateString: string): string {
 
         <!-- Billable -->
         <div
-          class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
+          class="kit-card p-4"
         >
           <div class="flex items-center justify-between">
             <div class="p-2 bg-purple-500/20 rounded-lg">
@@ -175,7 +191,7 @@ function formatDate(dateString: string): string {
 
         <!-- Invoiced -->
         <div
-          class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4"
+          class="kit-card p-4"
         >
           <div class="flex items-center justify-between">
             <div class="p-2 bg-yellow-500/20 rounded-lg">
@@ -190,7 +206,7 @@ function formatDate(dateString: string): string {
       <!-- Category Breakdown -->
       <div
         v-if="categoryBreakdown.length > 0"
-        class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6"
+        class="kit-card p-6"
       >
         <div class="flex items-center gap-2 mb-4">
           <PieChart :size="20" class="text-white/60" />
@@ -203,10 +219,7 @@ function formatDate(dateString: string): string {
             :key="item.category"
             class="flex items-center gap-3"
           >
-            <span
-              :class="getCategoryColor(item.category)"
-              class="px-2 py-1 rounded text-xs font-medium border min-w-[100px] text-center"
-            >
+            <span :class="getCategoryColor(item.category)" class="min-w-[100px] text-center">
               {{ item.label }}
             </span>
             <div class="flex-1">
@@ -226,7 +239,7 @@ function formatDate(dateString: string): string {
       </div>
 
       <!-- Recent Expenses -->
-      <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+      <div class="kit-card p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold text-white">Neueste Ausgaben</h2>
           <button
@@ -258,10 +271,7 @@ function formatDate(dateString: string): string {
             <div class="flex-1">
               <div class="flex items-center gap-2">
                 <p class="font-medium text-white">{{ expense.title }}</p>
-                <span
-                  :class="getCategoryColor(expense.category)"
-                  class="px-2 py-0.5 rounded text-xs font-medium border"
-                >
+                <span :class="getCategoryColor(expense.category)">
                   {{ ExpenseCategoryLabels[expense.category] }}
                 </span>
               </div>

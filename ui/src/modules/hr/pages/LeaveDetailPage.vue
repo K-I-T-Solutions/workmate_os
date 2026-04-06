@@ -10,6 +10,7 @@ const props = defineProps<{ requestId: string }>();
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const request = ref<LeaveRequest | null>(null);
 const employee = ref<Employee | null>(null);
 
@@ -20,10 +21,10 @@ const leaveTypeLabels: Record<string, string> = {
 };
 
 const statusConfig: Record<string, { label: string; class: string }> = {
-  pending:   { label: 'Ausstehend', class: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/30' },
-  approved:  { label: 'Genehmigt',  class: 'text-green-300 bg-green-500/10 border-green-500/30' },
-  rejected:  { label: 'Abgelehnt', class: 'text-red-300 bg-red-500/10 border-red-500/30' },
-  cancelled: { label: 'Storniert', class: 'text-white/40 bg-white/5 border-white/10' },
+  pending:   { label: 'Ausstehend', class: 'badge badge-amber' },
+  approved:  { label: 'Genehmigt',  class: 'badge badge-green' },
+  rejected:  { label: 'Abgelehnt',  class: 'badge badge-red' },
+  cancelled: { label: 'Storniert',  class: 'badge badge-gray' },
 };
 
 const emp = computed(() => employee.value || request.value?.employee || null);
@@ -49,6 +50,7 @@ function formatDateTime(d?: string) {
 }
 
 onMounted(async () => {
+  error.value = null;
   try {
     request.value = await getLeaveRequest(props.requestId);
     if (request.value?.employee_id) {
@@ -56,6 +58,7 @@ onMounted(async () => {
     }
   } catch {
     request.value = null;
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -85,6 +88,12 @@ function openEmployee() {
       <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="$router.go(0)">Erneut versuchen</button>
+    </div>
+
     <template v-else-if="request">
 
       <!-- Back + Header -->
@@ -107,7 +116,7 @@ function openEmployee() {
               <h2 class="text-lg font-semibold text-white">
                 {{ leaveTypeLabels[request.leave_type] || request.leave_type }}
               </h2>
-              <span class="text-xs px-2 py-0.5 rounded border" :class="statusConfig[request.status]?.class">
+              <span :class="statusConfig[request.status]?.class">
                 {{ statusConfig[request.status]?.label || request.status }}
               </span>
             </div>
@@ -139,7 +148,7 @@ function openEmployee() {
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <!-- Zeitraum -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+        <div class="kit-card p-4 space-y-3">
           <div class="flex items-center gap-2 text-white/60 text-sm font-medium uppercase tracking-wide">
             <Calendar :size="14" />Zeitraum
           </div>
@@ -157,19 +166,15 @@ function openEmployee() {
               <span class="text-white font-medium">{{ request.total_days }} Tag(e)</span>
             </div>
             <div v-if="request.half_day_start || request.half_day_end" class="flex gap-2 pt-1">
-              <span v-if="request.half_day_start" class="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                ½ Tag Start
-              </span>
-              <span v-if="request.half_day_end" class="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                ½ Tag Ende
-              </span>
+              <span v-if="request.half_day_start" class="badge badge-blue">½ Tag Start</span>
+              <span v-if="request.half_day_end" class="badge badge-blue">½ Tag Ende</span>
             </div>
           </div>
         </div>
 
         <!-- Mitarbeiter -->
         <div
-          class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3 cursor-pointer hover:bg-white/8 transition-colors"
+          class="kit-card p-4 space-y-3 cursor-pointer hover:bg-white/10 transition-colors"
           @click="openEmployee"
         >
           <div class="flex items-center gap-2 text-white/60 text-sm font-medium uppercase tracking-wide">
@@ -190,7 +195,7 @@ function openEmployee() {
         </div>
 
         <!-- Begründung -->
-        <div v-if="request.reason" class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+        <div v-if="request.reason" class="kit-card p-4 space-y-3">
           <div class="flex items-center gap-2 text-white/60 text-sm font-medium uppercase tracking-wide">
             <FileText :size="14" />Begründung
           </div>
@@ -198,7 +203,7 @@ function openEmployee() {
         </div>
 
         <!-- Zeitstempel -->
-        <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+        <div class="kit-card p-4 space-y-3">
           <div class="flex items-center gap-2 text-white/60 text-sm font-medium uppercase tracking-wide">
             <Clock :size="14" />Zeitstempel
           </div>

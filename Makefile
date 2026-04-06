@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down dev-logs dev-rebuild shell db-shell migrate-create migrate-up migrate-down migrate-current migrate-history migrate-auto backend-rebuild db-reset seed check-env
+.PHONY: help dev-up dev-down dev-logs dev-rebuild shell db-shell migrate-create migrate-up migrate-down migrate-current migrate-history migrate-auto backend-rebuild db-reset seed check-env openapi-export openapi-codegen openapi-sync
 
 COMPOSE = docker-compose -f infra/docker-compose.yml
 BACKEND = backend
@@ -28,6 +28,11 @@ help:
 	@echo "Utilities:"
 	@echo "  make check-env       - Check DATABASE_URL & Alembic revision"
 	@echo "  make seed            - Load seed data"
+	@echo ""
+	@echo "API Sync:"
+	@echo "  make openapi-export  - Export OpenAPI schema from backend"
+	@echo "  make openapi-codegen - Generate TypeScript types from schema"
+	@echo "  make openapi-sync    - Export + generate in one step"
 	@echo ""
 
 # Dev Lifecycle
@@ -104,3 +109,19 @@ check-env:
 seed:
 	docker exec $(BACKEND) python -m app.core.seed || true
 	@echo "✓ Seed data loaded"
+
+# OpenAPI Schema Sync
+openapi-export:
+	@echo "Exportiere OpenAPI-Schema vom Backend..."
+	curl -sf http://localhost:8000/openapi.json \
+	  | python3 -c "import sys,json,yaml; yaml.dump(json.load(sys.stdin), sys.stdout, allow_unicode=True, sort_keys=False)" \
+	  > assets/openapi.yaml
+	@echo "✓ Schema exportiert nach assets/openapi.yaml"
+
+openapi-codegen:
+	@echo "Generiere TypeScript-Typen..."
+	cd ui && pnpm run api:generate
+	@echo "✓ Typen generiert in ui/src/types/openapi.ts"
+
+openapi-sync: openapi-export openapi-codegen
+	@echo "✓ API-Sync abgeschlossen"

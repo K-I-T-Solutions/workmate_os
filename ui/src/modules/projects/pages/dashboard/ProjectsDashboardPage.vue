@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>();
 
 // Composables
-const { projects, loading, loadProjects } = useProjects();
+const { projects, loading, error, loadProjects } = useProjects();
 const { openWindow } = useAppManager();
 
 // Lifecycle
@@ -51,14 +51,14 @@ const recentProjects = computed(() => {
 
 // Helpers
 function getStatusBadge(status: string) {
-  const badges = {
-    planning: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    active: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    on_hold: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    completed: 'bg-white/5 border-white/10 text-white/60',
-    cancelled: 'bg-red-500/20 border-red-400/30 text-red-200',
+  const badges: Record<string, string> = {
+    planning:  'badge-blue',
+    active:    'badge-green',
+    on_hold:   'badge-amber',
+    completed: 'badge-gray',
+    cancelled: 'badge-red',
   };
-  return badges[status as keyof typeof badges] || badges.active;
+  return badges[status] || 'badge-gray';
 }
 
 function getStatusLabel(status: string): string {
@@ -105,9 +105,15 @@ function openTimeTracking() {
       </div>
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadProjects()">Erneut versuchen</button>
+    </div>
+
     <!-- Loading State -->
     <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-      <div v-for="i in 4" :key="i" class="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div v-for="i in 4" :key="i" class="kit-card p-4">
         <div class="animate-pulse space-y-3">
           <div class="h-4 bg-white/10 rounded w-3/4"></div>
           <div class="h-8 bg-white/10 rounded w-1/2"></div>
@@ -118,7 +124,7 @@ function openTimeTracking() {
     <!-- KPI Cards -->
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
       <!-- Total Projects -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition">
+      <div class="kit-card p-4 hover:bg-white/10 transition">
         <div class="flex items-center gap-3 mb-2">
           <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
             <Briefcase :size="18" class="text-blue-200" />
@@ -129,7 +135,7 @@ function openTimeTracking() {
       </div>
 
       <!-- Active Projects -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition">
+      <div class="kit-card p-4 hover:bg-white/10 transition">
         <div class="flex items-center gap-3 mb-2">
           <div class="p-2 bg-emerald-500/20 rounded-lg border border-emerald-400/30">
             <TrendingUp :size="18" class="text-emerald-200" />
@@ -140,7 +146,7 @@ function openTimeTracking() {
       </div>
 
       <!-- Planning Projects -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition">
+      <div class="kit-card p-4 hover:bg-white/10 transition">
         <div class="flex items-center gap-3 mb-2">
           <div class="p-2 bg-blue-500/20 rounded-lg border border-blue-400/30">
             <Clock :size="18" class="text-blue-200" />
@@ -151,7 +157,7 @@ function openTimeTracking() {
       </div>
 
       <!-- Total Budget -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition">
+      <div class="kit-card p-4 hover:bg-white/10 transition">
         <div class="flex items-center gap-3 mb-2">
           <div class="p-2 bg-emerald-500/20 rounded-lg border border-emerald-400/30">
             <Euro :size="18" class="text-emerald-200" />
@@ -183,20 +189,20 @@ function openTimeTracking() {
       </div>
 
       <!-- Completed -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-3 text-center">
+      <div class="kit-card p-3 text-center">
         <div class="text-2xl font-bold text-white/80">{{ stats.completed }}</div>
         <div class="text-xs text-white/60 mt-1">Abgeschlossen</div>
       </div>
 
       <!-- Total -->
-      <div class="rounded-lg border border-white/10 bg-white/5 p-3 text-center">
+      <div class="kit-card p-3 text-center">
         <div class="text-2xl font-bold text-white/80">{{ stats.total }}</div>
         <div class="text-xs text-white/60 mt-1">Gesamt</div>
       </div>
     </div>
 
     <!-- Recent Projects -->
-    <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+    <div class="kit-card p-4">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold text-white">Letzte Projekte</h3>
         <button @click="emit('openProjects')" class="text-sm text-blue-300 hover:text-blue-200 flex items-center gap-1">
@@ -214,12 +220,7 @@ function openTimeTracking() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="font-medium text-white truncate">{{ project.title }}</span>
-              <span
-                :class="[
-                  'px-2 py-0.5 rounded text-xs font-medium border',
-                  getStatusBadge(project.status),
-                ]"
-              >
+              <span class="badge" :class="getStatusBadge(project.status)">
                 {{ getStatusLabel(project.status) }}
               </span>
             </div>
@@ -245,19 +246,19 @@ function openTimeTracking() {
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <button @click="emit('openProjects')" class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition text-left">
+      <button @click="emit('openProjects')" class="kit-card p-4 hover:bg-white/10 transition text-left">
         <Briefcase :size="20" class="text-blue-300 mb-2" />
         <div class="font-semibold text-white">Alle Projekte</div>
         <div class="text-xs text-white/60 mt-1">Projekt-Übersicht anzeigen</div>
       </button>
 
-      <button @click="emit('createProject')" class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition text-left">
+      <button @click="emit('createProject')" class="kit-card p-4 hover:bg-white/10 transition text-left">
         <Plus :size="20" class="text-emerald-300 mb-2" />
         <div class="font-semibold text-white">Neues Projekt</div>
         <div class="text-xs text-white/60 mt-1">Projekt erstellen</div>
       </button>
 
-      <button @click="openTimeTracking" class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition text-left">
+      <button @click="openTimeTracking" class="kit-card p-4 hover:bg-white/10 transition text-left">
         <Clock :size="20" class="text-purple-300 mb-2" />
         <div class="font-semibold text-white">Zeiterfassung</div>
         <div class="text-xs text-white/60 mt-1">Zeiten verwalten</div>

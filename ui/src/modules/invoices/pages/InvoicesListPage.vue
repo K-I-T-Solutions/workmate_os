@@ -95,15 +95,15 @@ function handleDownloadPdf(invoiceId: string, invoiceNumber: string) {
 
 // ─── HELPERS ──────────────────────────────────────────────
 function getStatusBadgeClass(status: InvoiceStatus): string {
-  const classes = {
-    draft: 'bg-white/5 border-white/10 text-white/80',
-    sent: 'bg-blue-500/20 border-blue-400/30 text-blue-200',
-    paid: 'bg-emerald-500/20 border-emerald-400/30 text-emerald-200',
-    partial: 'bg-yellow-500/20 border-yellow-400/30 text-yellow-200',
-    overdue: 'bg-red-500/20 border-red-400/30 text-red-200',
-    cancelled: 'bg-white/5 border-white/10 text-white/60',
+  const classes: Record<string, string> = {
+    draft:     'badge-gray',
+    sent:      'badge-blue',
+    paid:      'badge-green',
+    partial:   'badge-amber',
+    overdue:   'badge-red',
+    cancelled: 'badge-gray',
   };
-  return classes[status] || classes.draft;
+  return classes[status] || 'badge-gray';
 }
 
 function getStatusLabel(status: InvoiceStatus): string {
@@ -157,7 +157,7 @@ function formatDate(dateString: string | null): string {
     </div>
 
     <!-- Filters -->
-    <div class="rounded-lg border border-white/10 bg-white/5 p-4">
+    <div class="kit-card p-4">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <!-- Status Filter -->
         <div>
@@ -256,7 +256,7 @@ function formatDate(dateString: string | null): string {
         <div
           v-for="invoice in invoices"
           :key="invoice.id"
-          class="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition cursor-pointer"
+          class="kit-card p-4 hover:bg-white/10 transition cursor-pointer"
           @click="emit('openInvoice', invoice.id)"
         >
           <div class="flex items-start justify-between gap-4">
@@ -266,9 +266,7 @@ function formatDate(dateString: string | null): string {
                 <span class="font-mono font-semibold text-lg text-white">
                   {{ invoice.invoice_number }}
                 </span>
-                <span
-                  :class="['px-2 py-1 rounded text-xs font-medium border', getStatusBadgeClass(invoice.status)]"
-                >
+                <span class="badge" :class="getStatusBadgeClass(invoice.status)">
                   {{ getStatusLabel(invoice.status) }}
                 </span>
               </div>

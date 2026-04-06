@@ -9,6 +9,7 @@ const props = defineProps<{ ticketId: string }>();
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const ticket = ref<any>(null);
 const newComment = ref('');
 const isInternal = ref(false);
@@ -58,18 +59,18 @@ const descriptionHtml = computed(() => {
     .replace(/\n/g, '<br>');
 });
 
-const statusConfig: Record<string, { label: string; class: string }> = {
-  open:        { label: 'Offen',           class: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
-  in_progress: { label: 'In Bearbeitung',  class: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' },
-  resolved:    { label: 'Gelöst',          class: 'text-green-300 bg-green-500/10 border-green-500/20' },
-  closed:      { label: 'Geschlossen',     class: 'text-white/30 bg-white/5 border-white/10' },
+const statusConfig: Record<string, { label: string; class: string; iconClass?: string }> = {
+  open:        { label: 'Offen',           class: 'badge badge-blue',  iconClass: 'bg-blue-500/10 border-blue-500/20 text-blue-300' },
+  in_progress: { label: 'In Bearbeitung',  class: 'badge badge-amber', iconClass: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-300' },
+  resolved:    { label: 'Gelöst',          class: 'badge badge-green', iconClass: 'bg-green-500/10 border-green-500/20 text-green-300' },
+  closed:      { label: 'Geschlossen',     class: 'badge badge-gray',  iconClass: 'bg-white/5 border-white/10 text-white/30' },
 };
 
 const priorityConfig: Record<string, { label: string; class: string }> = {
-  low:      { label: 'Niedrig',  class: 'text-white/40 bg-white/5 border-white/10' },
-  medium:   { label: 'Mittel',   class: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
-  high:     { label: 'Hoch',     class: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
-  critical: { label: 'Kritisch', class: 'text-red-300 bg-red-500/10 border-red-500/20' },
+  low:      { label: 'Niedrig',  class: 'badge badge-gray' },
+  medium:   { label: 'Mittel',   class: 'badge badge-blue' },
+  high:     { label: 'Hoch',     class: 'badge badge-orange' },
+  critical: { label: 'Kritisch', class: 'badge badge-red' },
 };
 
 const statusFlow: Record<string, string> = {
@@ -82,8 +83,14 @@ const categoryLabels: Record<string, string> = {
 };
 
 onMounted(async () => {
-  await loadTicket();
-  loading.value = false;
+  error.value = null;
+  try {
+    await loadTicket();
+  } catch {
+    error.value = 'Daten konnten nicht geladen werden.';
+  } finally {
+    loading.value = false;
+  }
 });
 
 async function loadTicket() {
@@ -148,6 +155,12 @@ function formatDate(d: string) {
       <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="$router.go(0)">Erneut versuchen</button>
+    </div>
+
     <template v-else-if="ticket">
 
       <!-- Header -->
@@ -161,10 +174,10 @@ function formatDate(d: string) {
             <div>
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs font-mono text-white/30">{{ ticket.ticket_number }}</span>
-                <span class="text-xs px-2 py-0.5 rounded border" :class="statusConfig[ticket.status]?.class">
+                <span :class="statusConfig[ticket.status]?.class">
                   {{ statusConfig[ticket.status]?.label }}
                 </span>
-                <span class="text-xs px-2 py-0.5 rounded border" :class="priorityConfig[ticket.priority]?.class">
+                <span :class="priorityConfig[ticket.priority]?.class">
                   {{ priorityConfig[ticket.priority]?.label }}
                 </span>
               </div>
@@ -195,7 +208,7 @@ function formatDate(d: string) {
 
         <!-- Description (2/3) -->
         <div class="sm:col-span-2 space-y-4">
-          <div v-if="ticket.description" class="p-4 rounded-xl bg-white/5 border border-white/10">
+          <div v-if="ticket.description" class="kit-card p-4">
             <div class="text-xs text-white/50 uppercase tracking-wide mb-2">Beschreibung</div>
             <p class="text-sm text-white/80 leading-relaxed" v-html="descriptionHtml"></p>
           </div>
@@ -213,7 +226,7 @@ function formatDate(d: string) {
 
           <!-- Reply Modal -->
           <div v-if="showReplyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div class="w-full max-w-lg bg-[#1a2035] border border-white/10 rounded-2xl shadow-2xl p-6 mx-4">
+            <div class="kit-card p-6 w-full max-w-lg mx-4 shadow-2xl">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-semibold text-white">Antwort an Kunden</h3>
                 <button @click="showReplyModal = false" class="text-white/40 hover:text-white/80 text-xl leading-none">&times;</button>
@@ -289,7 +302,7 @@ function formatDate(d: string) {
             </div>
 
             <!-- New Comment -->
-            <div class="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+            <div class="kit-card p-3 space-y-2">
               <textarea v-model="newComment" rows="3" placeholder="Kommentar schreiben..."
                 class="kit-input w-full resize-none text-sm" />
               <div class="flex items-center justify-between">
@@ -308,18 +321,18 @@ function formatDate(d: string) {
 
         <!-- Meta (1/3) -->
         <div class="space-y-3">
-          <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+          <div class="kit-card p-4 space-y-3">
             <div class="text-xs text-white/50 uppercase tracking-wide">Details</div>
             <div class="space-y-2 text-sm">
               <div class="flex justify-between">
                 <span class="text-white/50">Status</span>
-                <span class="text-xs px-2 py-0.5 rounded border" :class="statusConfig[ticket.status]?.class">
+                <span :class="statusConfig[ticket.status]?.class">
                   {{ statusConfig[ticket.status]?.label }}
                 </span>
               </div>
               <div class="flex justify-between">
                 <span class="text-white/50">Priorität</span>
-                <span class="text-xs px-2 py-0.5 rounded border" :class="priorityConfig[ticket.priority]?.class">
+                <span :class="priorityConfig[ticket.priority]?.class">
                   {{ priorityConfig[ticket.priority]?.label }}
                 </span>
               </div>
@@ -334,7 +347,7 @@ function formatDate(d: string) {
             </div>
           </div>
 
-          <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+          <div class="kit-card p-4 space-y-2">
             <div class="text-xs text-white/50 uppercase tracking-wide">Zeitstempel</div>
             <div class="space-y-1.5 text-xs">
               <div class="flex justify-between gap-2">
@@ -353,13 +366,15 @@ function formatDate(d: string) {
           </div>
 
           <!-- Status Actions -->
-          <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+          <div class="kit-card p-4 space-y-2">
             <div class="text-xs text-white/50 uppercase tracking-wide mb-2">Status ändern</div>
             <button v-for="(cfg, s) in statusConfig" :key="s"
               @click="setStatus(s)"
               :disabled="ticket.status === s"
-              :class="['w-full text-xs px-3 py-2 rounded-lg border transition-colors text-left',
-                ticket.status === s ? 'opacity-50 cursor-default ' + cfg.class : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10']"
+              :class="['w-full text-left text-xs px-3 py-2 rounded-lg border transition-colors',
+                ticket.status === s
+                  ? 'opacity-60 cursor-default bg-white/5 border-white/10 text-white/60'
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10']"
             >{{ cfg.label }}</button>
           </div>
         </div>

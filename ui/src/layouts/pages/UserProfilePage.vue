@@ -21,7 +21,7 @@ const emit = defineEmits<{
 }>();
 
 // Composable
-const { currentUser, fullName, getGravatarUrl, loadCurrentUser, updateProfile, loading } = useCurrentUser();
+const { currentUser, fullName, getGravatarUrl, loadCurrentUser, updateProfile, loading, error } = useCurrentUser();
 
 // Form State
 const formData = ref({
@@ -127,6 +127,12 @@ function formatDate(dateString: string | null): string {
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
         <p class="mt-4 text-white/60">Lade Profil...</p>
       </div>
+    </div>
+
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadCurrentUser()">Erneut versuchen</button>
     </div>
 
     <!-- Content -->

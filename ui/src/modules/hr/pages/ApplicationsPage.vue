@@ -9,6 +9,7 @@ const props = defineProps<{ jobId: string }>();
 const router = useRouter();
 
 const loading = ref(true);
+const error = ref<string | null>(null);
 const job = ref<any>(null);
 const applications = ref<any[]>([]);
 const showCreateForm = ref(false);
@@ -16,14 +17,14 @@ const submitting = ref(false);
 const filterStatus = ref('');
 
 const statusConfig: Record<string, { label: string; class: string }> = {
-  received:   { label: 'Eingegangen',  class: 'text-blue-300 bg-blue-500/10 border-blue-500/20' },
-  screening:  { label: 'Screening',    class: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' },
-  interview:  { label: 'Interview',    class: 'text-purple-300 bg-purple-500/10 border-purple-500/20' },
-  assessment: { label: 'Assessment',   class: 'text-orange-300 bg-orange-500/10 border-orange-500/20' },
-  offer:      { label: 'Angebot',      class: 'text-green-300 bg-green-500/10 border-green-500/20' },
-  accepted:   { label: 'Angenommen',   class: 'text-green-300 bg-green-500/10 border-green-500/30' },
-  rejected:   { label: 'Abgelehnt',    class: 'text-red-300 bg-red-500/10 border-red-500/20' },
-  withdrawn:  { label: 'Zurückgezogen', class: 'text-white/30 bg-white/5 border-white/10' },
+  received:   { label: 'Eingegangen',   class: 'badge badge-blue' },
+  screening:  { label: 'Screening',     class: 'badge badge-amber' },
+  interview:  { label: 'Interview',     class: 'badge badge-cyan' },
+  assessment: { label: 'Assessment',    class: 'badge badge-orange' },
+  offer:      { label: 'Angebot',       class: 'badge badge-green' },
+  accepted:   { label: 'Angenommen',    class: 'badge badge-green' },
+  rejected:   { label: 'Abgelehnt',     class: 'badge badge-red' },
+  withdrawn:  { label: 'Zurückgezogen', class: 'badge badge-gray' },
 };
 
 const nextStatus: Record<string, string> = {
@@ -50,9 +51,12 @@ async function loadJob() {
 
 async function loadApplications() {
   loading.value = true;
+  error.value = null;
   try {
     const { data } = await apiClient.get('/api/hr/recruiting/applications', { params: { job_posting_id: props.jobId, limit: 200 } });
     applications.value = data.items || data;
+  } catch (e) {
+    error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
@@ -125,7 +129,7 @@ function formatDate(d?: string) {
     </div>
 
     <!-- Create Form -->
-    <div v-if="showCreateForm" class="p-4 rounded-xl bg-white/5 border border-blue-400/20 space-y-3">
+    <div v-if="showCreateForm" class="kit-card p-4 space-y-3">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-white">Neue Bewerbung erfassen</h3>
         <button @click="showCreateForm = false" class="text-white/40 hover:text-white"><X :size="16" /></button>
@@ -170,6 +174,12 @@ function formatDate(d?: string) {
       <div class="w-8 h-8 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
     </div>
 
+    <!-- Error State -->
+    <div v-if="error && !loading" class="kit-card p-6 text-center">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+      <button class="kit-btn-secondary mt-3 text-xs" @click="loadApplications()">Erneut versuchen</button>
+    </div>
+
     <!-- Empty -->
     <div v-else-if="filteredApps.length === 0" class="text-center py-12 text-white/40">
       <User :size="32" class="mx-auto mb-2 opacity-40" />
@@ -179,7 +189,7 @@ function formatDate(d?: string) {
     <!-- Applications -->
     <div v-else class="space-y-2">
       <div v-for="app in filteredApps" :key="app.id"
-        class="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+        class="kit-card p-3 hover:bg-white/10 transition-colors"
       >
         <div class="flex items-start gap-3">
           <img :src="gravatarUrl(app.email, 36)" :alt="app.first_name"
@@ -190,7 +200,7 @@ function formatDate(d?: string) {
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-sm font-medium text-white">{{ app.first_name }} {{ app.last_name }}</span>
-                  <span class="text-xs px-1.5 py-0.5 rounded border" :class="statusConfig[app.status]?.class">
+                  <span :class="statusConfig[app.status]?.class">
                     {{ statusConfig[app.status]?.label }}
                   </span>
                 </div>

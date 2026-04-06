@@ -61,6 +61,9 @@
       <!-- Dock -->
       <KitDock />
     </template>
+
+    <!-- Toast Notifications -->
+    <ToastContainer />
   </div>
 </template>
 
@@ -74,6 +77,7 @@ import UserProfilePage from "./pages/UserProfilePage.vue";
 import SettingsPage from "./pages/SettingsPage.vue";
 import { useAuth } from "@/composables/useAuth";
 import { appManager } from "./app-manager/useAppManager";
+import ToastContainer from "@/components/ToastContainer.vue";
 
 // Router
 const router = useRouter();
