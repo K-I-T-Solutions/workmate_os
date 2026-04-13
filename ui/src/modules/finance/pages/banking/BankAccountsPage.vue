@@ -80,8 +80,6 @@ const accountTypeLabels: Record<string, string> = {
 const connectionTypeLabels: Record<string, string> = {
   manual: 'Manuell',
   csv_import: 'CSV-Import',
-  fints: 'FinTS',
-  psd2_api: 'PSD2 API',
 };
 </script>
 
@@ -185,9 +183,7 @@ const connectionTypeLabels: Record<string, string> = {
               <span
                 :class="[
                   'badge',
-                  account.connection_type === 'psd2_api'    ? 'badge-green'
-                  : account.connection_type === 'csv_import' ? 'badge-blue'
-                  : 'badge-gray',
+                  account.connection_type === 'csv_import' ? 'badge-blue' : 'badge-gray',
                 ]"
               >
                 {{ connectionTypeLabels[account.connection_type] || account.connection_type }}

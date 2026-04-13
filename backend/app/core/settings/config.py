@@ -60,9 +60,6 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
-    # PSD2/Banking Configuration
-    PSD2_ENVIRONMENT: str = os.getenv("PSD2_ENVIRONMENT", "sandbox")  # "sandbox" or "production"
-
     # SMTP (Ausgehende E-Mails)
     SMTP_HOST: str = os.getenv("SMTP_HOST", "mail.kit-it-koblenz.de")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))

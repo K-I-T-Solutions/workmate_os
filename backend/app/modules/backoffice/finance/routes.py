@@ -814,7 +814,7 @@ def n8n_webhook_endpoint(
     """
     Nimmt Banktransaktionen von n8n entgegen und importiert sie.
 
-    n8n holt Kontoauszüge (z.B. via FinTS-Node oder Bank-API) und
+    n8n holt Kontoauszüge (z.B. via Bank-API-Node) und
     schickt die Daten normalisiert an diesen Endpoint.
 
     **Beispiel n8n-Payload:**

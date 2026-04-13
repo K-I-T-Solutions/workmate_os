@@ -5,7 +5,7 @@
  */
 import { ref, computed } from 'vue';
 import type { Ref } from 'vue';
-import { bankAccountsApi, bankTransactionsApi, psd2Api } from '../services/banking.service';
+import { bankAccountsApi, bankTransactionsApi } from '../services/banking.service';
 import type {
   BankAccount,
   BankAccountCreate,
@@ -184,66 +184,6 @@ export function useBanking() {
     }
   }
 
-  // PSD2 Integration
-  async function initiatePSD2Consent(clientId: string, redirectUri: string) {
-    loading.value = true;
-    error.value = null;
-    try {
-      const result = await psd2Api.initiateConsent({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-      });
-      return result;
-    } catch (e: any) {
-      error.value = e.message;
-      throw e;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  async function exchangePSD2Code(
-    clientId: string,
-    authorizationCode: string,
-    redirectUri: string
-  ) {
-    loading.value = true;
-    error.value = null;
-    try {
-      const result = await psd2Api.exchangeCode({
-        client_id: clientId,
-        authorization_code: authorizationCode,
-        redirect_uri: redirectUri,
-      });
-      return result;
-    } catch (e: any) {
-      error.value = e.message;
-      throw e;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  async function syncPSD2Accounts(clientId: string, accessToken: string) {
-    loading.value = true;
-    error.value = null;
-    try {
-      const result = await psd2Api.syncAccounts({
-        client_id: clientId,
-        access_token: accessToken,
-        create_missing: true,
-      });
-      // Refresh accounts after sync
-      await fetchAccounts();
-      return result;
-    } catch (e: any) {
-      error.value = e.message;
-      throw e;
-    } finally {
-      loading.value = false;
-    }
-  }
-
   return {
     // State
     accounts,
@@ -266,8 +206,5 @@ export function useBanking() {
     fetchAllTransactions,
     deleteTransaction,
     importCsv,
-    initiatePSD2Consent,
-    exchangePSD2Code,
-    syncPSD2Accounts,
   };
 }

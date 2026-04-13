@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useInvoices } from '../composables/useInvoices';
-import { useSevDesk, useStripe } from '@/modules/finance/composables';
+import { useStripe } from '@/modules/finance/composables';
 import type { InvoiceStatus, Payment, PaymentMethod, PaymentCreateRequest, PaymentUpdateRequest } from '../types';
 import { apiClient } from '@/services/api/client';
 import { useToast } from '@/composables/useToast';
@@ -22,7 +22,6 @@ import {
   Clock,
   FileText,
   X,
-  Upload,
   Mail,
   Send,
 } from 'lucide-vue-next';
@@ -52,13 +51,6 @@ const {
 } = useInvoices();
 const { openWindow } = useAppManager();
 const {
-  isConfigured: isSevDeskConfigured,
-  syncing: sevdeskSyncing,
-  syncInvoice: sevdeskSyncInvoice,
-  fetchConfig: sevdeskFetchConfig,
-} = useSevDesk();
-
-const {
   isConfigured: isStripeConfigured,
   processing: stripeProcessing,
   createPaymentLink,
@@ -72,8 +64,6 @@ const showPaymentModal = ref(false);
 const editingPayment = ref<Payment | null>(null);
 const paymentLoading = ref(false);
 const paymentError = ref<string | null>(null);
-const sevdeskSyncSuccess = ref<string | null>(null);
-const sevdeskSyncError = ref<string | null>(null);
 const stripePaymentSuccess = ref<string | null>(null);
 const stripePaymentError = ref<string | null>(null);
 const sendLoading = ref(false);
@@ -116,13 +106,6 @@ const paymentMethods: { value: PaymentMethod; label: string }[] = [
 // Lifecycle
 onMounted(async () => {
   loadInvoice(props.invoiceId);
-  // Load SevDesk config to check if it's configured
-  try {
-    await sevdeskFetchConfig();
-  } catch (e) {
-    // Ignore errors, just means not configured
-    console.log('SevDesk not configured');
-  }
   // Load Stripe config to check if it's configured
   try {
     await stripeFetchConfig();
@@ -161,29 +144,6 @@ function handleDownloadPdf() {
 function handleOpenPdf() {
   if (!invoice.value) return;
   openPdf(invoice.value.id, invoice.value.invoice_number);
-}
-
-// SevDesk Sync
-async function handleSyncToSevDesk() {
-  if (!invoice.value) return;
-
-  sevdeskSyncSuccess.value = null;
-  sevdeskSyncError.value = null;
-
-  try {
-    const result = await sevdeskSyncInvoice(invoice.value.id);
-    if (result.success) {
-      sevdeskSyncSuccess.value = result.message || 'Rechnung erfolgreich zu SevDesk synchronisiert';
-      // Auto-hide success message after 5 seconds
-      setTimeout(() => {
-        sevdeskSyncSuccess.value = null;
-      }, 5000);
-    } else {
-      sevdeskSyncError.value = result.message || 'Synchronisation fehlgeschlagen';
-    }
-  } catch (e: any) {
-    sevdeskSyncError.value = e.message || 'Fehler beim Synchronisieren zu SevDesk';
-  }
 }
 
 // Stripe Payment
@@ -436,14 +396,6 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
       {{ sendError }}
     </div>
 
-    <!-- SevDesk Sync Messages -->
-    <div v-if="sevdeskSyncSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30">
-      {{ sevdeskSyncSuccess }}
-    </div>
-    <div v-if="sevdeskSyncError" class="p-4 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30">
-      {{ sevdeskSyncError }}
-    </div>
-
     <!-- Stripe Payment Messages -->
     <div v-if="stripePaymentSuccess" class="p-4 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30">
       {{ stripePaymentSuccess }}
@@ -497,16 +449,6 @@ function getPaymentMethodLabel(method: PaymentMethod): string {
         >
           <CheckCircle :size="18" />
           Als versendet markieren
-        </button>
-        <button
-          v-if="isSevDeskConfigured"
-          @click="handleSyncToSevDesk"
-          :disabled="sevdeskSyncing"
-          class="kit-btn-ghost"
-          title="Zu SevDesk synchronisieren"
-        >
-          <Upload :size="18" />
-          {{ sevdeskSyncing ? 'Sync...' : 'SevDesk' }}
         </button>
         <button
           v-if="isStripeConfigured && invoice.status !== 'paid' && invoice.status !== 'draft'"

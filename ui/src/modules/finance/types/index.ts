@@ -6,9 +6,6 @@ export * from './audit';
 // Banking Module
 export * from './banking';
 
-// SevDesk Integration
-export * from './sevdesk';
-
 // Stripe Payment Integration
 export * from './stripe';
 

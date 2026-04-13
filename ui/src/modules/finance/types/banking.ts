@@ -1,11 +1,11 @@
 /**
  * Banking Module Types
  *
- * Typen für Bank-Konten, Transaktionen, CSV-Import und PSD2-Integration
+ * Typen für Bank-Konten, Transaktionen und CSV-Import
  */
 
 export type AccountType = 'checking' | 'savings' | 'credit_card' | 'other';
-export type ConnectionType = 'manual' | 'csv_import' | 'fints' | 'psd2_api';
+export type ConnectionType = 'manual' | 'csv_import';
 export type TransactionType = 'income' | 'expense' | 'transfer';
 export type ReconciliationStatus = 'unreconciled' | 'reconciled' | 'partial';
 
@@ -83,31 +83,6 @@ export interface CsvImportResponse {
   reconciled?: number;
   errors?: string[];
   message?: string;
-}
-
-export interface PSD2ConsentRequest {
-  client_id: string;
-  redirect_uri: string;
-  scope?: string;
-}
-
-export interface PSD2ConsentResponse {
-  authorization_url: string;
-  state: string;
-}
-
-export interface PSD2TokenRequest {
-  client_id: string;
-  authorization_code: string;
-  redirect_uri: string;
-}
-
-export interface PSD2TokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  refresh_token?: string;
-  scope?: string;
 }
 
 export interface BankAccountsStats {

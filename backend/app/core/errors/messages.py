@@ -81,27 +81,11 @@ class ErrorCode:
     CSV_ENCODING_ERROR = "FINANCE_3031"
     CSV_IMPORT_FAILED = "FINANCE_3032"
 
-    # FinTS/HBCI
-    FINTS_SYNC_FAILED = "FINANCE_3040"
-    FINTS_ACCOUNT_SYNC_FAILED = "FINANCE_3041"
-
-    # PSD2
-    PSD2_CONSENT_FAILED = "FINANCE_3050"
-    PSD2_AUTH_FAILED = "FINANCE_3051"
-    PSD2_SYNC_FAILED = "FINANCE_3052"
-
     # Stripe
     STRIPE_NOT_CONFIGURED = "FINANCE_3060"
     STRIPE_INVALID_KEY = "FINANCE_3061"
     STRIPE_NO_CONFIG = "FINANCE_3062"
     STRIPE_WEBHOOK_NOT_CONFIGURED = "FINANCE_3063"
-
-    # SevDesk
-    SEVDESK_NOT_CONFIGURED = "FINANCE_3070"
-    SEVDESK_INVALID_TOKEN = "FINANCE_3071"
-    SEVDESK_API_ERROR = "FINANCE_3072"
-    SEVDESK_NO_MAPPING = "FINANCE_3073"
-    SEVDESK_NO_USER = "FINANCE_3074"
 
     # =============================================================================
     # 4xxx: CRM & Customers
@@ -313,30 +297,6 @@ ERROR_MESSAGES: dict[str, ErrorMessage] = {
         hint="Bitte überprüfen Sie das Dateiformat und versuchen Sie es erneut."
     ),
 
-    # FinTS/HBCI
-    ErrorCode.FINTS_SYNC_FAILED: ErrorMessage(
-        message="FinTS-Synchronisation fehlgeschlagen: {error}",
-        hint="Bitte überprüfen Sie Ihre FinTS-Zugangsdaten."
-    ),
-    ErrorCode.FINTS_ACCOUNT_SYNC_FAILED: ErrorMessage(
-        message="Konto-Synchronisation via FinTS fehlgeschlagen: {error}",
-        hint="Bitte überprüfen Sie Ihre FinTS-Zugangsdaten."
-    ),
-
-    # PSD2
-    ErrorCode.PSD2_CONSENT_FAILED: ErrorMessage(
-        message="PSD2-Zustimmung konnte nicht initiiert werden: {error}",
-        hint="Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
-    ),
-    ErrorCode.PSD2_AUTH_FAILED: ErrorMessage(
-        message="PSD2-Autorisierung fehlgeschlagen: {error}",
-        hint="Bitte überprüfen Sie Ihre Bankzugangsdaten."
-    ),
-    ErrorCode.PSD2_SYNC_FAILED: ErrorMessage(
-        message="PSD2-Synchronisation fehlgeschlagen: {error}",
-        hint="Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
-    ),
-
     # Stripe
     ErrorCode.STRIPE_NOT_CONFIGURED: ErrorMessage(
         message="Stripe ist nicht konfiguriert.",
@@ -353,28 +313,6 @@ ERROR_MESSAGES: dict[str, ErrorMessage] = {
     ErrorCode.STRIPE_WEBHOOK_NOT_CONFIGURED: ErrorMessage(
         message="Stripe Webhooks sind nicht konfiguriert.",
         hint="Bitte konfigurieren Sie den Webhook Secret in den Einstellungen."
-    ),
-
-    # SevDesk
-    ErrorCode.SEVDESK_NOT_CONFIGURED: ErrorMessage(
-        message="SevDesk ist nicht konfiguriert.",
-        hint="Bitte konfigurieren Sie Ihren SevDesk API-Token in den Einstellungen."
-    ),
-    ErrorCode.SEVDESK_INVALID_TOKEN: ErrorMessage(
-        message="Ungültiger SevDesk API-Token.",
-        hint="Bitte überprüfen Sie Ihren API-Token in den SevDesk-Einstellungen."
-    ),
-    ErrorCode.SEVDESK_API_ERROR: ErrorMessage(
-        message="SevDesk API-Fehler: {error}",
-        hint="Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
-    ),
-    ErrorCode.SEVDESK_NO_MAPPING: ErrorMessage(
-        message="Keine SevDesk-Verknüpfung gefunden für Rechnung {invoice_id}.",
-        hint="Bitte synchronisieren Sie die Rechnung zuerst mit SevDesk."
-    ),
-    ErrorCode.SEVDESK_NO_USER: ErrorMessage(
-        message="Kein SevUser gefunden.",
-        hint="Dies ist ein SevDesk API-Konfigurationsproblem. Bitte kontaktieren Sie den Support."
     ),
 
     # -------------------------------------------------------------------------

@@ -277,7 +277,7 @@ function closeImportModal() {
         <div class="text-4xl mb-2">💳</div>
         <div class="text-lg">Keine Transaktionen gefunden</div>
         <div class="text-sm mt-2">
-          Importiere Transaktionen via CSV oder synchronisiere sie über PSD2
+          Importiere Transaktionen via CSV oder n8n-Webhook
         </div>
       </div>
       <button

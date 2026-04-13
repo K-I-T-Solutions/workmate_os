@@ -42,8 +42,6 @@ markdown2>=2.4.10,<3.0
 factur-x>=3.0.0,<4.0
 lxml>=5.0.0,<6.0
 
-# Banking - FinTS/HBCI
-
 # Payment Gateway
 stripe>=7.0.0,<8.0
 

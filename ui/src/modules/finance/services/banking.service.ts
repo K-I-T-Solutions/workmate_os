@@ -8,10 +8,6 @@ import type {
   BankTransaction,
   BankTransactionCreate,
   CsvImportResponse,
-  PSD2ConsentRequest,
-  PSD2ConsentResponse,
-  PSD2TokenRequest,
-  PSD2TokenResponse,
   BankAccountsStats,
   TransactionStats,
 } from '../types/banking';
@@ -122,40 +118,3 @@ export const bankTransactionsApi = {
   },
 };
 
-export const psd2Api = {
-  async initiateConsent(payload: PSD2ConsentRequest): Promise<PSD2ConsentResponse> {
-    const { data } = await apiClient.post(`${API_BASE}/psd2/consent/initiate`, payload);
-    return data;
-  },
-
-  async exchangeCode(payload: PSD2TokenRequest): Promise<PSD2TokenResponse> {
-    const { data } = await apiClient.post(`${API_BASE}/psd2/consent/callback`, payload);
-    return data;
-  },
-
-  async syncAccounts(payload: {
-    client_id: string;
-    access_token: string;
-    create_missing?: boolean;
-  }): Promise<any> {
-    const { create_missing, ...body } = payload;
-    const { data } = await apiClient.post(`${API_BASE}/psd2/accounts/sync`, body, {
-      params: create_missing !== undefined ? { create_missing } : undefined,
-    });
-    return data;
-  },
-
-  async syncTransactions(payload: {
-    client_id: string;
-    access_token: string;
-    account_id: string;
-    psd2_account_id: string;
-    date_from?: string;
-    date_to?: string;
-    skip_duplicates?: boolean;
-    auto_reconcile?: boolean;
-  }): Promise<any> {
-    const { data } = await apiClient.post(`${API_BASE}/psd2/transactions/sync`, payload);
-    return data;
-  },
-};
