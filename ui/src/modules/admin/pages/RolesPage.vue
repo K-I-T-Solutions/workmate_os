@@ -6,7 +6,7 @@
         <h2 class="page-title">Rollen & Berechtigungen</h2>
         <span class="count-badge">{{ roles.length }} Rollen</span>
       </div>
-      <button @click="showCreateDialog = true" class="btn-primary">
+      <button @click="openCreate" class="kit-btn-primary">
         <Plus :size="18" />
         Neue Rolle
       </button>
@@ -26,12 +26,12 @@
             </div>
           </div>
           <div class="card-actions">
-            <button @click="editRole(role)" class="btn-icon" title="Bearbeiten">
+            <button @click="openEdit(role)" class="btn-icon" title="Bearbeiten">
               <Pencil :size="16" />
             </button>
             <button
               v-if="!isSystemRole(role.name)"
-              @click="deleteRole(role)"
+              @click="handleDelete(role)"
               class="btn-icon btn-danger"
               title="Löschen"
             >
@@ -57,9 +57,9 @@
           </div>
         </div>
 
-        <!-- Zitadel ID -->
-        <div v-if="role.keycloak_id" class="zitadel-id">
-          <span class="id-label">Zitadel Role ID:</span>
+        <!-- Keycloak ID -->
+        <div v-if="role.keycloak_id" class="keycloak-id">
+          <span class="id-label">Keycloak Role ID:</span>
           <code class="id-value">{{ role.keycloak_id }}</code>
         </div>
       </div>
@@ -68,7 +68,7 @@
       <div v-if="!loading && roles.length === 0" class="empty-state">
         <Shield :size="48" />
         <p>Keine Rollen vorhanden</p>
-        <button @click="showCreateDialog = true" class="btn-primary">
+        <button @click="openCreate" class="kit-btn-primary">
           <Plus :size="18" />
           Erste Rolle erstellen
         </button>
@@ -86,88 +86,262 @@
       <button class="kit-btn-secondary mt-3 text-xs" @click="fetchRoles()">Erneut versuchen</button>
     </div>
 
-    <!-- Create/Edit Dialog (Placeholder) -->
-    <div v-if="showCreateDialog" class="dialog-overlay" @click.self="showCreateDialog = false">
-      <div class="dialog">
-        <h3>Neue Rolle</h3>
-        <p>Formular kommt noch...</p>
-        <button @click="showCreateDialog = false" class="btn-secondary">Schließen</button>
+    <!-- Create / Edit Modal -->
+    <div
+      v-if="showModal"
+      class="modal-overlay"
+      @click.self="closeModal"
+      @keydown.escape="closeModal"
+      tabindex="-1"
+    >
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">{{ editingRole ? 'Rolle bearbeiten' : 'Neue Rolle erstellen' }}</h3>
+          <button class="btn-icon" @click="closeModal" title="Schließen">
+            <X :size="18" />
+          </button>
+        </div>
+
+        <form @submit.prevent="handleSubmit" class="modal-form">
+          <!-- Name -->
+          <div class="field">
+            <label class="kit-label" for="role-name">Name <span class="required">*</span></label>
+            <input
+              id="role-name"
+              v-model="form.name"
+              type="text"
+              class="kit-input"
+              :class="{ 'input-error': formErrors.name }"
+              placeholder="z. B. Projektleiter"
+              required
+            />
+            <p v-if="formErrors.name" class="field-error">{{ formErrors.name }}</p>
+          </div>
+
+          <!-- Description -->
+          <div class="field">
+            <label class="kit-label" for="role-desc">Beschreibung</label>
+            <textarea
+              id="role-desc"
+              v-model="form.description"
+              class="kit-input"
+              rows="3"
+              placeholder="Kurze Beschreibung der Rolle..."
+            ></textarea>
+          </div>
+
+          <!-- Permissions -->
+          <div class="field">
+            <label class="kit-label" for="role-perms">
+              Berechtigungen
+              <span class="field-hint">— kommagetrennt, z.&thinsp;B. <code>invoices.view, projects.*</code></span>
+            </label>
+            <textarea
+              id="role-perms"
+              v-model="permissionsRaw"
+              class="kit-input font-mono"
+              rows="4"
+              placeholder="invoices.view, projects.write, admin.*"
+            ></textarea>
+            <!-- Live preview -->
+            <div v-if="parsedPermissions.length > 0" class="perm-preview">
+              <span
+                v-for="(p, i) in parsedPermissions"
+                :key="i"
+                class="permission-badge"
+              >{{ p }}</span>
+            </div>
+          </div>
+
+          <!-- Form error -->
+          <p v-if="submitError" class="submit-error">{{ submitError }}</p>
+
+          <div class="modal-actions">
+            <button type="button" class="kit-btn-secondary" @click="closeModal">
+              Abbrechen
+            </button>
+            <button type="submit" class="kit-btn-primary" :disabled="saving">
+              <span v-if="saving">Speichere...</span>
+              <span v-else>{{ editingRole ? 'Speichern' : 'Erstellen' }}</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { Plus, Pencil, Trash2, Shield, Key } from 'lucide-vue-next';
+import { ref, computed, onMounted } from 'vue';
+import { Plus, Pencil, Trash2, Shield, Key, X } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
 import { useToast } from '@/composables/useToast';
 
 const toast = useToast();
 
-// State
-const roles = ref<any[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
-const showCreateDialog = ref(false);
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface Role {
+  id: string;
+  name: string;
+  description?: string | null;
+  permissions_json?: string[];
+  keycloak_id?: string | null;
+}
+
+interface RoleForm {
+  name: string;
+  description: string;
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+const roles      = ref<Role[]>([]);
+const loading    = ref(false);
+const error      = ref<string | null>(null);
+const showModal  = ref(false);
+const saving     = ref(false);
+const editingRole = ref<Role | null>(null);
+
+const form = ref<RoleForm>({ name: '', description: '' });
+const permissionsRaw = ref('');
+const formErrors  = ref<Partial<Record<keyof RoleForm, string>>>({});
+const submitError = ref<string | null>(null);
 
 // System roles that cannot be deleted
 const systemRoles = ['Admin', 'CEO', 'Manager', 'Employee'];
 
-// Fetch roles
+// ─── Computed ────────────────────────────────────────────────────────────────
+
+const parsedPermissions = computed<string[]>(() => {
+  return permissionsRaw.value
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+});
+
+// ─── Data Loading ────────────────────────────────────────────────────────────
+
 async function fetchRoles() {
   loading.value = true;
-  error.value = null;
+  error.value   = null;
   try {
     const response = await apiClient.get('/api/roles');
     roles.value = response.data;
-  } catch (e) {
+  } catch {
     error.value = 'Daten konnten nicht geladen werden.';
   } finally {
     loading.value = false;
   }
 }
 
-// Helpers
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function isSystemRole(roleName: string): boolean {
   return systemRoles.includes(roleName);
 }
 
 function getRoleColorClass(roleName: string): string {
   const colorMap: Record<string, string> = {
-    'Admin': 'role-admin',
-    'CEO': 'role-ceo',
-    'Manager': 'role-manager',
-    'Employee': 'role-employee',
+    Admin:    'role-admin',
+    CEO:      'role-ceo',
+    Manager:  'role-manager',
+    Employee: 'role-employee',
   };
   return colorMap[roleName] || 'role-custom';
 }
 
-// Actions
-function editRole(_role: any) {
-  // TODO: Implement edit role modal
+// ─── Modal ───────────────────────────────────────────────────────────────────
+
+function openCreate() {
+  editingRole.value  = null;
+  form.value         = { name: '', description: '' };
+  permissionsRaw.value = '';
+  formErrors.value   = {};
+  submitError.value  = null;
+  showModal.value    = true;
 }
 
-async function deleteRole(role: any) {
+function openEdit(role: Role) {
+  editingRole.value  = role;
+  form.value         = { name: role.name, description: role.description ?? '' };
+  permissionsRaw.value = (role.permissions_json ?? []).join(', ');
+  formErrors.value   = {};
+  submitError.value  = null;
+  showModal.value    = true;
+}
+
+function closeModal() {
+  showModal.value = false;
+}
+
+function validate(): boolean {
+  formErrors.value = {};
+  if (!form.value.name.trim()) {
+    formErrors.value.name = 'Name ist erforderlich.';
+    return false;
+  }
+  return true;
+}
+
+// ─── CRUD ────────────────────────────────────────────────────────────────────
+
+async function handleSubmit() {
+  if (!validate()) return;
+
+  saving.value       = true;
+  submitError.value  = null;
+
+  const payload = {
+    name:             form.value.name.trim(),
+    description:      form.value.description.trim() || null,
+    permissions_json: parsedPermissions.value,
+  };
+
+  try {
+    if (editingRole.value) {
+      await apiClient.put(`/api/roles/${editingRole.value.id}`, payload);
+      toast.success('Rolle gespeichert');
+    } else {
+      await apiClient.post('/api/roles', payload);
+      toast.success('Rolle erstellt');
+    }
+    closeModal();
+    await fetchRoles();
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: { detail?: string } } };
+    submitError.value = axiosErr.response?.data?.detail ?? 'Fehler beim Speichern';
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleDelete(role: Role) {
   if (isSystemRole(role.name)) {
     toast.warning('Systemrollen können nicht gelöscht werden!');
     return;
   }
 
-  if (!confirm(`Rolle "${role.name}" wirklich löschen?`)) {
+  if (!confirm(`Rolle „${role.name}" wirklich löschen?`)) {
     return;
   }
 
   try {
     await apiClient.delete(`/api/roles/${role.id}`);
+    toast.success('Rolle gelöscht');
     await fetchRoles();
-  } catch (error) {
-    console.error('Failed to delete role:', error);
-    toast.error('Fehler beim Löschen');
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+    if (axiosErr.response?.status === 405 || axiosErr.response?.status === 404) {
+      toast.error('Löschen ist für diese Ressource nicht verfügbar.');
+    } else {
+      toast.error(axiosErr.response?.data?.detail ?? 'Fehler beim Löschen');
+    }
   }
 }
 
-// Initial fetch
+// ─── Lifecycle ───────────────────────────────────────────────────────────────
+
 onMounted(() => {
   fetchRoles();
 });
@@ -211,39 +385,7 @@ onMounted(() => {
   color: var(--color-text-secondary);
 }
 
-/* Buttons */
-.btn-primary, .btn-secondary {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary {
-  background: var(--color-primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-secondary {
-  background: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border-light);
-}
-
-.btn-secondary:hover {
-  background: var(--color-bg-hover);
-}
-
+/* Icon Buttons */
 .btn-icon {
   padding: 0.375rem;
   background: transparent;
@@ -252,6 +394,9 @@ onMounted(() => {
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-icon:hover {
@@ -260,8 +405,8 @@ onMounted(() => {
 }
 
 .btn-icon.btn-danger:hover {
-  background: #fee;
-  color: #c00;
+  background: rgb(239 68 68 / 0.15);
+  color: #fca5a5;
 }
 
 /* Grid */
@@ -304,11 +449,11 @@ onMounted(() => {
   margin-top: 2px;
 }
 
-.role-icon.role-admin { color: #dc3545; }
-.role-icon.role-ceo { color: #6f42c1; }
-.role-icon.role-manager { color: #007bff; }
-.role-icon.role-employee { color: #28a745; }
-.role-icon.role-custom { color: var(--color-primary); }
+.role-icon.role-admin    { color: #ef4444; }
+.role-icon.role-ceo      { color: #a855f7; }
+.role-icon.role-manager  { color: #3b82f6; }
+.role-icon.role-employee { color: #22c55e; }
+.role-icon.role-custom   { color: var(--kit-orange, #FF6B35); }
 
 .role-name {
   font-size: 1.125rem;
@@ -360,12 +505,12 @@ onMounted(() => {
 .permission-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border-light);
+  background: rgb(6 182 212 / 0.1);
+  border: 1px solid rgb(6 182 212 / 0.25);
   border-radius: 12px;
   font-size: 0.75rem;
-  font-family: 'Courier New', monospace;
-  color: var(--color-text-primary);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  color: #67e8f9;
 }
 
 .no-permissions {
@@ -374,8 +519,8 @@ onMounted(() => {
   font-style: italic;
 }
 
-/* Zitadel ID */
-.zitadel-id {
+/* Keycloak ID */
+.keycloak-id {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--color-border-light);
@@ -392,11 +537,12 @@ onMounted(() => {
   background: var(--color-bg-tertiary);
   border-radius: 4px;
   color: var(--color-primary);
-  font-family: 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
 /* States */
-.loading-state, .empty-state {
+.loading-state,
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -404,38 +550,113 @@ onMounted(() => {
   padding: 4rem 2rem;
   color: var(--color-text-secondary);
   text-align: center;
+  gap: 1rem;
 }
 
 .empty-state svg {
-  margin-bottom: 1rem;
   opacity: 0.3;
 }
 
-.empty-state p {
-  margin-bottom: 1rem;
-}
-
-/* Dialog */
-.dialog-overlay {
+/* Modal */
+.modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 1rem;
 }
 
-.dialog {
-  background: var(--color-bg-primary);
-  padding: 2rem;
-  border-radius: 8px;
-  min-width: 400px;
-  max-width: 600px;
+.modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
-.dialog h3 {
-  margin-top: 0;
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.modal-form {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.field-hint {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  text-transform: none;
+}
+
+.kit-input.input-error {
+  border-color: #ef4444;
+}
+
+.field-error {
+  font-size: 0.75rem;
+  color: #fca5a5;
+  margin: 0;
+}
+
+.submit-error {
+  font-size: 0.8125rem;
+  color: #fca5a5;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: rgb(239 68 68 / 0.1);
+  border: 1px solid rgb(239 68 68 / 0.25);
+  border-radius: 6px;
+}
+
+.required {
+  color: #fca5a5;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.8125rem;
+}
+
+.perm-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border-light);
 }
 
 /* Responsive */
@@ -477,10 +698,9 @@ onMounted(() => {
     padding: 0.2rem 0.625rem;
   }
 
-  .dialog {
-    min-width: auto;
-    max-width: 90vw;
-    margin: 1rem;
+  .modal {
+    max-width: 100%;
+    border-radius: 8px;
   }
 }
 
@@ -488,11 +708,6 @@ onMounted(() => {
   .count-badge {
     font-size: 0.75rem;
     padding: 0.2rem 0.5rem;
-  }
-
-  .btn-primary {
-    padding: 0.4rem 0.875rem;
-    font-size: 0.8125rem;
   }
 
   .role-card {
@@ -503,8 +718,8 @@ onMounted(() => {
     font-size: 0.9375rem;
   }
 
-  .dialog {
-    padding: 1.5rem;
+  .modal-form {
+    padding: 1rem;
   }
 }
 </style>
