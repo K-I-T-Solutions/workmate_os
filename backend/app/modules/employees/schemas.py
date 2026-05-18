@@ -107,11 +107,13 @@ class EmployeeBase(BaseModel):
 class EmployeeCreate(EmployeeBase):
     """Create new employee"""
     employee_code: str = Field(..., description="Unique employee code like KIT-0001")
+    workmate_id: Optional[str] = Field(None, description="Plattformübergreifende ID, z.B. WM-100")
     email: EmailStr
 
 
 class EmployeeUpdate(BaseModel):
     """Update existing employee - all fields optional"""
+    workmate_id: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -151,6 +153,7 @@ class EmployeeResponse(EmployeeBase):
     """Employee response with all fields"""
     id: UUID
     employee_code: str
+    workmate_id: Optional[str] = None
     uuid_keycloak: Optional[str] = None
     photo_url: Optional[str] = None
     bio: Optional[str] = None

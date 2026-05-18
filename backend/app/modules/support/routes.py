@@ -20,6 +20,7 @@ def list_tickets(
     status: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
+    type: Optional[str] = Query(None),
     assignee_id: Optional[str] = Query(None),
     customer_id: Optional[UUID] = Query(None),
     search: Optional[str] = Query(None),
@@ -28,7 +29,8 @@ def list_tickets(
 ):
     items, total = crud.get_tickets(
         db, skip=skip, limit=limit, status=status, priority=priority,
-        category=category, assignee_id=assignee_id, customer_id=customer_id, search=search,
+        category=category, type=type, assignee_id=assignee_id,
+        customer_id=customer_id, search=search,
     )
     result = []
     for t in items:
@@ -70,7 +72,7 @@ def update_ticket(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    ticket = crud.update_ticket(db, ticket_id, data)
+    ticket = crud.update_ticket(db, ticket_id, data, actor_id=user.get("id"))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
     result = schemas.TicketResponse.model_validate(ticket)
@@ -81,8 +83,18 @@ def update_ticket(
 @router.delete("/tickets/{ticket_id}", status_code=status.HTTP_204_NO_CONTENT)
 @require_permissions(["support.delete", "support.*", "*"])
 def delete_ticket(ticket_id: UUID, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    if not crud.delete_ticket(db, ticket_id):
+    if not crud.soft_delete_ticket(db, ticket_id, actor_id=user.get("id")):
         raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+
+
+@router.get("/tickets/{ticket_id}/events", response_model=list[schemas.TicketEventResponse])
+@require_permissions(["support.view", "support.*", "*"])
+def get_ticket_events(
+    ticket_id: UUID, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
+    if not crud.get_ticket(db, ticket_id):
+        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+    return crud.get_events(db, ticket_id)
 
 
 @router.post("/tickets/{ticket_id}/comments", response_model=schemas.TicketCommentResponse, status_code=status.HTTP_201_CREATED)
@@ -106,19 +118,11 @@ async def reply_to_ticket(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    """
-    Sendet eine E-Mail-Antwort an den Ticket-Ersteller und
-    speichert die Antwort als öffentlichen Kommentar.
-    """
     ticket = crud.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
-
     if not ticket.reporter_email:
-        raise HTTPException(
-            status_code=400,
-            detail="Keine Empfänger-E-Mail für dieses Ticket gespeichert."
-        )
+        raise HTTPException(status_code=400, detail="Keine Empfänger-E-Mail für dieses Ticket.")
 
     sent = await send_ticket_reply(
         db=db,
@@ -127,20 +131,14 @@ async def reply_to_ticket(
         ticket_title=ticket.title,
         reply_body=data.body,
     )
-
     if not sent:
-        raise HTTPException(
-            status_code=502,
-            detail="E-Mail konnte nicht gesendet werden. SMTP-Konfiguration prüfen."
-        )
+        raise HTTPException(status_code=502, detail="E-Mail konnte nicht gesendet werden.")
 
-    # Antwort als Kommentar speichern
     comment_data = schemas.TicketCommentCreate(
         content=f"📧 Per E-Mail gesendet an {ticket.reporter_email}:\n\n{data.body}",
         is_internal=False,
     )
     crud.add_comment(db, ticket_id, comment_data, author_id=user.get("id"))
-
     return {"sent": True, "to": ticket.reporter_email}
 
 

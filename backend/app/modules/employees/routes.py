@@ -143,6 +143,21 @@ def get_employee_by_code(
     return employee
 
 
+@employee_router.get("/wm/{workmate_id}", response_model=schemas.EmployeeResponse)
+@require_permissions(["admin.employees.view", "admin.*"])
+def get_employee_by_workmate_id(
+    workmate_id: str,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    """Get employee by platform-wide Workmate ID (e.g. WM-100)"""
+    from app.modules.employees.models import Employee
+    employee = db.query(Employee).filter(Employee.workmate_id == workmate_id).first()
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return employee
+
+
 @employee_router.post("", response_model=schemas.EmployeeResponse, status_code=201)
 @require_permissions(["admin.employees.write", "admin.*"])
 def create_employee(
