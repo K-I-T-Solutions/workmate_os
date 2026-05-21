@@ -64,6 +64,7 @@ class Employee(Base):
     # Primary Info
     id = Column(UUID(as_uuid=True), primary_key=True, default=generate_uuid)
     employee_code = Column(String, nullable=False, unique=True, comment="KIT-0001 etc.")
+    workmate_id = Column(String, unique=True, nullable=True, index=True, comment="WM-100 — plattformübergreifende ID")
     uuid_keycloak = Column(String, comment="Linked Keycloak user ID")
 
     # Authentication

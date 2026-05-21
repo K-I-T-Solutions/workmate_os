@@ -3,8 +3,10 @@ import { ref, onMounted, computed } from 'vue';
 import { useBanking } from '../../composables/useBanking';
 import type { BankTransaction } from '../../types/banking';
 import { useToast } from '@/composables/useToast';
+import { useConfirm } from '@/composables/useConfirm';
 
 const toast = useToast();
+const { confirm } = useConfirm();
 
 const {
   accounts,
@@ -105,7 +107,7 @@ function getAccountName(accountId: string): string {
 
 // Delete transaction
 async function handleDeleteTransaction(transaction: BankTransaction) {
-  if (confirm(`Transaktion wirklich löschen?`)) {
+  if (await confirm(`Transaktion wirklich löschen?`, 'Transaktion löschen', 'danger')) {
     try {
       await deleteTransaction(transaction.id);
     } catch (e) {

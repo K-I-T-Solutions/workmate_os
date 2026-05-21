@@ -3,6 +3,9 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Plus, X, Briefcase, Users, MapPin, Calendar, ChevronRight, Globe } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 const router = useRouter();
 
@@ -82,7 +85,7 @@ async function updateStatus(job: any, status: string) {
 }
 
 async function deleteJob(id: string) {
-  if (!confirm('Stelle wirklich löschen?')) return;
+  if (!await confirm('Stelle wirklich löschen?', 'Stelle löschen', 'danger')) return;
   await apiClient.delete(`/api/hr/recruiting/jobs/${id}`);
   await loadJobs();
 }

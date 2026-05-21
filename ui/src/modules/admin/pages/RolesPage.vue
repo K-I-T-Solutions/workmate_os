@@ -176,8 +176,10 @@ import { ref, computed, onMounted } from 'vue';
 import { Plus, Pencil, Trash2, Shield, Key, X } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
 import { useToast } from '@/composables/useToast';
+import { useConfirm } from '@/composables/useConfirm';
 
 const toast = useToast();
+const { confirm } = useConfirm();
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -322,7 +324,7 @@ async function handleDelete(role: Role) {
     return;
   }
 
-  if (!confirm(`Rolle „${role.name}" wirklich löschen?`)) {
+  if (!await confirm(`Rolle „${role.name}" wirklich löschen?`, 'Rolle löschen', 'danger')) {
     return;
   }
 

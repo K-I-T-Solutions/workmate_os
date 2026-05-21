@@ -143,7 +143,7 @@ function close() {
   height: 22px;
   border-radius: 999px;
   border: none;
-  background: #6366f1;
+  background: var(--color-accent-primary);
   color: white;
   font-size: 0.85rem;
   display: flex;

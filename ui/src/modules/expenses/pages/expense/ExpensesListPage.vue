@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useExpenses } from '../../composables/useExpenses';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirm } = useConfirm();
 import { ExpenseCategoryLabels, ExpenseCategory, type ExpenseFilters } from '../../types';
 import {
   Receipt,
@@ -71,7 +74,7 @@ function clearFilters() {
 }
 
 async function handleDelete(id: string, title: string) {
-  if (confirm(`Ausgabe "${title}" wirklich löschen?`)) {
+  if (await confirm(`Ausgabe "${title}" wirklich löschen?`, 'Ausgabe löschen', 'danger')) {
     const success = await deleteExpense(id);
     if (success) {
       // Refresh list after deletion

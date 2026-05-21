@@ -170,8 +170,10 @@ import { ref, onMounted } from 'vue';
 import { Plus, Pencil, Trash2, Building2, Users, X } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
 import { useToast } from '@/composables/useToast';
+import { useConfirm } from '@/composables/useConfirm';
 
 const toast = useToast();
+const { confirm } = useConfirm();
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -326,7 +328,7 @@ async function handleSubmit() {
 }
 
 async function handleDelete(dept: Department) {
-  if (!confirm(`Abteilung „${dept.name}" wirklich löschen?`)) {
+  if (!await confirm(`Abteilung „${dept.name}" wirklich löschen?`, 'Abteilung löschen', 'danger')) {
     return;
   }
 

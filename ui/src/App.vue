@@ -4,6 +4,7 @@ import { onMounted } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 import { useTheme } from '@/composables/useTheme';
 import ToastContainer from '@/components/ToastContainer.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 
 const { user } = useAuth();
 const { initializeTheme } = useTheme();
@@ -18,6 +19,7 @@ onMounted(() => {
 <template>
   <RouterView />
   <ToastContainer />
+  <ConfirmDialog />
 </template>
 
 <style scoped>

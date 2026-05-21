@@ -6,12 +6,13 @@ import { useToast } from '@/composables/useToast';
 // Base URL aus Environment oder Fallback
 const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://api.workmate.intern.phudevelopement.xyz';
 
-// Debug: Zeige geladene URL in Console
-console.log('🔧 API Client Config:', {
-  VITE_API_BASE: import.meta.env.VITE_API_BASE,
-  API_BASE_URL: API_BASE_URL,
-  mode: import.meta.env.MODE,
-});
+if (import.meta.env.DEV) {
+  console.log('🔧 API Client Config:', {
+    VITE_API_BASE: import.meta.env.VITE_API_BASE,
+    API_BASE_URL: API_BASE_URL,
+    mode: import.meta.env.MODE,
+  });
+}
 
 // Event emitter for auth errors
 export const authEvents = {

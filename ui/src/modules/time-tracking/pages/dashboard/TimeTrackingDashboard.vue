@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useTimeTracking } from '../../composables/useTimeTracking';
+import { useTimeTracking }
+import { useConfirm } from '@/composables/useConfirm'; from '../../composables/useTimeTracking';
 import { useTimeTrackingStats } from '../../composables/useTimeTrackingStats';
 import {
   Clock,
@@ -22,7 +23,8 @@ const emit = defineEmits<{
 
 // Composables
 const {
-  entries,
+
+const { confirm } = useConfirm();  entries,
   loading,
   loadEntries,
   runningTimer,
@@ -73,7 +75,7 @@ async function confirmStop() {
 }
 
 async function handleCancelTimer() {
-  if (confirm('Timer wirklich abbrechen? Der Eintrag wird gelöscht.')) {
+  if (await confirm('Timer wirklich abbrechen? Der Eintrag wird gelöscht.', 'Timer abbrechen', 'danger')) {
     await cancelTimer();
     await loadEntries();
   }
