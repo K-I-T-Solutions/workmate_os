@@ -74,7 +74,7 @@ function clearFilters() {
 }
 
 async function handleDelete(id: string, title: string) {
-  if (await confirm(`Ausgabe "${title}" wirklich löschen?`, 'Ausgabe löschen')) {
+  if (await confirm(`Ausgabe "${title}" wirklich löschen?`, 'Ausgabe löschen', 'danger')) {
     const success = await deleteExpense(id);
     if (success) {
       // Refresh list after deletion

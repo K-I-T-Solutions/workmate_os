@@ -75,7 +75,7 @@ async function confirmStop() {
 }
 
 async function handleCancelTimer() {
-  if (await confirm('Timer wirklich abbrechen? Der Eintrag wird gelöscht.', 'Timer abbrechen')) {
+  if (await confirm('Timer wirklich abbrechen? Der Eintrag wird gelöscht.', 'Timer abbrechen', 'danger')) {
     await cancelTimer();
     await loadEntries();
   }

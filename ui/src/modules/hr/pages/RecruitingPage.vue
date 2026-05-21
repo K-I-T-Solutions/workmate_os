@@ -85,7 +85,7 @@ async function updateStatus(job: any, status: string) {
 }
 
 async function deleteJob(id: string) {
-  if (!await confirm('Stelle wirklich löschen?', 'Stelle löschen')) return;
+  if (!await confirm('Stelle wirklich löschen?', 'Stelle löschen', 'danger')) return;
   await apiClient.delete(`/api/hr/recruiting/jobs/${id}`);
   await loadJobs();
 }

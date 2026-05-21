@@ -116,7 +116,7 @@ async function handleUpdateEmployee() {
 }
 
 async function handleDeleteEmployee(id: string) {
-  if (!await confirm('Möchten Sie diesen Mitarbeiter wirklich löschen?', 'Mitarbeiter löschen')) return;
+  if (!await confirm('Möchten Sie diesen Mitarbeiter wirklich löschen?', 'Mitarbeiter löschen', 'danger')) return;
 
   try {
     await deleteEmployee(id);

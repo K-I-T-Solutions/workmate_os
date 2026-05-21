@@ -324,7 +324,7 @@ async function handleDelete(role: Role) {
     return;
   }
 
-  if (!await confirm(`Rolle „${role.name}" wirklich löschen?`, 'Rolle löschen')) {
+  if (!await confirm(`Rolle „${role.name}" wirklich löschen?`, 'Rolle löschen', 'danger')) {
     return;
   }
 

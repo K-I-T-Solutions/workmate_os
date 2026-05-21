@@ -362,7 +362,7 @@ async function handleSavePayment() {
 }
 
 async function handleDeletePayment(paymentId: string) {
-  if (!await confirm('Möchten Sie diese Zahlung wirklich löschen?', 'Zahlung löschen')) return;
+  if (!await confirm('Möchten Sie diese Zahlung wirklich löschen?', 'Zahlung löschen', 'danger')) return;
 
   paymentLoading.value = true;
 

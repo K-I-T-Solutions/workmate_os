@@ -62,7 +62,7 @@ async function saveEdit() {
 }
 
 async function deleteArticle() {
-  if (!await confirm('Artikel wirklich löschen?', 'Artikel löschen')) return;
+  if (!await confirm('Artikel wirklich löschen?', 'Artikel löschen', 'danger')) return;
   await apiClient.delete(`/api/kb/articles/${props.articleId}`);
   router.back();
 }

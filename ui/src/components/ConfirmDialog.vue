@@ -11,7 +11,7 @@
           </div>
           <div class="confirm-footer">
             <button class="btn-cancel" @click="cancel">Abbrechen</button>
-            <button class="btn-confirm" @click="accept" autofocus>Bestätigen</button>
+            <button class="btn-confirm" :class="`btn-confirm--${pending.variant}`" @click="accept" autofocus>Bestätigen</button>
           </div>
         </div>
       </div>
@@ -109,7 +109,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   padding: 0.5rem 1.25rem;
   border-radius: 6px;
   border: none;
-  background: #ef4444;
   color: white;
   font-size: 0.875rem;
   font-weight: 500;
@@ -117,8 +116,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   transition: all 0.15s ease;
 }
 
-.btn-confirm:hover {
-  background: #dc2626;
+.btn-confirm--default {
+  background: var(--color-accent-primary);
+}
+
+.btn-confirm--default:hover {
+  filter: brightness(1.1);
+}
+
+.btn-confirm--danger {
+  background: var(--color-error);
+}
+
+.btn-confirm--danger:hover {
+  filter: brightness(1.1);
 }
 
 .confirm-fade-enter-active,

@@ -137,7 +137,7 @@ function handleThemeChange() {
 }
 
 async function handleReset() {
-  if (!await confirm('Möchten Sie wirklich alle Einstellungen auf die Standardwerte zurücksetzen?', 'Einstellungen zurücksetzen')) {
+  if (!await confirm('Möchten Sie wirklich alle Einstellungen auf die Standardwerte zurücksetzen?', 'Einstellungen zurücksetzen', 'danger')) {
     return;
   }
 

@@ -358,7 +358,7 @@ async function toggleStatus(emp: any) {
 }
 
 async function deleteEmployee(emp: any) {
-  if (!await confirm(`Mitarbeiter ${emp.first_name} ${emp.last_name} wirklich löschen?`, 'Mitarbeiter löschen')) {
+  if (!await confirm(`Mitarbeiter ${emp.first_name} ${emp.last_name} wirklich löschen?`, 'Mitarbeiter löschen', 'danger')) {
     return;
   }
 

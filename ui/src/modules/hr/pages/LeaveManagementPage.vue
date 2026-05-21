@@ -112,7 +112,7 @@ async function handleCreateRequest() {
 }
 
 async function handleDeleteRequest(id: string) {
-  if (!await confirm('Möchten Sie diesen Antrag wirklich löschen?', 'Antrag löschen')) return;
+  if (!await confirm('Möchten Sie diesen Antrag wirklich löschen?', 'Antrag löschen', 'danger')) return;
 
   try {
     await deleteLeaveRequest(id);

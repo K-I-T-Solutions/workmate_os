@@ -53,7 +53,7 @@ async function handleCreateAccount() {
 
 // Delete account
 async function handleDeleteAccount(account: BankAccount) {
-  if (await confirm(`Konto "${account.account_name}" wirklich löschen?`, 'Konto löschen')) {
+  if (await confirm(`Konto "${account.account_name}" wirklich löschen?`, 'Konto löschen', 'danger')) {
     try {
       await deleteAccount(account.id);
     } catch (e) {

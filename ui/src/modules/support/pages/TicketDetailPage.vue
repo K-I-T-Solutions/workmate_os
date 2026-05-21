@@ -136,7 +136,7 @@ async function deleteComment(commentId: string) {
 }
 
 async function deleteTicket() {
-  if (!await confirm('Ticket wirklich löschen?', 'Ticket löschen')) return;
+  if (!await confirm('Ticket wirklich löschen?', 'Ticket löschen', 'danger')) return;
   await apiClient.delete(`/api/support/tickets/${props.ticketId}`);
   router.push('/app/support/tickets');
 }

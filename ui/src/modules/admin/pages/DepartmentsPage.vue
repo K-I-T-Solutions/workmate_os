@@ -328,7 +328,7 @@ async function handleSubmit() {
 }
 
 async function handleDelete(dept: Department) {
-  if (!await confirm(`Abteilung „${dept.name}" wirklich löschen?`, 'Abteilung löschen')) {
+  if (!await confirm(`Abteilung „${dept.name}" wirklich löschen?`, 'Abteilung löschen', 'danger')) {
     return;
   }
 

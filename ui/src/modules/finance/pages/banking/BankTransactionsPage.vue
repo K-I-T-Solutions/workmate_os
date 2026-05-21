@@ -107,7 +107,7 @@ function getAccountName(accountId: string): string {
 
 // Delete transaction
 async function handleDeleteTransaction(transaction: BankTransaction) {
-  if (await confirm(`Transaktion wirklich löschen?`, 'Transaktion löschen')) {
+  if (await confirm(`Transaktion wirklich löschen?`, 'Transaktion löschen', 'danger')) {
     try {
       await deleteTransaction(transaction.id);
     } catch (e) {
