@@ -5,8 +5,10 @@ import { Plus, Calendar, Search } from 'lucide-vue-next';
 import { getLeaveRequests, createLeaveRequest, deleteLeaveRequest, getEmployees } from '../services/hr.service';
 import type { LeaveRequest, LeaveRequestCreate, LeaveType, LeaveStatus, Employee } from '../types';
 import { useToast } from '@/composables/useToast';
+import { useConfirm } from '@/composables/useConfirm';
 
 const toast = useToast();
+const { confirm } = useConfirm();
 
 const route = useRoute();
 const router = useRouter();
@@ -110,7 +112,7 @@ async function handleCreateRequest() {
 }
 
 async function handleDeleteRequest(id: string) {
-  if (!confirm('Möchten Sie diesen Antrag wirklich löschen?')) return;
+  if (!await confirm('Möchten Sie diesen Antrag wirklich löschen?', 'Antrag löschen')) return;
 
   try {
     await deleteLeaveRequest(id);

@@ -211,7 +211,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, watchEffect } from 'vue';
+import { useConfirm } from '@/composables/useConfirm';
 import { Plus, Pencil, Trash2, Users, X, Power, Key, CircleDot } from 'lucide-vue-next';
 import { useEmployees } from '@/composables/useEmployees';
 import { usePermissions } from '@/composables/usePermissions';
@@ -221,6 +222,7 @@ import EmployeeFormModal from '../components/EmployeeFormModal.vue';
 import PasswordResetModal from '../components/PasswordResetModal.vue';
 
 const toast = useToast();
+const { confirm } = useConfirm();
 
 // Composables
 const {
@@ -341,7 +343,7 @@ async function toggleStatus(emp: any) {
   const newStatus = emp.status === 'active' ? 'inactive' : 'active';
   const action = newStatus === 'active' ? 'aktivieren' : 'deaktivieren';
 
-  if (!confirm(`Mitarbeiter ${emp.first_name} ${emp.last_name} wirklich ${action}?`)) {
+  if (!await confirm(`Mitarbeiter ${emp.first_name} ${emp.last_name} wirklich ${action}?`, 'Status ändern')) {
     return;
   }
 
@@ -356,7 +358,7 @@ async function toggleStatus(emp: any) {
 }
 
 async function deleteEmployee(emp: any) {
-  if (!confirm(`Mitarbeiter ${emp.first_name} ${emp.last_name} wirklich löschen?`)) {
+  if (!await confirm(`Mitarbeiter ${emp.first_name} ${emp.last_name} wirklich löschen?`, 'Mitarbeiter löschen')) {
     return;
   }
 
@@ -392,10 +394,15 @@ async function loadData() {
   }
 }
 
-// Watch for changes
-watch([page, searchQuery, filters], () => {
-  loadData();
-}, { deep: true });
+// Sofort bei Seiten-/Filterwechsel laden
+watch([page, filters], () => { loadData(); }, { deep: true });
+
+// Suche mit 300ms Debounce
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchQuery, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { page.value = 1; loadData(); }, 300);
+});
 
 // Initial fetch
 onMounted(async () => {

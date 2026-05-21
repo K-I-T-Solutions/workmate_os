@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useBanking } from '../../composables/useBanking';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirm } = useConfirm();
 import type { BankAccount, BankAccountCreate } from '../../types/banking';
 
 const {
@@ -50,7 +53,7 @@ async function handleCreateAccount() {
 
 // Delete account
 async function handleDeleteAccount(account: BankAccount) {
-  if (confirm(`Konto "${account.account_name}" wirklich löschen?`)) {
+  if (await confirm(`Konto "${account.account_name}" wirklich löschen?`, 'Konto löschen')) {
     try {
       await deleteAccount(account.id);
     } catch (e) {

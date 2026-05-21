@@ -5,6 +5,7 @@ import { useStripe } from '@/modules/finance/composables';
 import type { InvoiceStatus, Payment, PaymentMethod, PaymentCreateRequest, PaymentUpdateRequest } from '../types';
 import { apiClient } from '@/services/api/client';
 import { useToast } from '@/composables/useToast';
+import { useConfirm } from '@/composables/useConfirm';
 import { useAppManager } from '@/layouts/app-manager/useAppManager';
 import {
   ChevronLeft,
@@ -39,6 +40,7 @@ const emit = defineEmits<{
 
 // Composables
 const toast = useToast();
+const { confirm } = useConfirm();
 const {
   currentInvoice,
   loading,
@@ -360,7 +362,7 @@ async function handleSavePayment() {
 }
 
 async function handleDeletePayment(paymentId: string) {
-  if (!confirm('Möchten Sie diese Zahlung wirklich löschen?')) return;
+  if (!await confirm('Möchten Sie diese Zahlung wirklich löschen?', 'Zahlung löschen')) return;
 
   paymentLoading.value = true;
 

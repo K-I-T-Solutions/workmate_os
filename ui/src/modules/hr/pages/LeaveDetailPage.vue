@@ -65,7 +65,7 @@ onMounted(async () => {
 });
 
 async function handleDelete() {
-  if (!confirm('Antrag wirklich löschen?')) return;
+  if (!await confirm('Antrag wirklich löschen?', 'Antrag löschen')) return;
   await deleteLeaveRequest(props.requestId);
   goBack();
 }

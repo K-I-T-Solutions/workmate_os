@@ -3,6 +3,9 @@ import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ChevronLeft, Edit2, Check, X, ThumbsUp, ThumbsDown, Eye, Pin, Tag } from 'lucide-vue-next';
 import { apiClient } from '@/services/api/client';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 const props = defineProps<{ articleId: string }>();
 const router = useRouter();
@@ -59,7 +62,7 @@ async function saveEdit() {
 }
 
 async function deleteArticle() {
-  if (!confirm('Artikel wirklich löschen?')) return;
+  if (!await confirm('Artikel wirklich löschen?', 'Artikel löschen')) return;
   await apiClient.delete(`/api/kb/articles/${props.articleId}`);
   router.back();
 }

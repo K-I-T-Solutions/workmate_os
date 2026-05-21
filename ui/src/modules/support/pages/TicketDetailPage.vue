@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router';
 import { ChevronLeft, Send, Lock, Unlock, Trash2, User, Tag, Clock, MessageSquare } from 'lucide-vue-next';
 import md5 from 'md5';
 import { apiClient } from '@/services/api/client';
+import { useConfirm } from '@/composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 const props = defineProps<{ ticketId: string }>();
 const router = useRouter();
@@ -133,7 +136,7 @@ async function deleteComment(commentId: string) {
 }
 
 async function deleteTicket() {
-  if (!confirm('Ticket wirklich löschen?')) return;
+  if (!await confirm('Ticket wirklich löschen?', 'Ticket löschen')) return;
   await apiClient.delete(`/api/support/tickets/${props.ticketId}`);
   router.push('/app/support/tickets');
 }

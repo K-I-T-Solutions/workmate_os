@@ -76,6 +76,7 @@ import DashboardPage from "@/modules/dashboard/pages/DashboardPage.vue";
 import UserProfilePage from "./pages/UserProfilePage.vue";
 import SettingsPage from "./pages/SettingsPage.vue";
 import { useAuth } from "@/composables/useAuth";
+import { useConfirm } from "@/composables/useConfirm";
 import { appManager } from "./app-manager/useAppManager";
 import ToastContainer from "@/components/ToastContainer.vue";
 
@@ -89,6 +90,7 @@ const currentSystemPage = ref<SystemPage>(null);
 
 // Auth composable for logout
 const { logout, user } = useAuth();
+const { confirm } = useConfirm();
 
 // Loading state
 const isInitialLoading = ref(true);
@@ -141,7 +143,7 @@ function closeSystemPage() {
 }
 
 async function handleLogout() {
-  if (confirm('Möchten Sie sich wirklich abmelden?')) {
+  if (await confirm('Möchten Sie sich wirklich abmelden?', 'Abmelden')) {
     await logout();
     // Redirect to login page
     router.push('/login');

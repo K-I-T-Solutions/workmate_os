@@ -6,8 +6,10 @@ import md5 from 'md5';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee, getDepartments } from '../services/hr.service';
 import type { Employee, EmployeeCreate, EmploymentType, Department } from '../types';
 import { useToast } from '@/composables/useToast';
+import { useConfirm } from '@/composables/useConfirm';
 
 const toast = useToast();
+const { confirm } = useConfirm();
 
 const router = useRouter();
 
@@ -114,7 +116,7 @@ async function handleUpdateEmployee() {
 }
 
 async function handleDeleteEmployee(id: string) {
-  if (!confirm('Möchten Sie diesen Mitarbeiter wirklich löschen?')) return;
+  if (!await confirm('Möchten Sie diesen Mitarbeiter wirklich löschen?', 'Mitarbeiter löschen')) return;
 
   try {
     await deleteEmployee(id);

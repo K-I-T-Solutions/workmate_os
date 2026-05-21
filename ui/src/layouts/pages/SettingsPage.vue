@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useUserSettings } from '@/composables/useUserSettings';
 import { useCurrentUser } from '@/composables/useCurrentUser';
 import { useTheme } from '@/composables/useTheme';
+import { useConfirm } from '@/composables/useConfirm';
 import { apiClient } from '@/services/api/client';
 import {
   ChevronLeft,
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 const { settings, loading, error, loadSettings, updateSettings, resetToDefaults } = useUserSettings();
 const { currentUser } = useCurrentUser();
 const { availableThemes, currentTheme, updateUserTheme, applyTheme } = useTheme();
+const { confirm } = useConfirm();
 
 // Tab State
 const activeTab = ref<'general' | 'password'>('general');
@@ -135,7 +137,7 @@ function handleThemeChange() {
 }
 
 async function handleReset() {
-  if (!confirm('Möchten Sie wirklich alle Einstellungen auf die Standardwerte zurücksetzen?')) {
+  if (!await confirm('Möchten Sie wirklich alle Einstellungen auf die Standardwerte zurücksetzen?', 'Einstellungen zurücksetzen')) {
     return;
   }
 
