@@ -93,7 +93,7 @@ jobs:
             sudo systemctl restart workmate
           ENDSSH
 
-      - name: Run database migrations
+      - name: Wait for backend health
         run: |
           ssh joshua@77.42.17.200 << 'ENDSSH'
             MAX=24
@@ -101,36 +101,17 @@ jobs:
               STATUS=$(docker inspect workmate_backend --format='{{.State.Health.Status}}' 2>/dev/null || echo 'not_found')
               echo "[$i/$MAX] Backend health: $STATUS"
               if [ "$STATUS" = "healthy" ]; then
-                echo "Backend is healthy, running migrations..."
-                cd /srv/workmate/infra
-                docker compose --env-file ../env/.env.prod exec -T backend alembic upgrade head
-                exit $?
+                echo "Backend is healthy — migrations ran via entrypoint"
+                exit 0
               fi
               if [ $i -eq $MAX ]; then
-                echo "Backend not healthy after ${MAX} attempts, skipping migration"
+                echo "Backend not healthy after ${MAX} attempts"
+                docker logs workmate_backend --tail=30
                 exit 1
               fi
               sleep 5
             done
           ENDSSH
-
-      - name: Verify backend is running
-        run: |
-          MAX=24
-          for i in $(seq 1 $MAX); do
-            STATUS=$(ssh joshua@77.42.17.200 "docker inspect workmate_backend --format='{{.State.Health.Status}}' 2>/dev/null || echo 'not_found'")
-            echo "[$i/$MAX] Backend health: $STATUS"
-            if [ "$STATUS" = "healthy" ]; then
-              echo "Backend is healthy!"
-              break
-            fi
-            if [ $i -eq $MAX ]; then
-              echo "Backend not healthy after ${MAX} attempts"
-              ssh joshua@77.42.17.200 "docker logs workmate_backend --tail=80 2>&1 || true"
-              exit 1
-            fi
-            sleep 5
-          done
 
       - name: Health check
         run: |
