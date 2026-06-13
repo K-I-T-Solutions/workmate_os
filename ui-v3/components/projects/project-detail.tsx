@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { usePageTitle } from "@/lib/page-title-context"
 import { projectService } from "@/lib/projects/service"
 import { crmService } from "@/lib/crm/service"
 import { timeTrackingService } from "@/lib/time-tracking/service"
@@ -49,6 +50,7 @@ export function ProjectDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true)
   const [showDelete, setShowDelete] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  usePageTitle(project?.title)
 
   useEffect(() => {
     projectService.get(id)

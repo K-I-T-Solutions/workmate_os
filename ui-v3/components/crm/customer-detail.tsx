@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { usePageTitle } from "@/lib/page-title-context"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Edit, Phone, Mail, Globe, MapPin, Plus, Star, Trash2, X, Save, FileText, FolderKanban, MessageSquare, FolderOpen } from "lucide-react"
 import { crmService } from "@/lib/crm/service"
@@ -320,6 +321,7 @@ export function CustomerDetail({ id }: { id: string }) {
   const [activities, setActivities] = useState<CrmActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  usePageTitle(customer?.name)
 
   // Contact modal state
   const [contactModal, setContactModal] = useState<{ open: boolean; contact?: Contact }>({ open: false })

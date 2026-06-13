@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { usePageTitle } from "@/lib/page-title-context"
 import { hrService } from "@/lib/hr/service"
 import { adminService } from "@/lib/admin/service"
 import type { Employee, LeaveRequest, EmployeeUpdate, EmployeeStatus, EmploymentType, LeaveType, LeaveStatus } from "@/lib/hr/types"
@@ -515,6 +516,7 @@ export function EmployeeDetail({ id }: { id: string }) {
   const [roles, setRoles] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("overview")
+  usePageTitle(employee ? `${employee.first_name} ${employee.last_name}` : undefined)
 
   async function load() {
     setLoading(true)
