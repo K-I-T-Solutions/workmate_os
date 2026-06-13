@@ -1,0 +1,15 @@
+{
+    email joshua@kit-it-koblenz.de
+}
+
+workmate.kit-it-koblenz.de {
+    reverse_proxy workmate_frontend:3000
+}
+
+api.workmate.kit-it-koblenz.de {
+    reverse_proxy workmate_backend:8000
+}
+
+login.kit-it-koblenz.de {
+    reverse_proxy workmate_keycloak:8080
+}

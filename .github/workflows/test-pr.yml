@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test-backend:
     name: Test Backend Build
@@ -36,14 +39,12 @@ jobs:
         run: corepack enable && corepack prepare pnpm@9 --activate
 
       - name: Install dependencies
-        working-directory: ui
+        working-directory: ui-v3
         run: pnpm install --frozen-lockfile
 
       - name: Build frontend
-        working-directory: ui
-        run: pnpm vite build
-        env:
-          VITE_API_BASE: https://api.workmate.kit-it-koblenz.de
+        working-directory: ui-v3
+        run: pnpm build
 
   summary:
     name: Build Summary

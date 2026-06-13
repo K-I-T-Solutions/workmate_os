@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     name: Deploy to workmate-01
@@ -39,10 +42,9 @@ jobs:
         run: |
           rsync -avz --delete \
             --exclude 'node_modules' \
-            --exclude 'dist' \
-            --include '.env.production' \
-            --exclude '.env*' \
-            ui/ joshua@77.42.17.200:/srv/workmate/frontend/
+            --exclude '.next' \
+            --exclude '.env*.local' \
+            ui-v3/ joshua@77.42.17.200:/srv/workmate/frontend/
 
       - name: Sync assets
         run: |
@@ -53,6 +55,7 @@ jobs:
       - name: Deploy compose + systemd unit
         run: |
           scp infra/docker-compose.prod.yml joshua@77.42.17.200:/srv/workmate/infra/docker-compose.yml
+          scp infra/Caddyfile joshua@77.42.17.200:/srv/workmate/reverse-proxy/Caddyfile
           scp infra/systemd/workmate.service joshua@77.42.17.200:/tmp/workmate.service
           scp infra/systemd/keycloak.service joshua@77.42.17.200:/tmp/keycloak.service
           ssh joshua@77.42.17.200 "sudo mv /tmp/workmate.service /etc/systemd/system/workmate.service && sudo mv /tmp/keycloak.service /etc/systemd/system/keycloak.service && sudo systemctl daemon-reload && sudo systemctl enable keycloak.service"
@@ -92,10 +95,23 @@ jobs:
 
       - name: Run database migrations
         run: |
-          sleep 15
           ssh joshua@77.42.17.200 << 'ENDSSH'
-            cd /srv/workmate/infra
-            docker compose --env-file ../env/.env.prod exec -T backend alembic upgrade head
+            MAX=24
+            for i in $(seq 1 $MAX); do
+              STATUS=$(docker inspect workmate_backend --format='{{.State.Health.Status}}' 2>/dev/null || echo 'not_found')
+              echo "[$i/$MAX] Backend health: $STATUS"
+              if [ "$STATUS" = "healthy" ]; then
+                echo "Backend is healthy, running migrations..."
+                cd /srv/workmate/infra
+                docker compose --env-file ../env/.env.prod exec -T backend alembic upgrade head
+                exit $?
+              fi
+              if [ $i -eq $MAX ]; then
+                echo "Backend not healthy after ${MAX} attempts, skipping migration"
+                exit 1
+              fi
+              sleep 5
+            done
           ENDSSH
 
       - name: Verify backend is running
