@@ -6,3 +6,7 @@
 # Created by venv; see https://docs.python.org/3/library/venv.html
 venv/**/*
 fly.toml
+
+# Migration files are volume-mounted from host at runtime
+# so the image must NOT bake them in (would cause duplicate-revision cycle)
+alembic/versions/
