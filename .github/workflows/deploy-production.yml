@@ -132,7 +132,7 @@ jobs:
             ssh joshua@77.42.17.200 "docker logs workmate_backend --tail=100 2>&1 || true"
             exit 1
           fi
-          HTTP_FRONT=$(curl -s -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de)
+          HTTP_FRONT=$(curl -s -L -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de/login)
           if [ "$HTTP_FRONT" != "200" ]; then
             echo "Frontend health check failed: $HTTP_FRONT"
             exit 1
