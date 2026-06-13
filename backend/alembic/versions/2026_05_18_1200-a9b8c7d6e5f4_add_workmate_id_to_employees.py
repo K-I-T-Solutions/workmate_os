@@ -1,7 +1,7 @@
 """add workmate_id to employees
 
 Revision ID: a9b8c7d6e5f4
-Revises: f1a2b3c4d5e6_ticketing_foundation
+Revises: c1d2e3f4a5b6
 Create Date: 2026-05-18 12:00:00
 
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = 'a9b8c7d6e5f4'
-down_revision = 'f1a2b3c4d5e6'
+down_revision = 'c1d2e3f4a5b6'
 branch_labels = None
 depends_on = None
 

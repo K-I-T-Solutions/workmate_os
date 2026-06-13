@@ -1,6 +1,6 @@
 """ticketing foundation: type, channel, soft delete, sla, event log
 
-Revision ID: f1a2b3c4d5e6
+Revision ID: c1d2e3f4a5b6
 Revises: e8aae60dde48
 Create Date: 2026-04-21 10:00:00.000000
 """
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision = 'f1a2b3c4d5e6'
+revision = 'c1d2e3f4a5b6'
 down_revision = 'e8aae60dde48'
 branch_labels = None
 depends_on = None
