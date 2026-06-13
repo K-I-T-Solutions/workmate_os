@@ -57,6 +57,7 @@ def list_documents(
     category: Optional[str] = Query(None),
     linked_module: Optional[str] = Query(None),
     owner_id: Optional[UUID] = Query(None),
+    customer_id: Optional[UUID] = Query(None),
     is_confidential: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
@@ -69,6 +70,7 @@ def list_documents(
         category=category,
         linked_module=linked_module,
         owner_id=owner_id,
+        customer_id=customer_id,
         is_confidential=is_confidential,
     )
 
@@ -106,7 +108,8 @@ def get_document(
 @require_permissions(["documents.write", "documents.*"])
 async def upload_document(
     file: UploadFile = File(...),
-    owner_id: UUID = Form(...),
+    owner_id: Optional[UUID] = Form(None),
+    customer_id: Optional[UUID] = Form(None),
     title: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     linked_module: Optional[str] = Form(None),
@@ -116,6 +119,8 @@ async def upload_document(
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
+    if not owner_id and not customer_id:
+        raise HTTPException(status_code=400, detail="Either owner_id or customer_id is required")
 
     content = await file.read()
     checksum = calculate_checksum(content)
@@ -123,13 +128,13 @@ async def upload_document(
     extension = get_file_extension(file.filename)
     file_type = extension.lstrip(".")
 
+    entity_id = str(owner_id) if owner_id else str(customer_id)
     remote_path = "/".join([
-    "workmate",
-    linked_module or "general",
-    str(owner_id),
-    f"{uuid4()}{extension}",
+        "workmate",
+        linked_module or "general",
+        entity_id,
+        f"{uuid4()}{extension}",
     ])
-
 
     # Upload to Nextcloud
     storage.upload(remote_path, content)
@@ -147,6 +152,7 @@ async def upload_document(
         file_path=remote_path,
         checksum=checksum,
         owner_id=owner_id,
+        customer_id=customer_id,
         document_data=document_data,
     )
 

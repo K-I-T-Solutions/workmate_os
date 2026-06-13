@@ -1,0 +1,7 @@
+import { use } from "react"
+import { ProjectDetail } from "@/components/projects/project-detail"
+
+export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  return <ProjectDetail id={id} />
+}

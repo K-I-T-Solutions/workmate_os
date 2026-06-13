@@ -13,8 +13,9 @@ class DocumentBase(BaseModel):
     title: Optional[str] = None
     type: Optional[str] = Field(None, description="pdf, image, doc, xlsx, etc.")
     category: Optional[str] = Field(None, description="Contract, Invoice, Certificate, etc.")
-    linked_module: Optional[str] = Field(None, description="HR, Finance, Backoffice")
+    linked_module: Optional[str] = Field(None, description="HR, Finance, Backoffice, CRM")
     is_confidential: bool = Field(default=False)
+    customer_id: Optional[UUID] = None
 
 
 class DocumentUpload(DocumentBase):
@@ -35,6 +36,7 @@ class DocumentResponse(DocumentBase):
     id: UUID
     file_path: str
     owner_id: Optional[UUID] = None
+    customer_id: Optional[UUID] = None
     uploaded_at: Optional[datetime] = None
     checksum: Optional[str] = None
     

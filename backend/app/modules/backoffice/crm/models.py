@@ -188,6 +188,12 @@ class Customer(Base, UUIDMixin, TimestampMixin):
         back_populates="customer",
         cascade="all, delete-orphan"
     )
+    documents: Mapped[list] = relationship(
+        "Document",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+        foreign_keys="Document.customer_id",
+    )
 
     # ========================================================================
     # PROPERTIES
