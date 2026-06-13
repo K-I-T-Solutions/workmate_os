@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google'
 import { AuthProvider } from '@/components/providers/auth-provider'
+import { ThemeProvider } from '@/components/providers/theme-provider'
 import './globals.css'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -53,10 +54,20 @@ export default function RootLayout({
       lang="de"
       className={`dark ${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable}`}
     >
+      <head>
+        {/* Anti-FOUC: apply saved theme before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('workmate-theme');if(t&&t!=='standard'){document.documentElement.setAttribute('data-theme',t);if(t==='hell')document.documentElement.classList.remove('dark');}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="bg-background font-sans antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

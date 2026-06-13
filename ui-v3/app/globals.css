@@ -185,3 +185,105 @@
     text-shadow: 0 0 18px rgb(var(--glow) / 0.55);
   }
 }
+
+/* ============================================================
+   WorkmateOS Theme Variants
+   Applied via data-theme attribute on <html>
+   :root[data-theme="..."] has specificity (0,1,1) — beats .dark
+   ============================================================ */
+
+/* K.I.T Anthrazit — classic dark with orange accent */
+:root[data-theme="anthrazit"] {
+  color-scheme: dark;
+  --background: oklch(0.225 0.002 30);
+  --foreground: oklch(1 0 0);
+  --card: oklch(0.255 0.002 30);
+  --card-foreground: oklch(1 0 0);
+  --popover: oklch(0.255 0.002 30);
+  --popover-foreground: oklch(1 0 0);
+  --primary: oklch(0.73 0.175 55);
+  --primary-foreground: oklch(0.1 0 0);
+  --secondary: oklch(0.3 0.002 30);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.3 0.002 30);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.73 0.175 55);
+  --accent-foreground: oklch(0.1 0 0);
+  --destructive: oklch(0.62 0.22 25);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.73 0.175 55);
+  --sidebar: oklch(0.205 0.002 30);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.73 0.175 55);
+  --sidebar-primary-foreground: oklch(0.1 0 0);
+  --sidebar-accent: oklch(0.3 0.002 30);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.73 0.175 55);
+  --glow: 255 145 0;
+}
+
+/* K.I.T Midnight — ultra dark for OLED */
+:root[data-theme="midnight"] {
+  color-scheme: dark;
+  --background: oklch(0 0 0);
+  --foreground: oklch(1 0 0);
+  --card: oklch(0.07 0 0);
+  --card-foreground: oklch(1 0 0);
+  --popover: oklch(0.07 0 0);
+  --popover-foreground: oklch(1 0 0);
+  --primary: oklch(0.6 0.214 255);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.12 0 0);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.12 0 0);
+  --muted-foreground: oklch(0.63 0 0);
+  --accent: oklch(0.6 0.214 255);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.62 0.22 25);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.6 0.214 255);
+  --sidebar: oklch(0.04 0 0);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.6 0.214 255);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.12 0 0);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.6 0.214 255);
+  --glow: 0 119 255;
+}
+
+/* K.I.T Hell — clean light theme */
+:root[data-theme="hell"] {
+  color-scheme: light;
+  --background: oklch(0.97 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.52 0.214 255);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.93 0 0);
+  --secondary-foreground: oklch(0.2 0 0);
+  --muted: oklch(0.93 0 0);
+  --muted-foreground: oklch(0.48 0 0);
+  --accent: oklch(0.52 0.214 255);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.5 0.22 25);
+  --border: oklch(0 0 0 / 12%);
+  --input: oklch(0 0 0 / 8%);
+  --ring: oklch(0.52 0.214 255);
+  --sidebar: oklch(0.95 0 0);
+  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-primary: oklch(0.52 0.214 255);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.93 0 0);
+  --sidebar-accent-foreground: oklch(0.15 0 0);
+  --sidebar-border: oklch(0 0 0 / 10%);
+  --sidebar-ring: oklch(0.52 0.214 255);
+  --glow: 0 85 204;
+}

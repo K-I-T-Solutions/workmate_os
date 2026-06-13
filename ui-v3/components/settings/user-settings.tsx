@@ -1,18 +1,20 @@
 "use client"
 
 import { useAuth } from "@/components/providers/auth-provider"
-import { ExternalLinkIcon, KeyRoundIcon, MailIcon, UserIcon, ShieldIcon } from "lucide-react"
+import { ExternalLinkIcon, KeyRoundIcon, MailIcon, UserIcon, ShieldIcon, PaletteIcon } from "lucide-react"
 import { useState } from "react"
+import { useTheme, THEMES, type ThemeId } from "@/lib/theme/use-theme"
 
 const KEYCLOAK_ACCOUNT_URL =
   process.env.NEXT_PUBLIC_KEYCLOAK_URL && process.env.NEXT_PUBLIC_KEYCLOAK_REALM
     ? `${process.env.NEXT_PUBLIC_KEYCLOAK_URL}/realms/${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/account`
     : null
 
-type Tab = "profile" | "security"
+type Tab = "profile" | "security" | "appearance"
 const TABS: { id: Tab; label: string }[] = [
   { id: "profile", label: "Profil" },
   { id: "security", label: "Sicherheit" },
+  { id: "appearance", label: "Erscheinungsbild" },
 ]
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
@@ -138,6 +140,78 @@ function SecurityTab() {
   )
 }
 
+function AppearanceTab() {
+  const { theme, setTheme } = useTheme()
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <p className="text-sm text-muted-foreground">
+        Wähle ein Farbschema für WorkmateOS. Die Einstellung wird lokal gespeichert.
+      </p>
+
+      <div className="grid grid-cols-2 gap-3">
+        {THEMES.map(t => {
+          const isActive = theme === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id as ThemeId)}
+              className={`group relative rounded-xl border-2 p-4 text-left transition-all ${
+                isActive
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/40 hover:bg-secondary/50"
+              }`}
+            >
+              <div
+                className="mb-3 h-16 w-full rounded-lg overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${t.preview[0]} 0%, ${t.preview[1]} 100%)`,
+                }}
+              >
+                <div className="flex h-full items-end p-2 gap-1">
+                  <div
+                    className="h-2 w-8 rounded-full opacity-80"
+                    style={{ backgroundColor: t.accent }}
+                  />
+                  <div className="h-1.5 w-5 rounded-full bg-white/20" />
+                  <div className="h-1.5 w-4 rounded-full bg-white/15" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold">{t.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                </div>
+                {isActive && (
+                  <div
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: t.accent }}
+                  >
+                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
+        <PaletteIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div>
+          <p className="text-xs text-muted-foreground">Aktives Theme</p>
+          <p className="text-sm font-medium">
+            {THEMES.find(t => t.id === theme)?.name ?? "Standard"}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function UserSettings() {
   const [tab, setTab] = useState<Tab>("profile")
 
@@ -163,6 +237,7 @@ export function UserSettings() {
 
       {tab === "profile" && <ProfileTab />}
       {tab === "security" && <SecurityTab />}
+      {tab === "appearance" && <AppearanceTab />}
     </div>
   )
 }
