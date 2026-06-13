@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { usePageTitle } from "@/lib/page-title-context"
 import { supportService } from "@/lib/support/service"
 import { hrService } from "@/lib/hr/service"
 import type { TicketDetail, TicketComment } from "@/lib/support/types"
@@ -40,6 +41,7 @@ export function TicketDetailView({ id }: { id: string }) {
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [showDelete, setShowDelete] = useState(false)
+  usePageTitle(ticket?.title)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [comment, setComment] = useState("")
   const [isInternal, setIsInternal] = useState(false)

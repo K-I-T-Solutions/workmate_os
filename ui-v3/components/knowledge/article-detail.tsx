@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { usePageTitle } from "@/lib/page-title-context"
 import { knowledgeService } from "@/lib/knowledge/service"
 import type { KBArticleDetail, KBCategory } from "@/lib/knowledge/types"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ export function ArticleDetail({
   const [article, setArticle] = useState(initial)
   const [editing, setEditing] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
+  usePageTitle(article.title)
   const [voted, setVoted] = useState<"helpful" | "not_helpful" | null>(null)
   const [localCounts, setLocalCounts] = useState({
     helpful: article.helpful_count,

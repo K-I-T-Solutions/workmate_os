@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { usePageTitle } from "@/lib/page-title-context"
 import { invoiceService } from "@/lib/invoices/service"
 import type { Invoice, Payment, InvoiceStatus } from "@/lib/invoices/types"
 import { Button } from "@/components/ui/button"
@@ -244,6 +245,7 @@ export function InvoiceDetail({ id }: { id: string }) {
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  usePageTitle(invoice?.invoice_number)
 
   async function load() {
     setLoading(true)
