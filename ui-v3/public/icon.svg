@@ -1,15 +1,52 @@
 <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="180" height="180" rx="36" fill="#1a1a2e"/>
   <defs>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="4" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
   <g filter="url(#glow)">
-    <!-- W -->
-    <path d="M28 58 L46 122 L62 82 L78 122 L96 58 L82 58 L70 98 L58 58 Z" fill="#2979FF"/>
-    <!-- M -->
-    <path d="M96 58 L96 122 L110 122 L110 82 L124 104 L138 82 L138 122 L152 122 L152 58 L138 58 L124 82 L110 58 Z" fill="#5c9eff"/>
+    <!-- w -->
+    <path d="
+      M 28 62
+      C 28 55 35 50 42 53
+      L 52 88
+      L 62 68
+      C 65 62 75 62 78 68
+      L 88 88
+      L 98 53
+      C 101 50 108 50 111 55
+      L 111 62
+      L 97 105
+      C 95 111 85 111 83 105
+      L 70 78
+      L 57 105
+      C 55 111 45 111 43 105
+      Z
+    " fill="#2979FF"/>
+    <!-- m -->
+    <path d="
+      M 111 62
+      C 111 55 118 50 125 53
+      C 125 53 135 73 135 73
+      C 138 67 144 62 151 62
+      C 158 62 164 68 164 75
+      L 164 105
+      C 164 112 157 117 150 114
+      L 150 80
+      C 148 74 140 74 138 80
+      L 138 105
+      C 138 112 131 117 124 114
+      L 124 80
+      C 122 74 114 74 112 80
+      L 111 105
+      C 111 112 104 117 97 114
+      L 97 105
+      L 111 62
+      Z
+    " fill="#5BB8FF"/>
   </g>
 </svg>
