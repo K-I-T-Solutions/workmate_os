@@ -25,6 +25,8 @@ const labels: Record<string, string> = {
   settings: "Einstellungen",
   employees: "Mitarbeiter",
   "my-leave": "Meine Abwesenheiten",
+  edit: "Bearbeiten",
+  new: "Neu",
 }
 
 function gravatarUrl(email: string): string {
