@@ -61,6 +61,38 @@ def list_employees(
     }
 
 
+@employee_router.get("/statistics")
+def get_employee_statistics(db: Session = Depends(get_db)):
+    """Mitarbeiter-Statistiken"""
+    from sqlalchemy import func
+    from app.modules.employees.models import Employee, Department
+
+    employees = db.query(Employee).all()
+    total = len(employees)
+    active = sum(1 for e in employees if e.status == "active")
+
+    by_dept: dict[str, int] = {}
+    for e in employees:
+        if e.department_id:
+            dept = db.query(Department).filter(Department.id == e.department_id).first()
+            label = dept.name if dept else str(e.department_id)
+        else:
+            label = "Kein Department"
+        by_dept[label] = by_dept.get(label, 0) + 1
+
+    by_type: dict[str, int] = {}
+    for e in employees:
+        t = e.employment_type or "unbekannt"
+        by_type[t] = by_type.get(t, 0) + 1
+
+    return {
+        "total_employees": total,
+        "active_employees": active,
+        "by_department": by_dept,
+        "by_employment_type": by_type,
+    }
+
+
 @employee_router.get("/{employee_id}", response_model=schemas.EmployeeResponse)
 def get_employee(
     employee_id: UUID,
