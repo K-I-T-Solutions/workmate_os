@@ -90,7 +90,7 @@ function KanbanColumn({
 
   return (
     <div
-      className={`flex flex-col rounded-xl border-2 transition-colors min-w-[260px] w-[260px] shrink-0 ${stage.color} ${dragOver ? "border-primary bg-primary/5" : ""}`}
+      className={`flex flex-col rounded-xl border-2 transition-colors min-w-[260px] w-[260px] shrink-0 h-full ${stage.color} ${dragOver ? "border-primary bg-primary/5" : ""}`}
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={e => { e.preventDefault(); setDragOver(false); onDrop(stage.id) }}
@@ -104,7 +104,7 @@ function KanbanColumn({
       </div>
 
       {/* Cards */}
-      <div className="flex flex-col gap-2 p-2 flex-1 min-h-[120px]">
+      <div className="flex flex-col gap-2 p-2 flex-1 min-h-0 overflow-y-auto">
         {customers.map(c => (
           <CustomerCard key={c.id} customer={c} onDragStart={onDragStart} />
         ))}
@@ -187,7 +187,7 @@ export function PipelineBoard() {
           Laden…
         </div>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-4 flex-1">
+        <div className="flex gap-3 overflow-x-auto pb-4 flex-1 min-h-0">
           {STAGES.map(stage => (
             <KanbanColumn
               key={stage.id}
