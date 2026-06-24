@@ -1,20 +1,20 @@
-// src/composables/useDashboard.ts
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { apiClient } from "@/services/api/client";
 
-// TODO: später durch Keycloak ersetzen
 const TEST_EMPLOYEE_ID = "ef8192d3-9334-4256-ab01-a406307ede2a";
-
-// ============================================================
-// 🚀 FULL DASHBOARD COMPOSABLE
-// ============================================================
 
 export function useDashboardFull() {
   const dashboard = ref<any>(null);
   const osPreferences = ref<any>(null);
   const userSettings = ref<any>(null);
 
-  const stats = ref<any>(null);
+  const stats = ref({
+    activeProjects: 0,
+    pendingInvoices: 0,
+    registeredCustomers: 0,
+    openReminders: 0,
+  });
+
   const recentReminders = ref<any[]>([]);
   const notifications = ref<any[]>([]);
   const activityFeed = ref<any[]>([]);
@@ -24,72 +24,58 @@ export function useDashboardFull() {
 
   const loadDashboardFull = async () => {
     loading.value = true;
-    error.value = null;
 
     try {
       const { data } = await apiClient.get("/api/dashboards/my-dashboard", {
         params: { owner_id: TEST_EMPLOYEE_ID },
       });
 
-      // Core
-      dashboard.value = data.dashboard;
-      osPreferences.value = data.os_preferences;
-      userSettings.value = data.user_settings;
+      console.log("🛰 API RESPONSE:", JSON.parse(JSON.stringify(data)));
 
-      // Live data
-      stats.value = data.stats ?? {};
+      dashboard.value = data.dashboard ?? {};
+      osPreferences.value = data.os_preferences ?? {};
+      userSettings.value = data.user_settings ?? {};
+
+      stats.value = data.stats ?? stats.value;
       recentReminders.value = data.recent_reminders ?? [];
       notifications.value = data.notifications ?? [];
       activityFeed.value = data.activity_feed ?? [];
+
+      console.log("📦 WidgetsJSON:", dashboard.value.widgets_json);
+      console.log("📐 LayoutJSON:", dashboard.value.layout_json);
+
     } catch (err: any) {
       console.error("❌ Dashboard Load Error:", err);
       error.value = err?.message ?? "Fehler beim Laden des Dashboards";
     } finally {
       loading.value = false;
+      console.log("✅ Dashboard Load Complete");
     }
   };
 
-  // ==============================
-  // Helpers / Computed Values
-  // ==============================
-
-  const isSidebarCollapsed = computed(
-    () => osPreferences.value?.sidebar_collapsed ?? false
-  );
-
-  const themeMode = computed(() => osPreferences.value?.theme_mode ?? "system");
-
+  // FIX: Computeds dürfen NICHT leer starten
   const widgets = computed(() => {
-    return dashboard.value?.widgets_json ?? {};
+    const w = dashboard.value?.widgets_json;
+    return w && Object.keys(w).length > 0 ? w : {};
   });
 
   const layout = computed(() => {
-    return dashboard.value?.layout_json ?? {};
+    const l = dashboard.value?.layout_json;
+    return l && Object.keys(l).length > 0 ? l : {};
   });
 
   return {
-    // core dashboard data
     dashboard,
-    osPreferences,
-    userSettings,
+    widgets,
+    layout,
 
-    // live data
     stats,
     recentReminders,
     notifications,
     activityFeed,
 
-    // computed
-    widgets,
-    layout,
-    isSidebarCollapsed,
-    themeMode,
-
-    // status
     loading,
     error,
-
-    // functions
     loadDashboardFull,
   };
 }

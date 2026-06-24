@@ -2,92 +2,123 @@
 <template>
   <div
     class="window-frame"
-    :class="{ 'window-frame--active': isActive }"
-    :style="frameStyleString"
+    :class="{ 'window-active': isActive, 'window-mobile': isMobile }"
+    :style="frameStyle"
     @mousedown="focus"
   >
     <!-- TITLEBAR -->
     <div
       class="window-titlebar"
+      :class="{ 'window-titlebar--mobile': isMobile }"
       @mousedown.stop="startDrag"
     >
-      <button class="window-home" @click.stop="goHome" title="Zum Dashboard">
-        ⌂
-      </button>
-
-      <span class="window-title">
-        {{ win.title }}
-      </span>
-
-      <div class="window-controls">
-        <button class="window-minimize" @click.stop="minimize" title="Minimieren">
-          −
-        </button>
-        <button class="window-close" @click.stop="close" title="Schließen">
-          ✕
-        </button>
-      </div>
+      <span class="window-title">{{ win.title }}</span>
+      <button class="window-close" @click.stop="close">✕</button>
     </div>
 
     <!-- CONTENT -->
     <div class="window-content">
-      <slot />
+      <router-view />
     </div>
 
-    <!-- RESIZE HANDLE (nur Desktop) -->
-    <div class="resize-handle" @mousedown.stop="startResize" />
+    <!-- RESIZE HANDLES (nur Desktop) -->
+    <template v-if="!isMobile">
+      <div class="resize-handle handle-top"    @mousedown.stop="startResize('top', $event)" />
+      <div class="resize-handle handle-bottom" @mousedown.stop="startResize('bottom', $event)" />
+      <div class="resize-handle handle-left"   @mousedown.stop="startResize('left', $event)" />
+      <div class="resize-handle handle-right"  @mousedown.stop="startResize('right', $event)" />
+
+      <div class="resize-handle handle-tl" @mousedown.stop="startResize('top-left', $event)" />
+      <div class="resize-handle handle-tr" @mousedown.stop="startResize('top-right', $event)" />
+      <div class="resize-handle handle-bl" @mousedown.stop="startResize('bottom-left', $event)" />
+      <div class="resize-handle handle-br" @mousedown.stop="startResize('bottom-right', $event)" />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRouter } from "vue-router";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { useAppManager } from "./useAppManager";
 import type { WindowApp } from "./useAppManager";
 
-const props = defineProps<{
-  win: WindowApp;
-}>();
-
-const { activeWindow, closeWindow, minimizeWindow, focusWindow, startDragFor, startResizeFor } =
+const props = defineProps<{ win: WindowApp }>();
+const { activeWindow, closeWindow, focusWindow, startDragFor, startResizeFor } =
   useAppManager();
 
-const router = useRouter();
-
-function goHome() {
-  router.push("/app");
-}
-
+/* -------------------------------
+   ACTIVE STATE
+-------------------------------- */
 const isActive = computed(() => activeWindow.value === props.win.id);
 
-const frameStyleString = computed(() =>
-  `
-    top: ${props.win.y}px;
-    left: ${props.win.x}px;
-    width: ${props.win.width}px;
-    height: ${props.win.height}px;
-    z-index: ${props.win.z};
-  `
+/* -------------------------------
+   REAKTIVE MOBILE CHECK
+   (≤ 768px = Mobile / Handy)
+-------------------------------- */
+const viewportWidth = ref(
+  typeof window !== "undefined" ? window.innerWidth : 1920
 );
 
+let resizeHandler: (() => void) | null = null;
 
+onMounted(() => {
+  if (typeof window === "undefined") return;
+  resizeHandler = () => {
+    viewportWidth.value = window.innerWidth;
+  };
+  window.addEventListener("resize", resizeHandler);
+});
+
+onBeforeUnmount(() => {
+  if (resizeHandler && typeof window !== "undefined") {
+    window.removeEventListener("resize", resizeHandler);
+  }
+});
+
+const isMobile = computed(() => viewportWidth.value <= 768);
+
+/* -------------------------------
+   FRAME STYLE
+-------------------------------- */
+const frameStyle = computed(() => {
+  if (isMobile.value) {
+    // Vollbild zwischen Topbar & Dock
+    return {
+      position: "fixed",
+      top: "var(--os-topbar-height)",
+      left: "0",
+      width: "100vw",
+      height:
+        "calc(100vh - var(--os-topbar-height) - var(--os-dock-height))",
+      zIndex: props.win.z,
+    };
+  }
+
+  // Desktop: normale Window-Koordinaten aus AppManager
+  return {
+    position: "absolute",
+    top: props.win.y + "px",
+    left: props.win.x + "px",
+    width: props.win.width + "px",
+    height: props.win.height + "px",
+    zIndex: props.win.z,
+  };
+});
+
+/* -------------------------------
+   WINDOW ACTIONS
+-------------------------------- */
 function startDrag(e: MouseEvent) {
-  // auf Mobile nicht draggen
-  if (window.innerWidth <= 1024) return;
+  if (isMobile.value) return;
   startDragFor(props.win.id, e);
 }
 
-function startResize(e: MouseEvent) {
-  if (window.innerWidth <= 1024) return;
-  startResizeFor(props.win.id, e);
+function startResize(direction: string, e: MouseEvent) {
+  if (isMobile.value) return;
+  startResizeFor(props.win.id, e, direction);
 }
 
 function focus() {
   focusWindow(props.win.id);
-}
-
-function minimize() {
-  minimizeWindow(props.win.id);
 }
 
 function close() {
@@ -96,164 +127,165 @@ function close() {
 </script>
 
 <style scoped>
+/* ============================================
+   WINDOW FRAME
+============================================ */
 .window-frame {
-  position: absolute;
-  background: var(--color-bg-primary);
+  background: #050509;
   border-radius: 16px;
-  border: 1px solid var(--color-border-light);
+  min-width: 350px;
+  min-height: 280px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease,
-    transform 0.15s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.window-frame--active {
+.window-active {
   border-color: var(--color-accent-primary);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.75);
+  box-shadow:
+      0 0 0 1px var(--color-accent-primary),
+      0 0 28px rgba(255, 145, 0, 0.40),
+      0 0 80px rgba(255, 145, 0, 0.25),
+      0 0 140px rgba(255, 145, 0, 0.15);
 }
 
-/* TITLEBAR */
+/* ============================================
+   TITLEBAR
+============================================ */
 .window-titlebar {
   height: 44px;
   padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--color-bg-secondary);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.015)
+  );
   cursor: move;
   user-select: none;
+}
+
+.window-titlebar--mobile {
+  cursor: default;
 }
 
 .window-title {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: #ffffff;
 }
 
-.window-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.window-home {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  border: none;
-  background: var(--color-accent-primary);
-  color: white;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-  margin-right: 4px;
-}
-
-.window-home:hover {
-  opacity: 0.8;
-}
-
-.window-minimize,
 .window-close {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: none;
-  color: white;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.window-minimize {
-  background: #facc15;
-}
-
-.window-minimize:hover {
-  opacity: 0.8;
-}
-
-.window-close {
   background: #ef4444;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.window-close:hover {
-  opacity: 0.8;
-}
-
-/* CONTENT */
+/* ============================================
+   CONTENT
+============================================ */
 .window-content {
   flex: 1;
   overflow: auto;
   padding: 20px;
-  background: var(--color-bg-primary);
+  background: #050509;
 }
 
-/* RESIZE HANDLE */
+/* ============================================
+   RESIZE HANDLES – DESKTOP
+============================================ */
 .resize-handle {
   position: absolute;
+  z-index: 20;
+}
+
+/* Kanten */
+.handle-top {
+  top: -4px;
+  left: 12px;
+  right: 12px;
+  height: 8px;
+  cursor: ns-resize;
+}
+.handle-bottom {
+  bottom: -4px;
+  left: 12px;
+  right: 12px;
+  height: 8px;
+  cursor: ns-resize;
+}
+.handle-left {
+  left: -4px;
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
+  cursor: ew-resize;
+}
+.handle-right {
+  right: -4px;
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+/* Ecken */
+.handle-tl {
+  top: -4px;
+  left: -4px;
   width: 16px;
   height: 16px;
-  right: 4px;
-  bottom: 4px;
-  border-radius: 4px;
-  border: 1px solid var(--color-border-medium);
-  border-top: none;
-  border-left: none;
-  cursor: se-resize;
-  opacity: 0.7;
+  cursor: nwse-resize;
+}
+.handle-tr {
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  cursor: nesw-resize;
+}
+.handle-bl {
+  bottom: -4px;
+  left: -4px;
+  width: 16px;
+  height: 16px;
+  cursor: nesw-resize;
+}
+.handle-br {
+  bottom: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
 }
 
-/* =========================================
-   MOBILE / TABLET: FULLSCREEN WINDOWS
-   ========================================= */
-@media (max-width: 1024px) {
-  .window-frame {
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: calc(100vh - var(--os-topbar-height) - var(--os-dock-height));
-    border-radius: 0 !important;
-    max-width: 100vw !important;
-    box-shadow: none;
-  }
+/* ============================================
+   MOBILE MODE (≤ 768px)
+============================================ */
+.window-mobile {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
 
-  .window-titlebar {
-    height: 40px;
-    padding: 0 12px;
-    cursor: default;
-  }
-
-  .window-content {
-    padding: 12px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    height: calc(100% - 40px);
-  }
-
+@media (max-width: 768px) {
   .resize-handle {
-    display: none;
+    display: none !important;
+    pointer-events: none !important;
   }
-}
 
-@media (max-width: 480px) {
   .window-content {
-    padding: 8px;
-  }
-
-  .window-titlebar {
-    height: 36px;
-    padding: 0 8px;
+    padding: 16px;
   }
 }
 </style>

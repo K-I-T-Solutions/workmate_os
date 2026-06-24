@@ -7,10 +7,18 @@
   /*
   ===========================================================
   🎨 COLORS
-  NOTE: Color tokens are now defined in themes.css
-  These are kept here as documentation but should not be used directly
   ===========================================================
   */
+
+  --color-bg-primary: #232223;
+  --color-panel-glass: rgba(255, 255, 255, 0.05);
+
+  --color-accent-primary: #ff9100;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.7);
+
+  --color-border-light: rgba(255, 255, 255, 0.1);
 
   /*
   ===========================================================
@@ -66,39 +74,9 @@
   --os-dock-height: 80px;
   --os-topbar-height: 48px;
   --os-sidebar-width: 260px;
-
-  /*
-  ===========================================================
-  👆 TOUCH TARGETS (Mobile)
-  ===========================================================
-  */
-
-  --touch-target-min: 44px;
-  --touch-spacing: 12px;
 }
-
-/*
-===========================================================
-📱 RESPONSIVE ADJUSTMENTS
-===========================================================
-*/
-
 @media (max-width: 1024px) {
   :root {
-    --os-dock-height: 64px;
-  }
-}
-
-@media (max-width: 768px) {
-  :root {
-    --os-dock-height: 60px;
-    --os-topbar-height: 44px;
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --os-dock-height: 56px;
-    --os-topbar-height: 40px;
+    --os-dock-height: 64px; /* Mobile etwas kleiner */
   }
 }

@@ -1,35 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
-import type { APIErrorResponse, ErrorDetail } from '@/types/errors';
-import { isStructuredError } from '@/types/errors';
-import { useToast } from '@/composables/useToast';
 
 // Base URL aus Environment oder Fallback
-const API_BASE_URL = import.meta.env.VITE_API_BASE || 'https://api.workmate.intern.phudevelopement.xyz';
-
-if (import.meta.env.DEV) {
-  console.log('🔧 API Client Config:', {
-    VITE_API_BASE: import.meta.env.VITE_API_BASE,
-    API_BASE_URL: API_BASE_URL,
-    mode: import.meta.env.MODE,
-  });
-}
-
-// Event emitter for auth errors
-export const authEvents = {
-  onUnauthorized: [] as Array<() => void>,
-
-  subscribe(callback: () => void) {
-    this.onUnauthorized.push(callback);
-  },
-
-  unsubscribe(callback: () => void) {
-    this.onUnauthorized = this.onUnauthorized.filter(cb => cb !== callback);
-  },
-
-  emit() {
-    this.onUnauthorized.forEach(cb => cb());
-  }
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // Axios Instance erstellen
 export const apiClient: AxiosInstance = axios.create({
@@ -38,14 +10,16 @@ export const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000, // 30 Sekunden
-  withCredentials: true, // For cookies/sessions if needed
 });
 
-// Request Interceptor
+// Request Interceptor (für später: JWT Token)
 apiClient.interceptors.request.use(
   (config) => {
-    // Token is set via useAuth composable when logging in
-    // and via apiClient.defaults.headers.common['Authorization']
+    // Später: JWT Token aus Store holen
+    // const token = useAuthStore().token;
+    // if (token) {
+    //   config.headers.Authorization = `Bearer ${token}`;
+    // }
     return config;
   },
   (error) => {
@@ -53,98 +27,34 @@ apiClient.interceptors.request.use(
   }
 );
 
-/**
- * Helper: Zeigt User-Benachrichtigung als Toast an
- */
-function showUserNotification(errorDetail: ErrorDetail) {
-  const { error } = useToast();
-  const message = errorDetail.hint
-    ? `${errorDetail.message} — ${errorDetail.hint}`
-    : errorDetail.message;
-  error(message);
-}
-
-/**
- * Helper: Extrahiert Error Detail aus API Response
- */
-function extractErrorDetail(error: AxiosError<APIErrorResponse>): ErrorDetail | null {
-  const detail = error.response?.data?.detail;
-
-  if (!detail) return null;
-
-  // Strukturierter Error (neues Format)
-  if (isStructuredError(detail)) {
-    return detail;
-  }
-
-  // Legacy String Error (altes Format)
-  if (typeof detail === 'string') {
-    return {
-      error_code: 'LEGACY_ERROR',
-      message: detail,
-    };
-  }
-
-  return null;
-}
-
 // Response Interceptor (Error Handling)
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<APIErrorResponse>) => {
-    // Strukturierter Error aus Backend extrahieren
-    const errorDetail = extractErrorDetail(error);
-
+  (error: AxiosError) => {
     // Globales Error Handling
     if (error.response) {
-      const status = error.response.status;
-
-      // Zeige User-Benachrichtigung wenn strukturierter Error vorhanden
-      if (errorDetail) {
-        showUserNotification(errorDetail);
-
-        // Spezial-Handling für Auth Errors
-        if (status === 401) {
-          authEvents.emit(); // Trigger logout
-        }
-      } else {
-        // Fallback für Errors ohne strukturierten Error
-        switch (status) {
-          case 401:
-            console.error('❌ Unauthorized - Session expired or invalid token');
-            authEvents.emit();
-            break;
-          case 403:
-            console.error('❌ Forbidden - Insufficient permissions');
-            break;
-          case 404:
-            console.error('❌ Not Found');
-            break;
-          case 500:
-            console.error('❌ Server Error');
-            break;
-          default:
-            console.error('❌ API Error:', status);
-        }
-      }
-
-      // Debug-Log für Entwickler
-      if (import.meta.env.DEV) {
-        console.debug('API Error Details:', {
-          status,
-          errorCode: errorDetail?.error_code,
-          message: errorDetail?.message,
-          url: error.config?.url,
-          method: error.config?.method,
-        });
+      switch (error.response.status) {
+        case 401:
+          console.error('Unauthorized - bitte einloggen');
+          // Später: Redirect zu Login
+          break;
+        case 403:
+          console.error('Forbidden - keine Berechtigung');
+          break;
+        case 404:
+          console.error('Not Found');
+          break;
+        case 500:
+          console.error('Server Error');
+          break;
+        default:
+          console.error('API Error:', error.response.status);
       }
     } else if (error.request) {
-      const { error: toastError } = useToast();
-      toastError('Keine Verbindung zum Server — Bitte überprüfen Sie Ihre Internetverbindung');
+      console.error('Network Error - keine Antwort vom Server');
     } else {
-      console.error('❌ Error:', error.message);
+      console.error('Error:', error.message);
     }
-
     return Promise.reject(error);
   }
 );

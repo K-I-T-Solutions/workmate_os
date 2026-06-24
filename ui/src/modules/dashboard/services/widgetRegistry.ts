@@ -14,7 +14,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "dashboard",
     description: "Zeigt wichtige Statistiken auf einen Blick",
     icon: "BarChart",
-    component: () => import("./widgets/StatsWidget.vue"),
+    component: () => import("../components/widgets/StatsWidget.vue"),
     defaultSize: { w: 3, h: 2 },
     minSize: { w: 2, h: 2 },
     maxSize: { w: 6, h: 4 },
@@ -28,7 +28,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "activity",
     description: "Aktuelle Erinnerungen und Aufgaben",
     icon: "Clock",
-    component: () => import("./widgets/RemindersWidget.vue"),
+    component: () => import("../components/widgets/RemindersWidget.vue"),
     defaultSize: { w: 3, h: 2 },
     minSize: { w: 2, h: 2 },
     maxSize: { w: 6, h: 4 },
@@ -42,7 +42,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "actions",
     description: "Schnellzugriff auf häufige Aktionen",
     icon: "Zap",
-    component: () => import("./widgets/ShortcutsWidget.vue"),
+    component: () => import("../components/widgets/ShortcutsWidget.vue"),
     defaultSize: { w: 6, h: 1 },
     minSize: { w: 3, h: 1 },
     maxSize: { w: 6, h: 2 },
@@ -50,14 +50,13 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     configurable: false,
   },
 
-  // Zukünftige Widgets
   activityFeed: {
     key: "activityFeed",
     name: "Activity Feed",
     category: "activity",
     description: "Letzte Aktivitäten im System",
     icon: "Activity",
-    component: () => import("./widgets/ActivityFeedWidget.vue"),
+    component: () => import("../components/widgets/ActivityFeedWidget.vue"),
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
     maxSize: { w: 6, h: 6 },
@@ -71,7 +70,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "communication",
     description: "System-Benachrichtigungen",
     icon: "Bell",
-    component: () => import("./widgets/NotificationsWidget.vue"),
+    component: () => import("../components/widgets/NotificationsWidget.vue"),
     defaultSize: { w: 2, h: 2 },
     minSize: { w: 2, h: 2 },
     maxSize: { w: 4, h: 4 },
@@ -85,7 +84,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "dashboard",
     description: "Monatskalender mit Terminen",
     icon: "Calendar",
-    component: () => import("./widgets/CalendarWidget.vue"),
+    component: () => import("../components/widgets/CalendarWidget.vue"),
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 3, h: 3 },
     maxSize: { w: 6, h: 6 },
@@ -99,7 +98,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "dashboard",
     description: "Wetter-Widget für deinen Standort",
     icon: "Cloud",
-    component: () => import("./widgets/WeatherWidget.vue"),
+    component: () => import("../components/widgets/WeatherWidget.vue"),
     defaultSize: { w: 2, h: 2 },
     minSize: { w: 2, h: 2 },
     maxSize: { w: 3, h: 3 },
@@ -113,7 +112,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "stats",
     description: "Diagramme und Analysen",
     icon: "TrendingUp",
-    component: () => import("./widgets/ChartWidget.vue"),
+    component: () => import("../components/widgets/ChartWidget.vue"),
     defaultSize: { w: 4, h: 3 },
     minSize: { w: 3, h: 2 },
     maxSize: { w: 6, h: 6 },
@@ -127,7 +126,7 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     category: "monitoring",
     description: "S.T.A.R. Labs System-Status",
     icon: "Monitor",
-    component: () => import("./widgets/SystemMonitorWidget.vue"),
+    component: () => import("../components/widgets/SystemMonitorWidget.vue"),
     defaultSize: { w: 3, h: 2 },
     minSize: { w: 2, h: 2 },
     maxSize: { w: 6, h: 4 },
@@ -135,36 +134,3 @@ export const widgetRegistry: Record<string, WidgetDefinition> = {
     configurable: true,
   },
 };
-
-/**
- * Helper: Widget nach Kategorie filtern
- */
-export function getWidgetsByCategory(category: string): WidgetDefinition[] {
-  return Object.values(widgetRegistry).filter(
-    (widget) => widget.category === category
-  );
-}
-
-/**
- * Helper: Alle verfügbaren Kategorien
- */
-export function getAvailableCategories(): string[] {
-  const categories = new Set(
-    Object.values(widgetRegistry).map((w) => w.category)
-  );
-  return Array.from(categories);
-}
-
-/**
- * Helper: Widget-Definition abrufen
- */
-export function getWidgetDefinition(key: string): WidgetDefinition | undefined {
-  return widgetRegistry[key];
-}
-
-/**
- * Helper: Prüft ob Widget existiert
- */
-export function widgetExists(key: string): boolean {
-  return key in widgetRegistry;
-}
