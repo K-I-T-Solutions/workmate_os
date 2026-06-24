@@ -4,7 +4,9 @@ Handles SSO authentication via Keycloak
 """
 import logging
 import httpx
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError as JWTError
+from jwt.algorithms import RSAAlgorithm
 from typing import Optional, Dict
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -70,14 +72,12 @@ class KeycloakAuth:
             if not rsa_key:
                 return None
 
+            public_key = RSAAlgorithm.from_jwk(rsa_key)
             payload = jwt.decode(
                 token,
-                rsa_key,
+                public_key,
                 algorithms=["RS256"],
-                options={
-                    "verify_aud": False,
-                    "verify_at_hash": False,
-                }
+                options={"verify_aud": False},
             )
             return payload
 
@@ -116,20 +116,15 @@ class KeycloakAuth:
                 logger.debug(f"RSA key not found for kid: {kid}")
                 return None
 
-            # Verify and decode token
-            # Accept tokens issued for the frontend (workmate-ui) or backend client,
-            # and also "account" which Keycloak sets by default
             issuer = settings.KEYCLOAK_ISSUER
             logger.info(f"Verifying token with issuer: {issuer}")
+            public_key = RSAAlgorithm.from_jwk(rsa_key)
             payload = jwt.decode(
                 token,
-                rsa_key,
+                public_key,
                 algorithms=["RS256"],
                 issuer=issuer,
-                options={
-                    "verify_at_hash": False,
-                    "verify_aud": False,
-                }
+                options={"verify_aud": False},
             )
 
             logger.info(f"Token verified successfully! Sub: {payload.get('sub')}")
