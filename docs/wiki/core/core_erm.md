@@ -1,11 +1,3 @@
----
-layout: default
-title: Entity-Relationship Model
-parent: Core
-grand_parent: Wiki
-nav_order: 2
----
-
 # 🧩 Core Entity-Relationship Model
 
 Das folgende DBML beschreibt das komplette Core-Schema.

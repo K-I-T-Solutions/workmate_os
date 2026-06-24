@@ -76,17 +76,10 @@ class UserSettingsBase(BaseModel):
 
 
 class UserSettingsResponse(UserSettingsBase):
-    id: Optional[UUID] = None
     owner_id: Optional[UUID] = None
 
     class Config:
         from_attributes = True
-
-
-class UserSettingsUpdate(BaseModel):
-    language: Optional[str] = None
-    timezone: Optional[str] = None
-    notifications_enabled: Optional[bool] = None
 
 
 # ============================================================

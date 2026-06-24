@@ -1,14 +1,16 @@
-FROM node:22-bullseye
+FROM node:20-bullseye
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@9 --activate
+# Kopiere package.json und package-lock.json getrennt für klareres Layering
+COPY package.json package-lock.json* ./
 
-COPY package.json pnpm-lock.yaml ./
+# Installiere Abhängigkeiten
+RUN npm ci
 
-RUN pnpm install --frozen-lockfile
-
+# Danach alles kopieren (Source Code)
 COPY . .
 
 EXPOSE 5173
-CMD ["pnpm", "dev"]
+
+CMD ["npm", "run", "dev"]

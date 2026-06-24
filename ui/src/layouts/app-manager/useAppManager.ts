@@ -1,18 +1,17 @@
-import { reactive, ref, type Component, markRaw } from "vue";
-import { apps } from "./appRegistry"; // ⬅️ wichtig
+// src/layouts/app-manager/useAppManager.ts
+import { router } from "@/router";
+import { reactive, ref } from "vue";
 
 export interface WindowApp {
   id: string;
   appId: string;
   title: string;
-  component: Component;
-  props?: Record<string, any>;
+  routePath: string;
   x: number;
   y: number;
   width: number;
   height: number;
   z: number;
-  minimized: boolean;
 }
 
 const windows = reactive<WindowApp[]>([]);
@@ -22,116 +21,109 @@ let zCounter = 10;
 
 const MIN_WIDTH = 480;
 const MIN_HEIGHT = 320;
+const VIEWPORT_MAX_RATIO = 0.9;
+const WINDOW_MARGIN = 16;
 
-/* -----------------------------
-   Viewport Helpers
------------------------------- */
 function getViewport() {
-  return {
-    vw: window.innerWidth,
-    vh: window.innerHeight,
-  };
+  if (typeof window === "undefined") {
+    return { vw: 1920, vh: 1080 };
+  }
+  return { vw: window.innerWidth, vh: window.innerHeight };
 }
 
 function constrainWindow(win: WindowApp) {
   const { vw, vh } = getViewport();
 
-  win.width = Math.max(MIN_WIDTH, Math.min(win.width, vw));
-  win.height = Math.max(MIN_HEIGHT, Math.min(win.height, vh));
+  const maxWidth = vw * VIEWPORT_MAX_RATIO;
+  const maxHeight = vh * VIEWPORT_MAX_RATIO;
 
-  win.x = Math.max(0, Math.min(win.x, vw - win.width));
-  win.y = Math.max(0, Math.min(win.y, vh - win.height));
+  if (win.width > maxWidth) {
+    win.width = Math.max(MIN_WIDTH, maxWidth);
+  }
+  if (win.height > maxHeight) {
+    win.height = Math.max(MIN_HEIGHT, maxHeight);
+  }
+
+  if (win.x < WINDOW_MARGIN) win.x = WINDOW_MARGIN;
+  if (win.y < WINDOW_MARGIN) win.y = WINDOW_MARGIN;
+
+  if (win.x + win.width > vw - WINDOW_MARGIN) {
+    win.x = vw - WINDOW_MARGIN - win.width;
+  }
+  if (win.y + win.height > vh - WINDOW_MARGIN) {
+    win.y = vh - WINDOW_MARGIN - win.height;
+  }
 }
 
-/* -----------------------------
-   App Manager
------------------------------- */
-export const appManager = {
+function constrainAllWindows() {
+  windows.forEach((w) => constrainWindow(w));
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("resize", () => {
+    constrainAllWindows();
+  });
+}
+
+const appManager = {
   windows,
   activeWindow,
 
-  openWindow(appId: string, props?: Record<string, any>) {
-    const app = apps.find(a => a.id === appId);
-    if (!app) return;
-
-    // Note: Permission checks are handled in the UI (Dock component)
-    // This allows apps to open if called programmatically
-
-    const existing = windows.find(w => w.appId === appId);
+  openWindow(appId: string, title: string, routePath: string) {
+    const existing = windows.find((w) => w.appId === appId);
     if (existing) {
-      // Update props if provided (for deep-linking)
-      if (props) {
-        Object.assign(existing.props ?? {}, props);
-      }
+      existing.routePath = routePath;
       appManager.focusWindow(existing.id);
+      router.push(routePath);
       return existing.id;
     }
 
     const { vw, vh } = getViewport();
-
-    const width = app.window?.width ?? 960;
-    const height = app.window?.height ?? 620;
+    const defaultWidth = Math.min(960, vw * VIEWPORT_MAX_RATIO);
+    const defaultHeight = Math.min(620, vh * VIEWPORT_MAX_RATIO);
 
     const id = crypto.randomUUID();
-
     const win: WindowApp = {
       id,
-      appId: app.id,
-      title: app.title,
-      component: markRaw(app.component),
-      props: props ?? Object.create(null),
-      width,
-      height,
-      x: (vw - width) / 2,
-      y: (vh - height) / 2,
+      appId,
+      title,
+      routePath,
+      width: defaultWidth,
+      height: defaultHeight,
+      x: (vw - defaultWidth) / 2,
+      y: (vh - defaultHeight) / 2,
       z: ++zCounter,
-      minimized: false,
     };
 
     constrainWindow(win);
     windows.push(win);
     activeWindow.value = id;
 
+    router.push(routePath);
     return id;
   },
 
   closeWindow(id: string) {
-    const i = windows.findIndex(w => w.id === id);
-    if (i !== -1) windows.splice(i, 1);
-  },
-
-  minimizeWindow(id: string) {
-    const win = windows.find(w => w.id === id);
-    if (!win) return;
-    win.minimized = true;
-    // If this was the active window, clear active
-    if (activeWindow.value === id) {
-      activeWindow.value = null;
+    const idx = windows.findIndex((w) => w.id === id);
+    if (idx !== -1) {
+      windows.splice(idx, 1);
+      if (activeWindow.value === id) {
+        activeWindow.value = windows.length
+          ? windows[windows.length - 1].id
+          : null;
+      }
     }
-  },
-
-  restoreWindow(id: string) {
-    const win = windows.find(w => w.id === id);
-    if (!win) return;
-    win.minimized = false;
-    win.z = ++zCounter;
-    activeWindow.value = id;
   },
 
   focusWindow(id: string) {
-    const win = windows.find(w => w.id === id);
+    const win = windows.find((w) => w.id === id);
     if (!win) return;
-    // If minimized, restore it
-    if (win.minimized) {
-      appManager.restoreWindow(id);
-      return;
-    }
     win.z = ++zCounter;
     activeWindow.value = id;
   },
 
   startDragFor(id: string, e: MouseEvent) {
-    const win = windows.find(w => w.id === id);
+    const win = windows.find((w) => w.id === id);
     if (!win) return;
 
     const startX = e.clientX;
@@ -140,8 +132,26 @@ export const appManager = {
     const initialY = win.y;
 
     function move(ev: MouseEvent) {
-      win.x = initialX + (ev.clientX - startX);
-      win.y = initialY + (ev.clientY - startY);
+      const { vw, vh } = getViewport();
+
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      let nextX = initialX + dx;
+      let nextY = initialY + dy;
+
+      if (nextX < WINDOW_MARGIN) nextX = WINDOW_MARGIN;
+      if (nextY < WINDOW_MARGIN) nextY = WINDOW_MARGIN;
+
+      if (nextX + win.width > vw - WINDOW_MARGIN) {
+        nextX = vw - WINDOW_MARGIN - win.width;
+      }
+      if (nextY + win.height > vh - WINDOW_MARGIN) {
+        nextY = vh - WINDOW_MARGIN - win.height;
+      }
+
+      win.x = nextX;
+      win.y = nextY;
     }
 
     function stop() {
@@ -154,30 +164,75 @@ export const appManager = {
     window.addEventListener("mouseup", stop);
   },
 
-  startResizeFor(id: string, e: MouseEvent) {
-    const win = windows.find(w => w.id === id);
+  startResizeFor(id: string, e: MouseEvent, direction: string) {
+    const win = windows.find((w) => w.id === id);
     if (!win) return;
 
     const startX = e.clientX;
     const startY = e.clientY;
-    const initialW = win.width;
-    const initialH = win.height;
+
+    const startW = win.width;
+    const startH = win.height;
+    const startLeft = win.x;
+    const startTop = win.y;
 
     function move(ev: MouseEvent) {
-      win.width = Math.max(
-        MIN_WIDTH,
-        initialW + (ev.clientX - startX)
-      );
-      win.height = Math.max(
-        MIN_HEIGHT,
-        initialH + (ev.clientY - startY)
-      );
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      let nextW = startW;
+      let nextH = startH;
+      let nextX = startLeft;
+      let nextY = startTop;
+
+      switch (direction) {
+        case "right":
+          nextW = Math.max(MIN_WIDTH, startW + dx);
+          break;
+        case "left":
+          nextW = Math.max(MIN_WIDTH, startW - dx);
+          nextX = startLeft + dx;
+          break;
+        case "bottom":
+          nextH = Math.max(MIN_HEIGHT, startH + dy);
+          break;
+        case "top":
+          nextH = Math.max(MIN_HEIGHT, startH - dy);
+          nextY = startTop + dy;
+          break;
+        case "bottom-right":
+          nextW = Math.max(MIN_WIDTH, startW + dx);
+          nextH = Math.max(MIN_HEIGHT, startH + dy);
+          break;
+        case "bottom-left":
+          nextW = Math.max(MIN_WIDTH, startW - dx);
+          nextH = Math.max(MIN_HEIGHT, startH + dy);
+          nextX = startLeft + dx;
+          break;
+        case "top-right":
+          nextW = Math.max(MIN_WIDTH, startW + dx);
+          nextH = Math.max(MIN_HEIGHT, startH - dy);
+          nextY = startTop + dy;
+          break;
+        case "top-left":
+          nextW = Math.max(MIN_WIDTH, startW - dx);
+          nextH = Math.max(MIN_HEIGHT, startH - dy);
+          nextX = startLeft + dx;
+          nextY = startTop + dy;
+          break;
+      }
+
+      win.width = nextW;
+      win.height = nextH;
+      win.x = nextX;
+      win.y = nextY;
+
+      constrainWindow(win);
     }
 
     function stop() {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", stop);
-      constrainWindow(win);
     }
 
     window.addEventListener("mousemove", move);

@@ -15,12 +15,12 @@ from __future__ import annotations
 import uuid
 from enum import Enum
 from typing import TYPE_CHECKING
-from datetime import datetime
+
 from sqlalchemy import String, Text, ForeignKey, Index, CheckConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.settings.database import Base
-from app.core.misc.mixins import UUIDMixin, TimestampMixin
+from app.core.database import Base
+from app.core.mixins import UUIDMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.modules.backoffice.projects.models import Project
@@ -41,20 +41,9 @@ class CustomerStatus(str, Enum):
 
 class CustomerType(str, Enum):
     """Kundentyp."""
-    CREATOR = "creator"
-    INDIVIDUAL = "individual"
     BUSINESS = "business"
+    INDIVIDUAL = "individual"
     GOVERNMENT = "government"
-
-
-class PipelineStage(str, Enum):
-    """Pipeline-Stage für Sales-Tracking."""
-    NEW_LEAD = "new_lead"
-    QUALIFIED = "qualified"
-    PROPOSAL = "proposal"
-    NEGOTIATION = "negotiation"
-    WON = "won"
-    LOST = "lost"
 
 
 # ============================================================================
@@ -69,7 +58,7 @@ class Customer(Base, UUIDMixin, TimestampMixin):
 
     Attributes:
         name: Kundenname / Firmenname
-        type: Kundentyp (creator, individual, business, government)
+        type: Kundentyp (business, individual, government)
         status: Aktueller Status (active, inactive, lead, blocked)
         tax_id: Steuernummer / USt-IdNr
         contacts: Liste der Ansprechpartner
@@ -78,30 +67,22 @@ class Customer(Base, UUIDMixin, TimestampMixin):
     """
     __tablename__ = "customers"
     __table_args__ = (
-        Index("ix_customers_customer_number", "customer_number"),
         Index("ix_customers_name", "name"),
         Index("ix_customers_email", "email"),
         Index("ix_customers_tax_id", "tax_id"),
         Index("ix_customers_status", "status"),
         Index("ix_customers_type", "type"),
-        Index("ix_customers_pipeline_stage", "pipeline_stage"),
         CheckConstraint(
             "status IN ('active', 'inactive', 'lead', 'blocked')",
             name="check_customer_status_valid"
         ),
         CheckConstraint(
-            "type IN ('creator', 'individual', 'business', 'government')",
+            "type IN ('business', 'individual', 'government')",
             name="check_customer_type_valid"
         ),
     )
 
     # Basic Info
-    customer_number: Mapped[str] = mapped_column(
-        String(50),
-        unique=True,
-        nullable=False,
-        comment="Eindeutige Kundennummer (KIT-CUS-000001)"
-    )
     name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -110,7 +91,7 @@ class Customer(Base, UUIDMixin, TimestampMixin):
     type: Mapped[str | None] = mapped_column(
         String(50),
         default=CustomerType.BUSINESS.value,
-        comment="Kundentyp: creator, individual, business, government"
+        comment="Kundentyp: business, individual, government"
     )
 
     # Contact Info
@@ -157,12 +138,6 @@ class Customer(Base, UUIDMixin, TimestampMixin):
         Text,
         comment="Interne Notizen"
     )
-    pipeline_stage: Mapped[str | None] = mapped_column(
-        String(50),
-        default=PipelineStage.NEW_LEAD.value,
-        server_default=PipelineStage.NEW_LEAD.value,
-        comment="Pipeline-Stage: new_lead, qualified, proposal, negotiation, won, lost"
-    )
     status: Mapped[str] = mapped_column(
         String(50),
         default=CustomerStatus.ACTIVE.value,
@@ -187,12 +162,6 @@ class Customer(Base, UUIDMixin, TimestampMixin):
         "Invoice",
         back_populates="customer",
         cascade="all, delete-orphan"
-    )
-    documents: Mapped[list] = relationship(
-        "Document",
-        back_populates="customer",
-        cascade="all, delete-orphan",
-        foreign_keys="Document.customer_id",
     )
 
     # ========================================================================
@@ -398,27 +367,3 @@ class Contact(Base, UUIDMixin, TimestampMixin):
     def __repr__(self) -> str:
         primary = " [PRIMARY]" if self.is_primary else ""
         return f"<Contact(id={self.id}, name='{self.full_name}'{primary})>"
-
-class Activity(Base, UUIDMixin, TimestampMixin):
-    __tablename__ = "crm_activities"
-    __table_args__ = (
-        Index("ix_activity_customer_time", "customer_id", "occurred_at"),
-        Index("ix_activity_time", "occurred_at"),
-    )
-
-    customer_id: Mapped[str] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"),
-        nullable=False
-    )
-    contact_id: Mapped[str | None] = mapped_column(
-        ForeignKey("contacts.id", ondelete="SET NULL"),
-        nullable=True
-    )
-
-    # string + Validierung (pragmatisch)
-    type: Mapped[str] = mapped_column(String(32), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
-
-    customer = relationship("Customer")
-    contact = relationship("Contact")

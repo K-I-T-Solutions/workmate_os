@@ -1,11 +1,3 @@
----
-layout: default
-title: Data Flows
-parent: Core
-grand_parent: Wiki
-nav_order: 4
----
-
 # 🔄 Core Data Flows
 
 Dieses Diagramm zeigt, wie die Core-Komponenten miteinander interagieren.

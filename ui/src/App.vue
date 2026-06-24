@@ -1,25 +1,9 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router';
-import { onMounted } from 'vue';
-import { useAuth } from '@/composables/useAuth';
-import { useTheme } from '@/composables/useTheme';
-import ToastContainer from '@/components/ToastContainer.vue';
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
-
-const { user } = useAuth();
-const { initializeTheme } = useTheme();
-
-// Initialize theme on app mount
-onMounted(() => {
-  const userTheme = user.value?.theme;
-  initializeTheme(userTheme);
-});
+import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <RouterView />
-  <ToastContainer />
-  <ConfirmDialog />
+<RouterView />
 </template>
 
 <style scoped>

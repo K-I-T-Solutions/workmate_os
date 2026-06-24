@@ -13,7 +13,7 @@ CHANGES:
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List
-from pydantic import BaseModel, Field, field_validator, computed_field, ConfigDict
+from pydantic import BaseModel, Field, field_validator, computed_field
 from enum import Enum
 import uuid
 
@@ -159,7 +159,7 @@ class CustomerBriefResponse(BaseModel):
 
 class InvoiceBase(BaseModel):
     """Base Schema für Invoices."""
-    invoice_number: Optional[str] = Field(None, min_length=1, max_length=50, description="Rechnungsnummer (optional, wird automatisch generiert)")
+    invoice_number: str = Field(..., min_length=1, max_length=50, description="Rechnungsnummer")
     issued_date: Optional[date] = Field(None, description="Rechnungsdatum")
     due_date: Optional[date] = Field(None, description="Fälligkeitsdatum")
     customer_id: uuid.UUID = Field(..., description="Zugehöriger Kunde")
@@ -191,27 +191,10 @@ class InvoiceCreate(InvoiceBase):
 
 
 class InvoiceUpdate(BaseModel):
-    """
-    Schema für Invoice Update (Partial).
-
-    Alle Felder sind optional. Die Compliance-Validierung entscheidet,
-    welche Felder je nach Invoice-Status geändert werden dürfen.
-    """
-    # Financial fields (immutable after sent)
-    invoice_number: Optional[str] = Field(None, min_length=1, max_length=50)
-    customer_id: Optional[uuid.UUID] = None
-    project_id: Optional[uuid.UUID] = None
-    issued_date: Optional[date] = None
-    due_date: Optional[date] = None
-    document_type: Optional[str] = None
-
-    # Always editable
+    """Schema für Invoice Update (Partial)."""
     status: Optional[str] = None
     notes: Optional[str] = Field(None, max_length=5000)
     terms: Optional[str] = Field(None, max_length=5000)
-
-    # Line items (immutable after sent)
-    line_items: Optional[List[InvoiceLineItemCreate]] = None
 
 
 class InvoiceStatusUpdate(BaseModel):
@@ -238,15 +221,12 @@ class InvoiceStatusUpdate(BaseModel):
 class InvoiceResponse(InvoiceBase):
     """Schema für Invoice Response."""
     id: uuid.UUID
-    invoice_number: str  # Override: In Response always present
     total: Decimal
     subtotal: Decimal
     tax_amount: Decimal
     created_at: datetime
     updated_at: datetime
     pdf_path: Optional[str] = None
-    xml_path: Optional[str] = None
-    zugferd_path: Optional[str] = None
 
     # Relations
     customer: CustomerBriefResponse
@@ -349,59 +329,3 @@ class InvoiceFilterParams(BaseModel):
     date_to: Optional[date] = None
     skip: int = Field(0, ge=0)
     limit: int = Field(100, ge=1, le=500)
-
-
-# ============================================================================
-# AUDIT LOGS
-# ============================================================================
-
-class AuditLogResponse(BaseModel):
-    """Audit Log Response für Compliance."""
-    id: uuid.UUID
-    entity_type: str = Field(description="Typ der Entität (Invoice, Payment, Expense)")
-    entity_id: uuid.UUID = Field(description="UUID der geänderten Entität")
-    action: str = Field(description="Art der Änderung (create, update, delete, status_change)")
-    old_values: Optional[dict] = Field(None, description="Alte Werte (JSON)")
-    new_values: Optional[dict] = Field(None, description="Neue Werte (JSON)")
-    user_id: Optional[str] = Field(None, description="User-ID")
-    timestamp: datetime = Field(description="Zeitstempel der Änderung")
-    ip_address: Optional[str] = Field(None, description="IP-Adresse")
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class AuditLogListResponse(BaseModel):
-    """Liste von Audit Logs mit Pagination."""
-    items: List[AuditLogResponse] = Field(description="Liste der Audit Log Einträge")
-    total: int = Field(description="Gesamtanzahl")
-    skip: int = Field(description="Pagination Offset")
-    limit: int = Field(description="Max Anzahl pro Page")
-
-
-# ============================================================================
-# INVOICE REMINDERS (MAHNWESEN)
-# ============================================================================
-
-class ReminderCreate(BaseModel):
-    """Mahnung erstellen."""
-    level: int = Field(..., ge=1, le=3, description="Mahnstufe 1=Erinnerung, 2=1. Mahnung, 3=2. Mahnung")
-    fee: Decimal = Field(Decimal("0.00"), ge=0, description="Mahngebühr in EUR")
-    due_date: Optional[date] = Field(None, description="Neue Zahlungsfrist (Standard: +7 Tage)")
-    notes: Optional[str] = Field(None, description="Interne Notizen")
-    send_email: bool = Field(True, description="Sofort per E-Mail senden?")
-
-
-class ReminderResponse(BaseModel):
-    """Mahnung Response."""
-    id: uuid.UUID
-    invoice_id: uuid.UUID
-    level: int
-    fee: Decimal
-    due_date: Optional[date]
-    sent_at: Optional[datetime]
-    notes: Optional[str]
-    is_sent: bool
-    level_label: str
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

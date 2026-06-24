@@ -1,137 +1,56 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppLayout from "@/layouts/AppLayout.vue";
-import CrmApp from "@/modules/crm/CrmApp.vue";
-import HRApp from "@/modules/hr/HRApp.vue";
-import SupportApp from "@/modules/support/SupportApp.vue";
-import KnowledgeApp from "@/modules/knowledge/KnowledgeApp.vue";
-import LoginPage from "@/pages/LoginPage.vue";
-import { useAuth } from "@/composables/useAuth";
 
 const routes = [
-  // Redirect root to app
-  { path: "/", redirect: "/app" },
+  { path: "/", redirect: "/under-construction" },
 
-  // Login Page (Public)
-  {
-    path: "/login",
-    name: "login",
-    component: LoginPage,
-    meta: { requiresAuth: false },
-  },
-
-  // Auth Callback (Public)
-  {
-    path: "/auth/callback",
-    name: "auth-callback",
-    component: () => import("@/pages/AuthCallbackPage.vue"),
-    meta: { requiresAuth: false },
-  },
-
-  // Main App (Protected)
   {
     path: "/app",
     component: AppLayout,
-    meta: { requiresAuth: true },
     children: [
-      {
-        path: "",
-        redirect: "/app/dashboard",
-      },
+      // Dashboard
       {
         path: "dashboard",
         name: "dashboard",
-        component: () =>
-          import("@/modules/dashboard/pages/DashboardPage.vue"),
+        component: () => import("@/modules/dashboard/pages/DashboardPage.vue"),
       },
+
+      // CRM
       {
         path: "crm",
-        name: "crm",
-        component: CrmApp,
-      },
-      {
-        path: "kb",
-        component: KnowledgeApp,
-        children: [
-          { path: "", redirect: "/app/kb/home" },
-          { path: "home", name: "kb-home", meta: { view: "home" } },
-          { path: "categories/:id", name: "kb-category", meta: { view: "category" } },
-          { path: "articles/:id", name: "kb-article", meta: { view: "article" } },
-        ],
-      },
-      {
-        path: "support",
-        component: SupportApp,
-        children: [
-          { path: "", redirect: "/app/support/tickets" },
-          { path: "tickets", name: "support-tickets", meta: { view: "tickets" } },
-          { path: "tickets/:id", name: "support-ticket-detail", meta: { view: "ticket-detail" } },
-        ],
-      },
-      {
-        path: "hr",
-        component: HRApp,
         children: [
           {
             path: "",
-            redirect: "/app/hr/my-leave",
+            name: "crm-root",
+            component: () =>
+              import("@/modules/crm/pages/CustomersListPage.vue"),
           },
           {
-            path: "my-leave",
-            name: "hr-my-leave",
-            meta: { view: "my-leave" },
+            path: "customers",
+            name: "crm-customers",
+            component: () =>
+              import("@/modules/crm/pages/CustomersListPage.vue"),
           },
           {
-            path: "dashboard",
-            name: "hr-dashboard",
-            meta: { view: "dashboard" },
+            path: "customers/:customerId",
+            name: "crm-customer-detail",
+            component: () =>
+              import("@/modules/crm/pages/CustomerDetailPage.vue"),
           },
           {
-            path: "leave/requests",
-            name: "hr-leave-requests",
-            meta: { view: "leave" },
+            path: "customers/:customerId/contacts",
+            name: "crm-contacts",
+            component: () =>
+              import("@/modules/crm/pages/ContactsListPage.vue"),
           },
           {
-            path: "leave/requests/:id",
-            name: "hr-leave-request-detail",
-            meta: { view: "leave-detail" },
-          },
-          {
-            path: "leave/approvals",
-            name: "hr-leave-approvals",
-            meta: { view: "approvals" },
-          },
-          {
-            path: "my-requests",
-            name: "hr-my-requests",
-            meta: { view: "my-leave" },
-          },
-          {
-            path: "my-requests/:id",
-            name: "hr-my-request-detail",
-            meta: { view: "my-leave" },
-          },
-          {
-            path: "employees",
-            name: "hr-employees",
-            meta: { view: "employees" },
-          },
-          {
-            path: "employees/:id",
-            name: "hr-employee-detail",
-            meta: { view: "employee-detail" },
-          },
-          {
-            path: "recruiting",
-            name: "hr-recruiting",
-            meta: { view: "recruiting" },
-          },
-          {
-            path: "recruiting/jobs/:id",
-            name: "hr-recruiting-applications",
-            meta: { view: "applications" },
+            path: "customers/:customerId/contacts/:contactId",
+            name: "crm-contact-detail",
+            component: () =>
+              import("@/modules/crm/pages/ContactDetailPage.vue"),
           },
         ],
-      }
+      },
     ],
   },
 
@@ -139,51 +58,14 @@ const routes = [
   {
     path: "/under-construction",
     component: () => import("@/pages/UnderConstruction.vue"),
-    meta: { requiresAuth: false },
   },
   {
     path: "/linktree",
     component: () => import("@/pages/Linktree.vue"),
-    meta: { requiresAuth: false },
   },
 ];
 
 export const router = createRouter({
   history: createWebHistory(),
   routes,
-});
-
-// Auth Guard
-router.beforeEach(async (to, from, next) => {
-  const { isAuthenticated, initializeAuth, fetchCurrentUser } = useAuth();
-
-  // Initialize auth from localStorage
-  if (!isAuthenticated.value) {
-    initializeAuth();
-  }
-
-  // Check if route requires auth
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth !== false);
-
-  if (requiresAuth) {
-    if (!isAuthenticated.value) {
-      // Not authenticated, redirect to login
-      next({ name: 'login', query: { redirect: to.fullPath } });
-    } else {
-      // Authenticated, verify token is still valid
-      // (Only check on route change, not every navigation)
-      if (from.path === '/login') {
-        await fetchCurrentUser();
-      }
-      next();
-    }
-  } else {
-    // Public route
-    if (to.name === 'login' && isAuthenticated.value) {
-      // Already logged in, redirect to app
-      next({ path: '/app' });
-    } else {
-      next();
-    }
-  }
 });

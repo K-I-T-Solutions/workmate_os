@@ -27,20 +27,20 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Date,
+    DateTime,
     Numeric,
     func,
     Index,
     CheckConstraint,
     event,
     Integer,
-    UniqueConstraint,
-    DateTime,
-    JSON
+    JSON,
+    UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.settings.database import Base
-from app.core.misc.mixins import UUIDMixin, TimestampMixin
+from app.core.database import Base
+from app.core.mixins import UUIDMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.modules.backoffice.crm.models import Customer
@@ -104,8 +104,7 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         Index("ix_invoices_status", "status"),
         Index("ix_invoices_issued_date", "issued_date"),
         Index("ix_invoices_due_date", "due_date"),
-        # UNIQUE Constraint für invoice_number (verhindert Duplikate und Race Conditions)
-        UniqueConstraint("invoice_number", name="uq_invoices_invoice_number"),
+        Index("ix_invoices_invoice_number", "invoice_number"),
         CheckConstraint("total >= 0", name="check_invoice_total_positive"),
         CheckConstraint("subtotal >= 0", name="check_invoice_subtotal_positive"),
         CheckConstraint("tax_amount >= 0", name="check_invoice_tax_positive"),
@@ -122,6 +121,8 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     # Business Fields
     invoice_number: Mapped[str] = mapped_column(
         String(50),
+        unique=True,
+        index=True,
         nullable=False,
         comment="Eindeutige Rechnungsnummer (z.B. RE-2025-001)"
     )
@@ -170,14 +171,6 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         Text,
         comment="Pfad zur generierten PDF-Rechnung"
     )
-    xml_path: Mapped[str | None] = mapped_column(
-        Text,
-        comment="Pfad zur XRechnung-XML-Datei"
-    )
-    zugferd_path: Mapped[str | None] = mapped_column(
-        Text,
-        comment="Pfad zum ZUGFeRD-PDF (Hybrid mit eingebetteter XML)"
-    )
     notes: Mapped[str | None] = mapped_column(
         Text,
         comment="Interne Notizen"
@@ -185,12 +178,6 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     terms: Mapped[str | None] = mapped_column(
         Text,
         comment="Zahlungsbedingungen und AGB"
-    )
-
-    # Soft-Delete (GoBD Compliance)
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime,
-        comment="Zeitpunkt der Soft-Deletion (NULL = nicht gelöscht)"
     )
 
     # Foreign Keys
@@ -232,13 +219,6 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         back_populates="invoice",
         cascade="all, delete-orphan"
     )
-    reminders: Mapped[list["InvoiceReminder"]] = relationship(
-        "InvoiceReminder",
-        back_populates="invoice",
-        cascade="all, delete-orphan",
-        order_by="InvoiceReminder.level",
-        lazy="selectin"
-    )
 
 
 
@@ -262,28 +242,16 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
 
     def update_status_from_payments(self) -> None:
         """
-        DEPRECATED: Use invoices_crud.update_invoice_status_from_payments() instead.
+        Aktualisiert Status basierend auf Zahlungseingängen.
 
-        Diese Methode wird nicht mehr verwendet. Status-Updates erfolgen jetzt
-        über die zentrale CRUD-Funktion für konsistentes Audit Logging und
-        State Machine Handling.
-
-        Old logic (for reference):
+        Logik:
         - outstanding = 0 → PAID
         - 0 < outstanding < total → PARTIAL
         - outstanding = total → SENT (falls bereits gesendet)
         - overdue falls due_date überschritten
         """
-        import warnings
-        warnings.warn(
-            "update_status_from_payments() is deprecated. "
-            "Use invoices_crud.update_invoice_status_from_payments() instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        # Legacy implementation (minimal, for backward compatibility)
         if self.status == InvoiceStatus.CANCELLED.value:
-            return
+            return  # Cancelled bleibt cancelled
 
         outstanding = self.outstanding_amount
 
@@ -293,6 +261,7 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
             self.status = InvoiceStatus.PARTIAL.value
         elif self.is_overdue:
             self.status = InvoiceStatus.OVERDUE.value
+        # Sonst status beibehalten (draft/sent)
 
     # ========================================================================
     # PROPERTIES
@@ -440,12 +409,6 @@ class InvoiceLineItem(Base, UUIDMixin):
         comment="Rabatt in Prozent"
     )
 
-    # Soft-Delete (GoBD Compliance)
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime,
-        comment="Zeitpunkt der Soft-Deletion (NULL = nicht gelöscht)"
-    )
-
     # Foreign Keys
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("invoices.id", ondelete="CASCADE"),
@@ -572,19 +535,6 @@ class Payment(Base, UUIDMixin, TimestampMixin):
         comment="Interne Notiz zum Zahlungseingang"
     )
 
-    # Payment Gateway Integration Fields
-    stripe_payment_intent_id: Mapped[str | None] = mapped_column(
-        String(100),
-        unique=True,
-        comment="Stripe Payment Intent ID (pi_...)"
-    )
-
-    # Soft-Delete (GoBD Compliance)
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime,
-        comment="Zeitpunkt der Soft-Deletion (NULL = nicht gelöscht)"
-    )
-
     # Foreign Keys
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("invoices.id", ondelete="CASCADE"),
@@ -613,108 +563,18 @@ class Payment(Base, UUIDMixin, TimestampMixin):
 # EVENTS (Auto-Updates)
 # ============================================================================
 
-# DEPRECATED: Event-Handler deaktiviert
-# Status-Updates werden jetzt explizit in payments_crud.py durchgeführt
-# über invoices_crud.update_invoice_status_from_payments()
-#
-# @event.listens_for(Payment, "after_insert")
-# @event.listens_for(Payment, "after_update")
-# @event.listens_for(Payment, "after_delete")
-# def update_invoice_status_after_payment(mapper, connection, target):
-#     """
-#     DEPRECATED: Aktualisiert Invoice-Status automatisch nach Payment-Änderungen.
-#     Status-Updates erfolgen jetzt über zentrale CRUD-Funktion.
-#     """
-#     if target.invoice:
-#         target.invoice.update_status_from_payments()
-
-# =====================================================================
-# Audit Trail
-# =====================================================================
-
-class AuditLog(Base, UUIDMixin):
+@event.listens_for(Payment, "after_insert")
+@event.listens_for(Payment, "after_update")
+@event.listens_for(Payment, "after_delete")
+def update_invoice_status_after_payment(mapper, connection, target):
     """
-    Audit Trail für Compliance (GoBD, HGB, AO).
+    Aktualisiert Invoice-Status automatisch nach Payment-Änderungen.
 
-    Protokolliert alle Änderungen an Invoices, Payments und Expenses
-    für lückenlose Nachvollziehbarkeit und gesetzliche Anforderungen.
-
-    Attributes:
-        entity_type: Typ der geänderten Entität (Invoice, Payment, Expense)
-        entity_id: UUID der geänderten Entität
-        action: Art der Änderung (create, update, delete, status_change)
-        old_values: Alte Werte als JSON (bei update/delete)
-        new_values: Neue Werte als JSON (bei create/update)
-        user_id: Optionale User-ID (für zukünftige Auth-Integration)
-        timestamp: Zeitstempel der Änderung
-        ip_address: Optionale IP-Adresse für zusätzliche Sicherheit
+    WICHTIG: Läuft im after_insert/update/delete Event!
     """
-    __tablename__ = "audit_logs"
-    __table_args__ = (
-        Index("ix_audit_logs_entity", "entity_type", "entity_id"),
-        Index("ix_audit_logs_timestamp", "timestamp"),
-        Index("ix_audit_logs_action", "action"),
-        Index("ix_audit_logs_user_id", "user_id"),
-        CheckConstraint(
-            "action IN ("
-            "'create', 'update', 'delete', 'status_change',"
-            # CRM / Kommunikation
-            "'call', 'email', 'message', 'note',"
-            # Support (Phase 4)
-            "'ticket_created', 'ticket_updated', 'ticket_closed',"
-            # Auth
-            "'login', 'logout',"
-            # Dokumente
-            "'upload'"
-            ")",
-            name="check_audit_action_valid"
-        ),
-    )
-
-    # Business Fields
-    entity_type: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        comment="Typ der Entität (Invoice, Payment, Expense, Customer, Contact, ...)"
-    )
-    entity_id: Mapped[uuid.UUID] = mapped_column(
-        nullable=False,
-        comment="UUID der geänderten Entität"
-    )
-    action: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        comment="Art der Aktion: create/update/delete/status_change/call/email/message/note/ticket_*/login/logout/upload"
-    )
-    old_values: Mapped[dict | None] = mapped_column(
-        JSON,
-        comment="Alte Werte als JSON (bei update/delete)"
-    )
-    new_values: Mapped[dict | None] = mapped_column(
-        JSON,
-        comment="Neue Werte als JSON (bei create/update)"
-    )
-    user_id: Mapped[str | None] = mapped_column(
-        String(100),
-        comment="User-ID des Benutzers (für zukünftige Integration)"
-    )
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime,
-        server_default=func.now(),
-        nullable=False,
-        comment="Zeitstempel der Änderung"
-    )
-    ip_address: Mapped[str | None] = mapped_column(
-        String(45),
-        comment="IP-Adresse (IPv4/IPv6) für zusätzliche Sicherheit"
-    )
-
-    def __repr__(self) -> str:
-        return (
-            f"<AuditLog(entity='{self.entity_type}:{self.entity_id}', "
-            f"action='{self.action}', timestamp={self.timestamp})>"
-        )
-
+    # Target ist das Payment-Objekt
+    if target.invoice:
+        target.invoice.update_status_from_payments()
 
 # =====================================================================
 # Number Generator
@@ -757,74 +617,34 @@ class NumberSequence(Base, UUIDMixin, TimestampMixin):
         return f"<NumberSequence(type='{self.doc_type}', year={self.year}, current={self.current_number})>"
 
 
-# =====================================================================
-# Invoice Reminder (Mahnwesen)
-# =====================================================================
-
-class InvoiceReminder(Base, UUIDMixin, TimestampMixin):
-    """
-    Mahnungen für überfällige Rechnungen.
-
-    Stufen:
-      1 = Zahlungserinnerung (0 € Gebühr, +7 Tage)
-      2 = 1. Mahnung        (5 € Gebühr, +7 Tage)
-      3 = 2. Mahnung        (15 € Gebühr, +7 Tage)
-    """
-    __tablename__ = "invoice_reminders"
+class AuditLog(Base, UUIDMixin):
+    """Audit Trail für Compliance (GoBD, HGB, AO)."""
+    __tablename__ = "audit_logs"
     __table_args__ = (
-        Index("ix_invoice_reminders_invoice_id", "invoice_id"),
-        Index("ix_invoice_reminders_level", "invoice_id", "level"),
-        CheckConstraint("level IN (1, 2, 3)", name="check_reminder_level_valid"),
-        CheckConstraint("fee >= 0", name="check_reminder_fee_positive"),
-        UniqueConstraint("invoice_id", "level", name="uq_invoice_reminder_level"),
+        Index("ix_audit_logs_entity", "entity_type", "entity_id"),
+        Index("ix_audit_logs_timestamp", "timestamp"),
+        Index("ix_audit_logs_action", "action"),
+        Index("ix_audit_logs_user_id", "user_id"),
+        CheckConstraint(
+            "action IN ("
+            "'create', 'update', 'delete', 'status_change',"
+            "'call', 'email', 'message', 'note',"
+            "'ticket_created', 'ticket_updated', 'ticket_closed',"
+            "'login', 'logout',"
+            "'upload'"
+            ")",
+            name="check_audit_action_valid"
+        ),
     )
 
-    invoice_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("invoices.id", ondelete="CASCADE"),
-        nullable=False,
-        comment="Zugehörige Rechnung"
-    )
-    level: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        comment="Mahnstufe: 1=Erinnerung, 2=1. Mahnung, 3=2. Mahnung"
-    )
-    fee: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2),
-        default=Decimal("0.00"),
-        server_default="0.00",
-        comment="Mahngebühr in EUR"
-    )
-    due_date: Mapped[date | None] = mapped_column(
-        Date,
-        comment="Neue Zahlungsfrist in der Mahnung"
-    )
-    sent_at: Mapped[datetime | None] = mapped_column(
-        DateTime,
-        comment="Zeitpunkt des Versands (NULL = noch nicht gesendet)"
-    )
-    pdf_path: Mapped[str | None] = mapped_column(
-        Text,
-        comment="Pfad zur Mahnungs-PDF"
-    )
-    notes: Mapped[str | None] = mapped_column(
-        Text,
-        comment="Interne Notizen zur Mahnung"
-    )
-
-    invoice: Mapped[Invoice] = relationship(
-        "Invoice",
-        back_populates="reminders"
-    )
-
-    @property
-    def is_sent(self) -> bool:
-        return self.sent_at is not None
-
-    @property
-    def level_label(self) -> str:
-        labels = {1: "Zahlungserinnerung", 2: "1. Mahnung", 3: "2. Mahnung (Letzte)"}
-        return labels.get(self.level, f"Mahnstufe {self.level}")
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    old_values: Mapped[dict | None] = mapped_column(JSON)
+    new_values: Mapped[dict | None] = mapped_column(JSON)
+    user_id: Mapped[str | None] = mapped_column(String(100))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    ip_address: Mapped[str | None] = mapped_column(String(45))
 
     def __repr__(self) -> str:
-        return f"<InvoiceReminder(invoice={self.invoice_id}, level={self.level}, sent={self.is_sent})>"
+        return f"<AuditLog(entity='{self.entity_type}:{self.entity_id}', action='{self.action}')>"

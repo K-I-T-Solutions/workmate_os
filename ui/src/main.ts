@@ -5,8 +5,6 @@ import App from "./App.vue";
 import { router } from "./router/index.ts";
 import { WorkmateAssets } from "./services/assets.ts";
 import "./styles/tokens.css";
-import "./styles/mobile-utilities.css";
-
 
 // Set Favicon
 const faviconLink = document.querySelector("link[rel='icon']") || document.createElement('link');

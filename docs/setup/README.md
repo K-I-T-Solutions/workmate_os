@@ -5,27 +5,32 @@ nav_order: 3
 has_children: true
 ---
 
-# ⚙️ Setup & Konfiguration
+# Setup & Konfiguration
 
 **Installation und Konfiguration von WorkmateOS**
 
 ---
 
-## 📋 Setup-Anleitungen
+## Development Setup
 
-### [Zitadel SSO Setup](./zitadel_setup.md)
-Vollständige Anleitung zur Konfiguration von Zitadel als Identity Provider:
-- Zitadel Installation
-- Application erstellen
-- Rollen konfigurieren
-- Backend-Integration
-- Frontend-Integration
+```bash
+# Gesamtes Dev-System starten
+make dev-up
+
+# Datenbank-Migrationen
+make db-migrate
+```
+
+Lokale Umgebung nach `make dev-up`:
+
+- **UI:** https://workmate.test
+- **API:** https://api.workmate.test
+- **API Docs:** https://api.workmate.test/docs
+- **Login:** https://login.workmate.test (Keycloak)
 
 ---
 
-## 🚀 Quick Start
-
-### Development Setup
+## Manuell (ohne Make)
 
 **1. Backend:**
 ```bash
@@ -39,40 +44,57 @@ uvicorn app.main:app --reload
 
 **2. Frontend:**
 ```bash
-cd ui
+cd ui-v3
 npm install
 npm run dev
 ```
 
-**3. Database:**
+**3. Datenbank:**
 ```bash
-docker-compose up -d postgres
+docker compose up -d postgres
 ```
 
 ---
 
-## 🔧 Konfiguration
-
-### Environment Variables
+## Environment Variables
 
 **Backend (`.env`):**
 ```bash
 DATABASE_URL=postgresql://user:pass@localhost:5432/workmate
-ZITADEL_ISSUER=https://zitadel.example.com
-ZITADEL_CLIENT_ID=your-client-id
-ZITADEL_CLIENT_SECRET=your-secret
+KEYCLOAK_URL=https://login.kit-it-koblenz.de
+KEYCLOAK_REALM=kit
+KEYCLOAK_CLIENT_ID=workmate
+KEYCLOAK_CLIENT_SECRET=your-secret
+SMTP_HOST=your-smtp-host
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-pass
 ```
 
-**Frontend (`ui/.env`):**
+**Frontend (`ui-v3/.env.local`):**
 ```bash
-VITE_API_URL=http://localhost:8000
-VITE_ZITADEL_ISSUER=https://zitadel.example.com
-VITE_ZITADEL_CLIENT_ID=your-client-id
+NEXT_PUBLIC_API_URL=https://api.workmate.kit-it-koblenz.de
+NEXTAUTH_URL=https://workmate.kit-it-koblenz.de
+NEXTAUTH_SECRET=your-secret
+KEYCLOAK_CLIENT_ID=workmate
+KEYCLOAK_CLIENT_SECRET=your-secret
+KEYCLOAK_ISSUER=https://login.kit-it-koblenz.de/realms/kit
 ```
 
 ---
 
-## 📚 Siehe auch
+## Production Deploy
+
+Deploy läuft via GitHub Actions auf `workmate-01` (Hetzner). Manuell:
+
+```bash
+./deploy.sh
+```
+
+Alembic-Migrationen werden automatisch beim Deploy ausgeführt.
+
+---
+
+## Siehe auch
 
 - [Backend Module](../wiki/backend/MODULE_UEBERSICHT.md)
 - [Frontend Architektur](../wiki/frontend/architecture.md)
@@ -80,4 +102,4 @@ VITE_ZITADEL_CLIENT_ID=your-client-id
 
 ---
 
-**Letzte Aktualisierung:** 30. Dezember 2025
+**Stand:** Juni 2026 · WorkmateOS v3.0

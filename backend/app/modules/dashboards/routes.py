@@ -6,21 +6,17 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.settings.database import get_db
-from app.core.auth.auth import get_current_user
-from app.core.auth.roles import require_permissions
+from app.core.database import get_db
 from app.modules.dashboards import crud, schemas
 
 router = APIRouter(prefix="/dashboards", tags=["Dashboards"])
 
 
 @router.get("", response_model=schemas.DashboardListResponse)
-@require_permissions(["dashboards.view", "dashboards.*"])
 def list_dashboards(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
 ):
     dashboards, total = crud.get_dashboards(db, skip=skip, limit=limit)
     return {
@@ -30,11 +26,9 @@ def list_dashboards(
 
 
 @router.get("/my-dashboard", response_model=schemas.DashboardFullResponse)
-@require_permissions(["dashboards.view", "dashboards.*"])
 def get_my_dashboard(
     owner_id: UUID = Query(..., description="Current user's UUID"),
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
 ):
     """
     Vollständiges WorkmateOS-Dashboard für den aktuellen User:
@@ -51,11 +45,9 @@ def get_my_dashboard(
 
 
 @router.get("/{dashboard_id}", response_model=schemas.DashboardResponse)
-@require_permissions(["dashboards.view", "dashboards.*"])
 def get_dashboard(
     dashboard_id: UUID,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
 ):
     dashboard = crud.get_dashboard(db, dashboard_id)
     if dashboard is None:
@@ -65,11 +57,9 @@ def get_dashboard(
 
 
 @router.post("", response_model=schemas.DashboardResponse, status_code=201)
-@require_permissions(["dashboards.write", "dashboards.*"])
 def create_dashboard(
     dashboard: schemas.DashboardCreate,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
 ):
     existing = crud.get_dashboard_by_owner(db, dashboard.owner_id)
     if existing:
@@ -81,12 +71,10 @@ def create_dashboard(
 
 
 @router.put("/{dashboard_id}", response_model=schemas.DashboardResponse)
-@require_permissions(["dashboards.write", "dashboards.*"])
 def update_dashboard(
     dashboard_id: UUID,
     dashboard_update: schemas.DashboardUpdate,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
 ):
     dashboard = crud.update_dashboard(db, dashboard_id, dashboard_update)
     if dashboard is None:
@@ -95,42 +83,11 @@ def update_dashboard(
 
 
 @router.delete("/{dashboard_id}", status_code=204)
-@require_permissions(["dashboards.delete", "dashboards.*"])
 def delete_dashboard(
     dashboard_id: UUID,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
 ):
     success = crud.delete_dashboard(db, dashboard_id)
     if not success:
         raise HTTPException(status_code=404, detail="Dashboard not found")
     return None
-
-
-# ================================================================
-# USER SETTINGS ROUTES
-# ================================================================
-
-user_settings_router = APIRouter(prefix="/users", tags=["User Settings"])
-
-
-@user_settings_router.get("/{user_id}/settings", response_model=schemas.UserSettingsResponse)
-def get_user_settings(
-    user_id: UUID,
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
-):
-    """Gibt die persönlichen Einstellungen eines Users zurück."""
-    return crud.get_or_create_user_settings(db, user_id)
-
-
-@user_settings_router.put("/{user_id}/settings", response_model=schemas.UserSettingsResponse)
-def update_user_settings(
-    user_id: UUID,
-    settings_update: schemas.UserSettingsUpdate,
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
-):
-    """Aktualisiert die persönlichen Einstellungen eines Users."""
-    data = settings_update.model_dump(exclude_unset=True)
-    return crud.update_user_settings(db, user_id, data)

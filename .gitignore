@@ -11,11 +11,7 @@ alembic.backup/
 
 # Env / Secrets
 .env*
-!ui/.env.production
-!ui-v3/.env.production
 .env.*
-!ui/.env.production
-!ui-v3/.env.production
 .envrc
 
 # Databases
@@ -32,6 +28,10 @@ node_modules/
 dist/
 build/
 *.local
+package-lock.json
+
+# TypeScript Build Cache
+*.tsbuildinfo
 
 # Uploads / Media (Backend)
 uploads/
@@ -50,7 +50,10 @@ app/uploads/
 *.orig
 *.rej
 *.cover
-../assets/openapi.yaml
-assets/openapi.yaml
-assets/_banking_certs_bak/
+
+# Claude Code
 .claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Conflicted copies (Nextcloud/Syncthing)
+*\ \(conflicted\ copy*

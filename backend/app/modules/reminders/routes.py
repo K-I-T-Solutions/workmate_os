@@ -8,9 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.settings.database import get_db
-from app.core.auth.auth import get_current_user
-from app.core.auth.roles import require_permissions
+from app.core.database import get_db
 from app.modules.reminders import crud, schemas
 
 router = APIRouter(prefix="/reminders", tags=["Reminders"])
@@ -30,7 +28,6 @@ def calculate_days_until_due(due_date: Optional[date]) -> Optional[int]:
 # ============================================================================
 
 @router.get("", response_model=schemas.ReminderListResponse)
-@require_permissions(["reminders.view", "reminders.*"])
 def list_reminders(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -38,12 +35,11 @@ def list_reminders(
     status: Optional[str] = Query(None, description="open, done, overdue"),
     priority: Optional[str] = Query(None, description="low, medium, high, critical"),
     overdue_only: bool = Query(False, description="Show only overdue reminders"),
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Get list of reminders with filtering and pagination
-
+    
     - **owner_id**: Filter by owner
     - **status**: Filter by status (open, done, overdue)
     - **priority**: Filter by priority (low, medium, high, critical)
@@ -58,16 +54,16 @@ def list_reminders(
         priority=priority,
         overdue_only=overdue_only
     )
-
+    
     # Add calculated fields
     today = date.today()
     for reminder in reminders:
         if reminder.due_date is not None:
             reminder.days_until_due = calculate_days_until_due(reminder.due_date)  # type: ignore[attr-defined]
             reminder.is_overdue = reminder.due_date < today and reminder.status != "done"  # type: ignore[attr-defined]
-
+    
     page = (skip // limit) + 1
-
+    
     return {
         "total": total,
         "page": page,
@@ -77,39 +73,35 @@ def list_reminders(
 
 
 @router.get("/{reminder_id}", response_model=schemas.ReminderResponse)
-@require_permissions(["reminders.view", "reminders.*"])
 def get_reminder(
     reminder_id: UUID,
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get reminder by ID"""
     reminder = crud.get_reminder(db, reminder_id)
     if reminder is None:
         raise HTTPException(status_code=404, detail="Reminder not found")
-
+    
     # Add calculated fields
     if reminder.due_date is not None:
         reminder.days_until_due = calculate_days_until_due(reminder.due_date)  # type: ignore[attr-defined]
         reminder.is_overdue = reminder.due_date < date.today() and reminder.status != "done"  # type: ignore[attr-defined]
-
+    
     return reminder
 
 
 @router.post("", response_model=schemas.ReminderResponse, status_code=201)
-@require_permissions(["reminders.write", "reminders.*"])
 def create_reminder(
     reminder: schemas.ReminderCreate,
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Create new reminder
-
+    
     **Required fields:**
     - title: Reminder title
     - owner_id: UUID of the owner
-
+    
     **Optional fields:**
     - description: Detailed description
     - due_date: When the reminder is due
@@ -121,12 +113,10 @@ def create_reminder(
 
 
 @router.put("/{reminder_id}", response_model=schemas.ReminderResponse)
-@require_permissions(["reminders.write", "reminders.*"])
 def update_reminder(
     reminder_id: UUID,
     reminder_update: schemas.ReminderUpdate,
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Update reminder"""
     reminder = crud.update_reminder(db, reminder_id, reminder_update)
@@ -136,11 +126,9 @@ def update_reminder(
 
 
 @router.post("/{reminder_id}/mark-done", response_model=schemas.ReminderResponse)
-@require_permissions(["reminders.write", "reminders.*"])
 def mark_reminder_done(
     reminder_id: UUID,
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Mark reminder as done"""
     reminder = crud.mark_as_done(db, reminder_id)
@@ -150,11 +138,9 @@ def mark_reminder_done(
 
 
 @router.delete("/{reminder_id}", status_code=204)
-@require_permissions(["reminders.delete", "reminders.*"])
 def delete_reminder(
     reminder_id: UUID,
-    db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Delete reminder"""
     success = crud.delete_reminder(db, reminder_id)

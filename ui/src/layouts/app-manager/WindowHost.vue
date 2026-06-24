@@ -1,57 +1,61 @@
 <!-- src/layouts/app-manager/WindowHost.vue -->
 <template>
   <div class="window-host">
+
+    <!-- BLUR / DIM LAYER – aktiv sobald ein Fenster existiert -->
+    <div
+      v-if="windows.length > 0"
+      class="workspace-blur"
+    ></div>
+
+    <!-- WINDOW INSTANCES -->
     <WindowFrame
-      v-for="w in visibleWindows"
+      v-for="w in windows"
       :key="w.id"
       :win="w"
-    >
-      <!-- 🔥 HIER wird die App gerendert -->
-      <component
-        :is="resolveComponent(w.appId)"
-        v-bind="w.props"
-      />
-    </WindowFrame>
+      class="wm-frame-instance"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import WindowFrame from "./WindowFrame.vue";
 import { useAppManager } from "./useAppManager";
-import { apps } from "./appRegistry";
+import WindowFrame from "./WindowFrame.vue";
 
 const { windows } = useAppManager();
-
-// Only show non-minimized windows
-const visibleWindows = computed(() => windows.filter(w => !w.minimized));
-
-function resolveComponent(appID: string){
-  return apps.find(a=> a.id ===appID)?.component;
-}
-
 </script>
 
 <style scoped>
 .window-host {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  pointer-events: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  background: var(--color-bg-primary);
 }
 
-@media (max-width: 1024px) {
-  .window-host {
-    position: fixed;
-    top: var(--os-topbar-height);
-    bottom: var(--os-dock-height);
-    left: 0;
-    right: 0;
-    z-index: 100;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    pointer-events: auto;
-  }
+/* ============================================
+   BLUR-LAYER (liegt unter allen Fenstern)
+============================================ */
+.workspace-blur {
+  position: absolute;
+  inset: 0;
+
+  /* Frosted Glass Effekt */
+  backdrop-filter: blur(22px) brightness(1.03);
+
+  /* leichtes Dimmen, wirkt sehr clean */
+  background: rgba(0, 0, 0, 0.18);
+
+  /* Blur darf nie anklickbar sein */
+  pointer-events: none;
+
+  z-index: 1;
+}
+
+/* Fenster dürfen über dem Blur liegen */
+.wm-frame-instance {
+  position: absolute;
+  z-index: 2;
 }
 </style>
