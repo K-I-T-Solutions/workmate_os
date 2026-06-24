@@ -118,12 +118,12 @@ onMounted(() => {
     </div>
 
     <!-- Kanban Board -->
-    <div v-else class="flex-1 overflow-x-auto">
+    <div v-else class="flex-1 overflow-x-auto min-h-0">
       <div class="flex gap-4 h-full min-h-0" style="min-width: max-content;">
         <div
           v-for="stage in STAGES"
           :key="stage.key"
-          class="w-72 flex flex-col rounded-xl border transition-all duration-150"
+          class="w-72 flex flex-col min-h-0 rounded-xl border transition-all duration-150"
           :class="[
             stage.color,
             dragOverStage === stage.key ? 'ring-2 ring-white/30 scale-[1.01]' : '',
@@ -143,7 +143,7 @@ onMounted(() => {
           </div>
 
           <!-- Cards -->
-          <div class="flex-1 overflow-y-auto p-2 space-y-2 min-h-[120px]">
+          <div class="flex-1 h-0 overflow-y-auto p-2 space-y-2 min-h-[120px]">
             <!-- Empty State -->
             <div
               v-if="getStageCustomers(stage.key).length === 0"
