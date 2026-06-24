@@ -8,13 +8,17 @@ Verwaltet:
 from __future__ import annotations
 
 import uuid
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
     String,
     Text,
+    Boolean,
+    Date,
+    DateTime,
     ForeignKey,
     Numeric,
     Index,
@@ -131,3 +135,58 @@ class Expense(Base, UUIDMixin, TimestampMixin):
             f"amount={self.amount}, "
             f"invoiced={self.is_invoiced})>"
         )
+
+
+class BankAccount(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "bank_accounts"
+    __table_args__ = (
+        Index("ix_bank_accounts_is_active", "is_active"),
+    )
+
+    account_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    account_type: Mapped[str] = mapped_column(String(50), default="checking")
+    iban: Mapped[str | None] = mapped_column(String(34), unique=True)
+    bic: Mapped[str | None] = mapped_column(String(11))
+    bank_name: Mapped[str | None] = mapped_column(String(100))
+    account_holder: Mapped[str | None] = mapped_column(String(100))
+    balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    note: Mapped[str | None] = mapped_column(Text)
+
+    transactions: Mapped[list["BankTransaction"]] = relationship(
+        "BankTransaction", back_populates="account", cascade="all, delete-orphan"
+    )
+
+
+class BankTransaction(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "bank_transactions"
+    __table_args__ = (
+        Index("ix_bank_transactions_account_id", "account_id"),
+        Index("ix_bank_transactions_transaction_date", "transaction_date"),
+        Index("ix_bank_transactions_reconciliation_status", "reconciliation_status"),
+    )
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    matched_payment_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payments.id", ondelete="SET NULL")
+    )
+    matched_expense_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expenses.id", ondelete="SET NULL")
+    )
+
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
+    value_date: Mapped[Optional[date]] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    transaction_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    counterparty_name: Mapped[Optional[str]] = mapped_column(String(255))
+    counterparty_iban: Mapped[Optional[str]] = mapped_column(String(34))
+    purpose: Mapped[Optional[str]] = mapped_column(Text)
+    reference: Mapped[Optional[str]] = mapped_column(String(255), unique=True)
+    reconciliation_status: Mapped[str] = mapped_column(String(50), default="unmatched")
+    reconciliation_note: Mapped[Optional[str]] = mapped_column(Text)
+    reconciled_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    reconciled_by: Mapped[Optional[str]] = mapped_column(String(100))
+
+    account: Mapped["BankAccount"] = relationship("BankAccount", back_populates="transactions")

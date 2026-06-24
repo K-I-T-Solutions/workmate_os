@@ -1,6 +1,4 @@
-# app/modules/backoffice/finance/router.py
-from __future__ import annotations
-
+# app/modules/backoffice/finance/routes.py
 import uuid
 from datetime import date
 from typing import Optional
@@ -9,13 +7,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from .models import ExpenseCategory
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
+from .models import ExpenseCategory, BankAccount, BankTransaction
 from .schemas import (
     ExpenseCreate,
     ExpenseUpdate,
     ExpenseRead,
     ExpenseListResponse,
     ExpenseKpiResponse,
+    BankAccountResponse,
+    BankTransactionResponse,
 )
 from .crud import (
     create_expense,
@@ -155,3 +157,50 @@ def get_expense_kpis_endpoint(
         from_date=from_date,
         to_date=to_date,
     )
+
+
+# ---------------------------
+# Bank Accounts
+# ---------------------------
+
+@router.get("/bank-accounts", response_model=list[BankAccountResponse])
+@require_permissions(["backoffice.finance.view", "backoffice.*"])
+def list_bank_accounts(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    return db.query(BankAccount).filter(BankAccount.is_active == True).order_by(BankAccount.account_name).all()
+
+
+@router.get("/bank-accounts/{account_id}", response_model=BankAccountResponse)
+@require_permissions(["backoffice.finance.view", "backoffice.*"])
+def get_bank_account(
+    account_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    account = db.query(BankAccount).filter(BankAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Konto nicht gefunden")
+    return account
+
+
+# ---------------------------
+# Bank Transactions
+# ---------------------------
+
+@router.get("/bank-transactions", response_model=list[BankTransactionResponse])
+@require_permissions(["backoffice.finance.view", "backoffice.*"])
+def list_bank_transactions(
+    account_id: Optional[uuid.UUID] = Query(None),
+    reconciliation_status: Optional[str] = Query(None),
+    limit: int = Query(500, ge=1, le=2000),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    query = db.query(BankTransaction)
+    if account_id:
+        query = query.filter(BankTransaction.account_id == account_id)
+    if reconciliation_status:
+        query = query.filter(BankTransaction.reconciliation_status == reconciliation_status)
+    return query.order_by(BankTransaction.transaction_date.desc()).limit(limit).all()
