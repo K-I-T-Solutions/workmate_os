@@ -429,6 +429,32 @@ def customer_timeline(
     return {"customer_id": str(customer_id), "total": len(timeline), "items": timeline}
 
 
+@router.get("/pipeline")
+@require_permissions(["backoffice.crm.view", "backoffice.*"])
+def get_pipeline(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Sales Pipeline: Kunden nach Pipeline-Stage gruppiert."""
+    pipeline = crud.get_pipeline_customers(db)
+    return {stage: [schemas.CustomerResponse.model_validate(c) for c in customers]
+            for stage, customers in pipeline.items()}
+
+
+@router.patch("/customers/{customer_id}/pipeline-stage", response_model=schemas.CustomerResponse)
+@require_permissions(["backoffice.crm.update", "backoffice.*"])
+def update_customer_pipeline_stage(
+    customer_id: UUID,
+    payload: schemas.PipelineStageUpdate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    customer = crud.update_pipeline_stage(db, customer_id, payload.stage)
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kunde nicht gefunden")
+    return customer
+
+
 def _timeline_description(log, user_cache: dict) -> str:
     user_name = user_cache.get(str(log.user_id), {}).get("name", "System") if log.user_id else "System"
     action_map = {

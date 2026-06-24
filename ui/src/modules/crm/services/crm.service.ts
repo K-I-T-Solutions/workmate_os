@@ -68,4 +68,19 @@ export const crmService = {
       `/api/backoffice/crm/customers/${customerId}/contacts/${contactId}/set-primary`
     );
   },
+
+  //
+  // PIPELINE
+  //
+  async getPipeline(): Promise<Record<string, Customer[]>> {
+    const { data } = await api.get("/api/backoffice/crm/pipeline");
+    return data;
+  },
+
+  async updatePipelineStage(customerId: string, stage: string) {
+    return api.patch(
+      `/api/backoffice/crm/customers/${customerId}/pipeline-stage`,
+      { stage }
+    );
+  },
 };
