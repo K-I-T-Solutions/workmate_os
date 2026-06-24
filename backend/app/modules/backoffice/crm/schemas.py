@@ -126,3 +126,53 @@ class ContactResponseSimple(BaseModel):
 class CustomerResponseWithContacts(CustomerResponse):
     """Customer Response mit allen Contacts."""
     contacts: list[ContactResponseSimple] = []
+
+
+# === Activities ===
+
+ALLOWED_TYPES = {"call", "email", "onsite", "remote", "note"}
+
+class ActivityCreate(BaseModel):
+    customer_id: UUID
+    contact_id: UUID | None = None
+    type: str = Field(..., description="call, email, onsite, remote, note")
+    description: str = Field(..., min_length=1)
+    occurred_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ActivityResponse(BaseModel):
+    id: UUID
+    customer_id: UUID
+    contact_id: UUID | None
+    type: str
+    description: str
+    occurred_at: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# === Pipeline ===
+
+class PipelineStageUpdate(BaseModel):
+    stage: str = Field(..., description="Neue Pipeline-Stage")
+
+
+# === CSV Import ===
+
+class CsvImportResponse(BaseModel):
+    imported: int
+    skipped: int
+    errors: list[str]
+    preview: Optional[list[dict]] = None
+
+
+# === CRM Stats ===
+
+class CrmStatsResponse(BaseModel):
+    total_customers: int
+    active_customers: int
+    leads: int
+    blocked_customers: int
+    total_revenue: float
+    outstanding_revenue: float
+    active_projects: int

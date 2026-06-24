@@ -5,12 +5,16 @@ FastAPI Routes für CRM Module.
 REST API Endpoints für Customer und Contact Management.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import Optional
 
 from app.core.database import get_db
-from . import  schemas, crud
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
+from app.modules.backoffice.invoices.models import AuditLog
+from . import schemas, crud
 
 
 router = APIRouter(
@@ -240,11 +244,6 @@ def set_primary_contact(
     contact_id: UUID,
     db: Session = Depends(get_db)
 ):
-    """
-    Setze einen Kontakt als primären Ansprechpartner.
-    
-    Entfernt automatisch das Primary-Flag von allen anderen Kontakten des Kunden.
-    """
     contact = crud.set_primary_contact(db, contact_id, customer_id)
     if contact is None:
         raise HTTPException(
@@ -252,3 +251,191 @@ def set_primary_contact(
             detail=f"Contact with id {contact_id} not found or does not belong to customer {customer_id}"
         )
     return contact
+
+
+# === Activities ===
+
+@router.post("/activities", response_model=schemas.ActivityResponse)
+@require_permissions(["backoffice.crm.write", "backoffice.*"])
+def create_activity(data: schemas.ActivityCreate, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    return crud.create_activity(db, data)
+
+
+@router.get("/activities/latest")
+@require_permissions(["backoffice.crm.view", "backoffice.*"])
+def latest(limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    manual = crud.latest_activities(db, limit)
+    result = [
+        {
+            "id": str(a.id),
+            "customer_id": str(a.customer_id),
+            "contact_id": str(a.contact_id) if a.contact_id else None,
+            "type": a.type,
+            "description": a.description,
+            "occurred_at": a.occurred_at.isoformat(),
+            "created_at": a.created_at.isoformat(),
+        }
+        for a in manual
+    ]
+
+    audit_logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.entity_type.in_(["Customer", "Contact"]))
+        .order_by(AuditLog.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
+
+    from app.modules.admin.service import _build_user_cache
+    user_ids = list({str(log.user_id) for log in audit_logs if log.user_id})
+    user_cache = _build_user_cache(db, user_ids)
+
+    for log in audit_logs:
+        result.append({
+            "id": str(log.id),
+            "customer_id": str(log.entity_id),
+            "contact_id": None,
+            "type": "system",
+            "description": _timeline_description(log, user_cache),
+            "occurred_at": log.timestamp.isoformat(),
+            "created_at": log.timestamp.isoformat(),
+        })
+
+    result.sort(key=lambda x: x["occurred_at"], reverse=True)
+    return result[:limit]
+
+
+@router.get("/customers/{customer_id}/activities")
+@require_permissions(["backoffice.crm.view", "backoffice.*"])
+def by_customer(
+    customer_id: UUID,
+    contact_id: Optional[UUID] = Query(None),
+    limit: Optional[int] = Query(None, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    effective_limit = limit or 50
+    manual = crud.activities_by_customer(db, customer_id=customer_id, contact_id=contact_id, limit=effective_limit)
+    result = [
+        {
+            "id": str(a.id),
+            "customer_id": str(a.customer_id),
+            "contact_id": str(a.contact_id) if a.contact_id else None,
+            "type": a.type,
+            "description": a.description,
+            "occurred_at": a.occurred_at.isoformat(),
+            "created_at": a.created_at.isoformat(),
+        }
+        for a in manual
+    ]
+
+    if not contact_id:
+        contact_ids = [str(c.id) for c in crud.get_contacts(db, customer_id=customer_id)]
+        from sqlalchemy import or_
+        audit_filter = [and_(AuditLog.entity_type == "Customer", AuditLog.entity_id == customer_id)]
+        if contact_ids:
+            audit_filter.append(and_(AuditLog.entity_type == "Contact", AuditLog.entity_id.in_(contact_ids)))
+
+        audit_logs = (
+            db.query(AuditLog)
+            .filter(or_(*audit_filter))
+            .order_by(AuditLog.timestamp.desc())
+            .limit(effective_limit)
+            .all()
+        )
+
+        from app.modules.admin.service import _build_user_cache
+        user_ids = list({str(log.user_id) for log in audit_logs if log.user_id})
+        user_cache = _build_user_cache(db, user_ids)
+
+        for log in audit_logs:
+            result.append({
+                "id": str(log.id),
+                "customer_id": str(customer_id),
+                "contact_id": None,
+                "type": "system",
+                "description": _timeline_description(log, user_cache),
+                "occurred_at": log.timestamp.isoformat(),
+                "created_at": log.timestamp.isoformat(),
+            })
+
+    result.sort(key=lambda x: x["occurred_at"], reverse=True)
+    return result[:effective_limit]
+
+
+@router.get("/stats", response_model=schemas.CrmStatsResponse)
+@require_permissions(["backoffice.crm.view", "backoffice.*"])
+def stats(db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    return crud.get_stats(db)
+
+
+@router.get("/customers/{customer_id}/timeline")
+@require_permissions(["backoffice.crm.view", "backoffice.*"])
+def customer_timeline(
+    customer_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    activities = crud.activities_by_customer(db, customer_id=customer_id, limit=limit)
+    activity_items = [
+        {
+            "id": str(a.id),
+            "source": "activity",
+            "type": a.type,
+            "description": a.description,
+            "timestamp": a.occurred_at.isoformat(),
+            "user_id": None,
+            "user_name": None,
+        }
+        for a in activities
+    ]
+
+    contact_ids = [str(c.id) for c in crud.get_contacts(db, customer_id=customer_id)]
+    from sqlalchemy import or_
+    audit_filter = [and_(AuditLog.entity_type == "Customer", AuditLog.entity_id == customer_id)]
+    if contact_ids:
+        audit_filter.append(and_(AuditLog.entity_type == "Contact", AuditLog.entity_id.in_(contact_ids)))
+
+    audit_logs = (
+        db.query(AuditLog)
+        .filter(or_(*audit_filter))
+        .order_by(AuditLog.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
+
+    from app.modules.admin.service import _build_user_cache
+    user_ids = list({str(log.user_id) for log in audit_logs if log.user_id})
+    user_cache = _build_user_cache(db, user_ids)
+
+    audit_items = [
+        {
+            "id": str(log.id),
+            "source": "audit",
+            "type": log.action,
+            "description": _timeline_description(log, user_cache),
+            "timestamp": log.timestamp.isoformat(),
+            "user_id": str(log.user_id) if log.user_id else None,
+            "user_name": user_cache.get(str(log.user_id), {}).get("name") if log.user_id else None,
+            "entity_type": log.entity_type,
+            "old_values": log.old_values,
+            "new_values": log.new_values,
+        }
+        for log in audit_logs
+    ]
+
+    timeline = sorted(activity_items + audit_items, key=lambda x: x["timestamp"], reverse=True)[:limit]
+    return {"customer_id": str(customer_id), "total": len(timeline), "items": timeline}
+
+
+def _timeline_description(log, user_cache: dict) -> str:
+    user_name = user_cache.get(str(log.user_id), {}).get("name", "System") if log.user_id else "System"
+    action_map = {
+        "create": "angelegt",
+        "update": "bearbeitet",
+        "delete": "gelöscht",
+        "status_change": "Status geändert",
+    }
+    action = action_map.get(log.action, log.action)
+    return f"{log.entity_type} wurde von {user_name} {action}"

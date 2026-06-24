@@ -303,3 +303,73 @@ def set_primary_contact(
     db.commit()
     db.refresh(contact)
     return contact
+
+
+def create_activity(db: Session, data: schemas.ActivityCreate) -> models.Activity:
+    obj = models.Activity(**data.model_dump())
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def latest_activities(db: Session, limit: int = 5):
+    return (
+        db.query(models.Activity)
+        .order_by(models.Activity.occurred_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def activities_by_customer(
+    db: Session,
+    customer_id: UUID,
+    contact_id: Optional[UUID] = None,
+    limit: Optional[int] = None,
+):
+    query = (
+        db.query(models.Activity)
+        .filter(models.Activity.customer_id == customer_id)
+        .order_by(models.Activity.occurred_at.desc())
+    )
+    if contact_id is not None:
+        query = query.filter(models.Activity.contact_id == contact_id)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def get_pipeline_customers(db: Session) -> dict:
+    from .models import PipelineStage
+    all_stages = [s.value for s in PipelineStage]
+    pipeline: dict = {stage: [] for stage in all_stages}
+    customers = db.query(models.Customer).all()
+    for customer in customers:
+        stage = customer.pipeline_stage or PipelineStage.NEW_LEAD.value
+        if stage in pipeline:
+            pipeline[stage].append(customer)
+    return pipeline
+
+
+def update_pipeline_stage(db: Session, customer_id: UUID, stage: str) -> models.Customer | None:
+    customer = get_customer(db, customer_id)
+    if customer is None:
+        return None
+    customer.pipeline_stage = stage
+    db.commit()
+    db.refresh(customer)
+    return customer
+
+
+def get_stats(db: Session):
+    customers = db.query(models.Customer).all()
+    return {
+        "total_customers": len(customers),
+        "active_customers": sum(1 for c in customers if c.status == models.CustomerStatus.ACTIVE.value),
+        "leads": sum(1 for c in customers if c.status == models.CustomerStatus.LEAD.value),
+        "blocked_customers": sum(1 for c in customers if c.status == models.CustomerStatus.BLOCKED.value),
+        "total_revenue": sum(c.total_revenue for c in customers),
+        "outstanding_revenue": sum(c.outstanding_amount for c in customers),
+        "active_projects": sum(c.active_projects_count for c in customers),
+    }
