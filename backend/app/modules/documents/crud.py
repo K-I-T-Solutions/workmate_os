@@ -23,7 +23,6 @@ def get_documents(
     category: Optional[str] = None,
     linked_module: Optional[str] = None,
     owner_id: Optional[UUID] = None,
-    customer_id: Optional[UUID] = None,
     is_confidential: Optional[bool] = None
 ) -> tuple[list[Document], int]:
     """
@@ -50,10 +49,7 @@ def get_documents(
     
     if owner_id:
         query = query.filter(Document.owner_id == owner_id)
-
-    if customer_id:
-        query = query.filter(Document.customer_id == customer_id)
-
+    
     if is_confidential is not None:
         query = query.filter(Document.is_confidential == is_confidential)
     
@@ -70,18 +66,15 @@ def create_document(
     db: Session,
     file_path: str,
     checksum: str,
-    document_data: DocumentUpload,
-    owner_id: Optional[UUID] = None,
-    customer_id: Optional[UUID] = None,
+    owner_id: UUID,
+    document_data: DocumentUpload
 ) -> Document:
     """Create new document record"""
-    data = document_data.model_dump(exclude={"customer_id"})
     db_document = Document(
         file_path=file_path,
         checksum=checksum,
         owner_id=owner_id,
-        customer_id=customer_id,
-        **data,
+        **document_data.model_dump()
     )
     db.add(db_document)
     db.commit()

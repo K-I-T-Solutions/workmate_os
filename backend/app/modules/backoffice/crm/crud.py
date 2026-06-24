@@ -5,56 +5,10 @@ CRUD Operations für CRM Module.
 Datenbank-Operationen für Customer und Contact Models.
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from uuid import UUID
 from typing import Optional
 
 from . import models, schemas
-from app.modules.backoffice.invoices.audit import log_audit
-
-
-# === Helper Functions ===
-
-def _generate_customer_number(db: Session) -> str:
-    """
-    Generiert die nächste Kundennummer im Format KIT-CUS-XXXXXX.
-
-    Beispiele:
-    - KIT-CUS-000001
-    - KIT-CUS-000042
-    - KIT-CUS-001337
-
-    Args:
-        db: Database Session
-
-    Returns:
-        Formatierte Kundennummer
-    """
-    # Hole die höchste existierende Nummer
-    # customer_number Format: "KIT-CUS-000001"
-    # Wir extrahieren nur die Zahl am Ende
-
-    last_customer = (
-        db.query(models.Customer)
-        .filter(models.Customer.customer_number.isnot(None))
-        .order_by(models.Customer.customer_number.desc())
-        .first()
-    )
-
-    if last_customer and last_customer.customer_number:
-        try:
-            # Extrahiere die Zahl aus "KIT-CUS-000001"
-            number_part = last_customer.customer_number.split('-')[-1]
-            next_number = int(number_part) + 1
-        except (ValueError, IndexError):
-            # Fallback falls Format nicht stimmt
-            next_number = 1
-    else:
-        # Erster Kunde
-        next_number = 1
-
-    # Formatiere mit führenden Nullen (6 Stellen)
-    return f"KIT-CUS-{next_number:06d}"
 
 
 # === Customer CRUD ===
@@ -68,40 +22,40 @@ def get_customers(
 ) -> list[models.Customer]:
     """
     Hole alle Kunden mit optionalen Filtern.
-
+    
     Args:
         db: Database Session
         skip: Anzahl zu überspringende Einträge
         limit: Maximum Anzahl Einträge
         status: Optional Status Filter
         search: Optional Suchbegriff (Name, Email)
-
+    
     Returns:
         Liste von Customer Models
     """
     query = db.query(models.Customer)
-
+    
     if status:
         query = query.filter(models.Customer.status == status)
-
+    
     if search:
         search_filter = f"%{search}%"
         query = query.filter(
             (models.Customer.name.ilike(search_filter)) |
             (models.Customer.email.ilike(search_filter))
         )
-
+    
     return query.offset(skip).limit(limit).all()
 
 
 def get_customer(db: Session, customer_id: UUID) -> Optional[models.Customer]:
     """
     Hole einen einzelnen Kunden.
-
+    
     Args:
         db: Database Session
         customer_id: Customer UUID
-
+    
     Returns:
         Customer Model oder None
     """
@@ -110,78 +64,68 @@ def get_customer(db: Session, customer_id: UUID) -> Optional[models.Customer]:
     ).first()
 
 
-def create_customer(
-    db: Session,
-    data: schemas.CustomerCreate,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
-) -> models.Customer:
-    customer_number = _generate_customer_number(db)
-    customer_data = data.model_dump()
-    customer_data['customer_number'] = customer_number
-
-    new_customer = models.Customer(**customer_data)
+def create_customer(db: Session, data: schemas.CustomerCreate) -> models.Customer:
+    """
+    Erstelle einen neuen Kunden.
+    
+    Args:
+        db: Database Session
+        data: Customer Creation Schema
+    
+    Returns:
+        Erstellter Customer
+    """
+    new_customer = models.Customer(**data.model_dump())
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
-
-    log_audit(db, "Customer", new_customer.id, "create",
-              new_values={"name": new_customer.name, "customer_number": new_customer.customer_number},
-              user_id=user_id, ip_address=ip_address)
-    db.commit()
     return new_customer
 
 
 def update_customer(
     db: Session,
     customer_id: UUID,
-    data: schemas.CustomerUpdate,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
+    data: schemas.CustomerUpdate
 ) -> Optional[models.Customer]:
+    """
+    Aktualisiere einen Kunden.
+    
+    Args:
+        db: Database Session
+        customer_id: Customer UUID
+        data: Customer Update Schema
+    
+    Returns:
+        Aktualisierter Customer oder None
+    """
     customer = get_customer(db, customer_id)
     if customer is None:
         return None
-
-    old_values = {k: getattr(customer, k) for k in data.model_dump(exclude_unset=True)}
-    changes = data.model_dump(exclude_unset=True)
-
-    for key, value in changes.items():
+    
+    for key, value in data.model_dump(exclude_unset=True).items():
         setattr(customer, key, value)
-
+    
     db.commit()
     db.refresh(customer)
-
-    log_audit(db, "Customer", customer.id, "update",
-              old_values=old_values, new_values=changes,
-              user_id=user_id, ip_address=ip_address)
-    db.commit()
     return customer
 
 
-def delete_customer(
-    db: Session,
-    customer_id: UUID,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
-) -> bool:
+def delete_customer(db: Session, customer_id: UUID) -> bool:
+    """
+    Lösche einen Kunden.
+    
+    Args:
+        db: Database Session
+        customer_id: Customer UUID
+    
+    Returns:
+        True wenn erfolgreich, False wenn nicht gefunden
+    """
     customer = get_customer(db, customer_id)
     if customer is None:
         return False
-
-    snapshot = {"name": customer.name, "customer_number": customer.customer_number}
+    
     db.delete(customer)
-    db.commit()
-
-    # Audit nach Delete (entity_id bleibt bekannt, Objekt ist weg)
-    from app.modules.backoffice.invoices.models import AuditLog
-    from datetime import datetime
-    audit_entry = AuditLog(
-        entity_type="Customer", entity_id=customer_id, action="delete",
-        old_values=snapshot, user_id=user_id, ip_address=ip_address,
-        timestamp=datetime.utcnow()
-    )
-    db.add(audit_entry)
     db.commit()
     return True
 
@@ -196,32 +140,32 @@ def get_contacts(
 ) -> list[models.Contact]:
     """
     Hole alle Kontakte mit optionalem Customer Filter.
-
+    
     Args:
         db: Database Session
         customer_id: Optional Customer UUID Filter
         skip: Anzahl zu überspringende Einträge
         limit: Maximum Anzahl Einträge
-
+    
     Returns:
         Liste von Contact Models
     """
     query = db.query(models.Contact)
-
+    
     if customer_id:
         query = query.filter(models.Contact.customer_id == customer_id)
-
+    
     return query.offset(skip).limit(limit).all()
 
 
 def get_contact(db: Session, contact_id: UUID) -> Optional[models.Contact]:
     """
     Hole einen einzelnen Kontakt.
-
+    
     Args:
         db: Database Session
         contact_id: Contact UUID
-
+    
     Returns:
         Contact Model oder None
     """
@@ -230,84 +174,79 @@ def get_contact(db: Session, contact_id: UUID) -> Optional[models.Contact]:
     ).first()
 
 
-def create_contact(
-    db: Session,
-    data: schemas.ContactCreate,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
-) -> models.Contact:
+def create_contact(db: Session, data: schemas.ContactCreate) -> models.Contact:
+    """
+    Erstelle einen neuen Kontakt.
+    
+    Args:
+        db: Database Session
+        data: Contact Creation Schema
+    
+    Returns:
+        Erstellter Contact
+    """
+    # Prüfe ob Customer existiert
     customer = get_customer(db, data.customer_id)
     if customer is None:
         raise ValueError(f"Customer with id {data.customer_id} not found")
-
+    
     new_contact = models.Contact(**data.model_dump())
     db.add(new_contact)
     db.commit()
     db.refresh(new_contact)
-
-    log_audit(db, "Contact", new_contact.id, "create",
-              new_values={"name": f"{new_contact.first_name} {new_contact.last_name}".strip(),
-                          "customer_id": str(new_contact.customer_id)},
-              user_id=user_id, ip_address=ip_address)
-    db.commit()
     return new_contact
 
 
 def update_contact(
     db: Session,
     contact_id: UUID,
-    data: schemas.ContactUpdate,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
+    data: schemas.ContactUpdate
 ) -> Optional[models.Contact]:
+    """
+    Aktualisiere einen Kontakt.
+    
+    Args:
+        db: Database Session
+        contact_id: Contact UUID
+        data: Contact Update Schema
+    
+    Returns:
+        Aktualisierter Contact oder None
+    """
     contact = get_contact(db, contact_id)
     if contact is None:
         return None
-
+    
+    # Wenn customer_id geändert wird, prüfe ob neuer Customer existiert
     if data.customer_id and data.customer_id != contact.customer_id:
         customer = get_customer(db, data.customer_id)
         if customer is None:
             raise ValueError(f"Customer with id {data.customer_id} not found")
-
-    old_values = {k: getattr(contact, k) for k in data.model_dump(exclude_unset=True)}
-    changes = data.model_dump(exclude_unset=True)
-
-    for key, value in changes.items():
+    
+    for key, value in data.model_dump(exclude_unset=True).items():
         setattr(contact, key, value)
-
+    
     db.commit()
     db.refresh(contact)
-
-    log_audit(db, "Contact", contact.id, "update",
-              old_values=old_values, new_values=changes,
-              user_id=user_id, ip_address=ip_address)
-    db.commit()
     return contact
 
 
-def delete_contact(
-    db: Session,
-    contact_id: UUID,
-    user_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
-) -> bool:
+def delete_contact(db: Session, contact_id: UUID) -> bool:
+    """
+    Lösche einen Kontakt.
+    
+    Args:
+        db: Database Session
+        contact_id: Contact UUID
+    
+    Returns:
+        True wenn erfolgreich, False wenn nicht gefunden
+    """
     contact = get_contact(db, contact_id)
     if contact is None:
         return False
-
-    snapshot = {"name": f"{contact.first_name} {contact.last_name}".strip(),
-                "customer_id": str(contact.customer_id)}
+    
     db.delete(contact)
-    db.commit()
-
-    from app.modules.backoffice.invoices.models import AuditLog
-    from datetime import datetime
-    audit_entry = AuditLog(
-        entity_type="Contact", entity_id=contact_id, action="delete",
-        old_values=snapshot, user_id=user_id, ip_address=ip_address,
-        timestamp=datetime.utcnow()
-    )
-    db.add(audit_entry)
     db.commit()
     return True
 
@@ -315,11 +254,11 @@ def delete_contact(
 def get_primary_contact(db: Session, customer_id: UUID) -> Optional[models.Contact]:
     """
     Hole den primären Kontakt eines Kunden.
-
+    
     Args:
         db: Database Session
         customer_id: Customer UUID
-
+    
     Returns:
         Primary Contact oder None
     """
@@ -340,122 +279,27 @@ def set_primary_contact(
 ) -> Optional[models.Contact]:
     """
     Setze einen Kontakt als primär und entferne Flag von anderen.
-
+    
     Args:
         db: Database Session
         contact_id: Contact UUID der primär werden soll
         customer_id: Customer UUID
-
+    
     Returns:
         Updated Contact oder None
     """
     contact = get_contact(db, contact_id)
     if contact is None or contact.customer_id != customer_id:
         return None
-
+    
     # Entferne is_primary Flag von allen anderen Kontakten
     db.query(models.Contact).filter(
         models.Contact.customer_id == customer_id,
         models.Contact.id != contact_id
     ).update({"is_primary": False})
-
+    
     # Setze neuen primären Kontakt
     contact.is_primary = True
     db.commit()
     db.refresh(contact)
     return contact
-
-def create_activity(db: Session, data: schemas.ActivityCreate) -> models.Activity:
-    obj = models.Activity(**data.model_dump())
-    db.add(obj)
-    db.commit()
-    db.refresh(obj)
-    return obj
-
-def latest_activities(db: Session, limit: int = 5):
-    return (
-        db.query(models.Activity)
-        .order_by(models.Activity.occurred_at.desc())
-        .limit(limit)
-        .all()
-    )
-
-def activities_by_customer(
-    db: Session,
-    customer_id: UUID,
-    contact_id: Optional[UUID] = None,
-    limit: Optional[int] = None,
-):
-    query = (
-        db.query(models.Activity)
-        .filter(models.Activity.customer_id == customer_id)
-        .order_by(models.Activity.occurred_at.desc())
-    )
-
-    if contact_id is not None:
-        query = query.filter(models.Activity.contact_id == contact_id)
-
-    if limit is not None:
-        query = query.limit(limit)
-
-    return query.all()
-
-def get_pipeline_customers(db: Session) -> dict:
-    """
-    Liefert alle Kunden gruppiert nach Pipeline-Stage.
-
-    Returns:
-        Dict mit Stage-Keys und Listen von Customers
-    """
-    from .models import PipelineStage
-
-    all_stages = [s.value for s in PipelineStage]
-    pipeline: dict = {stage: [] for stage in all_stages}
-
-    customers = db.query(models.Customer).all()
-    for customer in customers:
-        stage = customer.pipeline_stage or PipelineStage.NEW_LEAD.value
-        if stage in pipeline:
-            pipeline[stage].append(customer)
-
-    return pipeline
-
-
-def update_pipeline_stage(
-    db: Session,
-    customer_id: UUID,
-    stage: str,
-) -> models.Customer | None:
-    """
-    Aktualisiert die Pipeline-Stage eines Kunden.
-
-    Args:
-        db: Database Session
-        customer_id: Customer UUID
-        stage: Neue Pipeline-Stage
-
-    Returns:
-        Updated Customer oder None
-    """
-    customer = get_customer(db, customer_id)
-    if customer is None:
-        return None
-
-    customer.pipeline_stage = stage
-    db.commit()
-    db.refresh(customer)
-    return customer
-
-
-def get_stats(db: Session):
-    customers = db.query(models.Customer).all()
-
-    return {
-        "total_customers": len(customers),
-        "active_customers": sum(1 for c in customers if c.status == models.CustomerStatus.ACTIVE.value),
-        "leads": sum(1 for c in customers if c.status == models.CustomerStatus.LEAD.value),
-        "blocked_customers": sum(1 for c in customers if c.status == models.CustomerStatus.BLOCKED.value),
-        "total_revenue": sum(c.total_revenue for c in customers),
-        "outstanding_revenue": sum(c.outstanding_amount for c in customers),
-        "active_projects": sum(c.active_projects_count for c in customers),
-    }

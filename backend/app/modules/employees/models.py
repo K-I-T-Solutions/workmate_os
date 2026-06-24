@@ -6,7 +6,7 @@ from sqlalchemy import Column, String, Date, Boolean, Text, ForeignKey, TIMESTAM
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
-from app.core.settings.database import Base, generate_uuid
+from app.core.database import Base, generate_uuid
 from app.modules.backoffice.chat.models import ChatMessage
 from app.modules.dashboards.models import Dashboard, OSPreferences, UserSettings, Notification, ActivityEntry
 
@@ -64,11 +64,7 @@ class Employee(Base):
     # Primary Info
     id = Column(UUID(as_uuid=True), primary_key=True, default=generate_uuid)
     employee_code = Column(String, nullable=False, unique=True, comment="KIT-0001 etc.")
-    workmate_id = Column(String, unique=True, nullable=True, index=True, comment="WM-100 — plattformübergreifende ID")
     uuid_keycloak = Column(String, comment="Linked Keycloak user ID")
-
-    # Authentication
-    password_hash = Column(String, nullable=True, comment="Bcrypt hashed password for local auth")
 
     # Personal Info
     first_name = Column(String)

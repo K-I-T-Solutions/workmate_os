@@ -18,15 +18,14 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 class CustomerBase(BaseModel):
     """Base schema für Customer."""
     name: str = Field(..., min_length=1, max_length=255, description="Kundenname")
-    type: Optional[str] = Field(None, max_length=50, description="Kundentyp (creator, individual, business, government)")
+    type: Optional[str] = Field(None, max_length=50, description="Kundentyp (business, individual, government)")
     email: Optional[EmailStr] = Field(None, description="E-Mail Adresse")
     phone: Optional[str] = Field(None, max_length=50, description="Telefonnummer")
     tax_id: Optional[str] = Field(None, max_length=100, description="Steuernummer/USt-IdNr")
     website: Optional[str] = Field(None, max_length=255, description="Webseite")
     notes: Optional[str] = Field(None, description="Interne Notizen")
     status: str = Field(default="active", description="Status (active, inactive, lead, blocked)")
-    pipeline_stage: Optional[str] = Field(default="new_lead", max_length=50, description="Pipeline-Stage (new_lead, qualified, proposal, negotiation, won, lost)")
-
+    
     # Address Fields
     street: Optional[str] = Field(None, max_length=255, description="Straße und Hausnummer")
     zip_code: Optional[str] = Field(None, max_length=20, description="Postleitzahl")
@@ -49,7 +48,6 @@ class CustomerUpdate(BaseModel):
     website: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     status: Optional[str] = None
-    pipeline_stage: Optional[str] = Field(None, max_length=50)
     street: Optional[str] = Field(None, max_length=255)
     zip_code: Optional[str] = Field(None, max_length=20)
     city: Optional[str] = Field(None, max_length=100)
@@ -59,10 +57,9 @@ class CustomerUpdate(BaseModel):
 class CustomerResponse(CustomerBase):
     """Schema für Customer Response."""
     id: UUID
-    customer_number: str
     created_at: datetime
     updated_at: datetime
-
+    
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -106,7 +103,7 @@ class ContactResponse(ContactBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-
+    
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -122,65 +119,10 @@ class ContactResponseSimple(BaseModel):
     mobile: Optional[str] = None
     position: Optional[str] = None
     is_primary: bool
-
+    
     model_config = ConfigDict(from_attributes=True)
 
 
 class CustomerResponseWithContacts(CustomerResponse):
     """Customer Response mit allen Contacts."""
     contacts: list[ContactResponseSimple] = []
-
-# === Activity Schemas ===
-
-ALLOWED_TYPES = {"call", "email", "onsite", "remote", "note"}
-
-class ActivityCreate(BaseModel):
-    customer_id: UUID
-    contact_id: UUID | None = None
-    type: str = Field(..., description="call, email, onsite, remote, note")
-    description: str = Field(..., min_length=1)
-    occurred_at: datetime = Field(default_factory=datetime.utcnow)
-
-    @classmethod
-    def validate_type(cls, v: str):
-        if v not in ALLOWED_TYPES:
-            raise ValueError(f"type must be one of {ALLOWED_TYPES}")
-        return v
-
-class ActivityResponse(BaseModel):
-    id: UUID
-    customer_id: UUID
-    contact_id: UUID | None
-    type: str
-    description: str
-    occurred_at: datetime
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-# === CSV Import ===
-
-class PipelineStageUpdate(BaseModel):
-    """Schema für Pipeline-Stage Update."""
-    stage: str = Field(..., description="Neue Pipeline-Stage")
-
-
-class CsvImportResponse(BaseModel):
-    """Response für CSV-Import."""
-    imported: int
-    skipped: int
-    errors: list[str]
-    preview: Optional[list[dict]] = None
-
-
-# === CRM Stats ===
-class CrmStatsResponse(BaseModel):
-    total_customers: int
-    active_customers: int
-    leads: int
-    blocked_customers: int
-
-    total_revenue: float
-    outstanding_revenue: float
-
-    active_projects: int
