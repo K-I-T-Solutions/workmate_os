@@ -107,3 +107,45 @@ class ExpenseKpiResponse(BaseModel):
     """KPI Antwort – Summe und Verteilung nach Kategorie."""
     total: Decimal
     by_category: dict[ExpenseCategory, Decimal]
+
+
+# === Bank Accounts ===
+
+class BankAccountResponse(BaseModel):
+    id: uuid.UUID
+    account_name: str
+    account_type: str
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder: Optional[str] = None
+    balance: Decimal
+    is_active: bool
+    note: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# === Bank Transactions ===
+
+class BankTransactionResponse(BaseModel):
+    id: uuid.UUID
+    account_id: uuid.UUID
+    transaction_date: date
+    value_date: Optional[date] = None
+    amount: Decimal
+    transaction_type: str
+    counterparty_name: Optional[str] = None
+    counterparty_iban: Optional[str] = None
+    purpose: Optional[str] = None
+    reference: Optional[str] = None
+    reconciliation_status: str
+    reconciliation_note: Optional[str] = None
+    matched_payment_id: Optional[uuid.UUID] = None
+    matched_expense_id: Optional[uuid.UUID] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
