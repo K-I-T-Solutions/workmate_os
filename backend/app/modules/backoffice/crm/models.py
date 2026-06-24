@@ -16,6 +16,8 @@ import uuid
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from datetime import datetime
+
 from sqlalchemy import String, Text, ForeignKey, Index, CheckConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,9 +43,20 @@ class CustomerStatus(str, Enum):
 
 class CustomerType(str, Enum):
     """Kundentyp."""
-    BUSINESS = "business"
+    CREATOR = "creator"
     INDIVIDUAL = "individual"
+    BUSINESS = "business"
     GOVERNMENT = "government"
+
+
+class PipelineStage(str, Enum):
+    """Pipeline-Stage für Sales-Tracking."""
+    NEW_LEAD = "new_lead"
+    QUALIFIED = "qualified"
+    PROPOSAL = "proposal"
+    NEGOTIATION = "negotiation"
+    WON = "won"
+    LOST = "lost"
 
 
 # ============================================================================
@@ -143,6 +156,11 @@ class Customer(Base, UUIDMixin, TimestampMixin):
         default=CustomerStatus.ACTIVE.value,
         server_default=CustomerStatus.ACTIVE.value,
         comment="Status: active, inactive, lead, blocked"
+    )
+    pipeline_stage: Mapped[str | None] = mapped_column(
+        String(50),
+        default=PipelineStage.NEW_LEAD.value,
+        comment="Sales Pipeline Stage"
     )
 
     # Relationships
@@ -367,3 +385,26 @@ class Contact(Base, UUIDMixin, TimestampMixin):
     def __repr__(self) -> str:
         primary = " [PRIMARY]" if self.is_primary else ""
         return f"<Contact(id={self.id}, name='{self.full_name}'{primary})>"
+
+
+class Activity(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "crm_activities"
+    __table_args__ = (
+        Index("ix_activity_customer_time", "customer_id", "occurred_at"),
+        Index("ix_activity_time", "occurred_at"),
+    )
+
+    customer_id: Mapped[str] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    contact_id: Mapped[str | None] = mapped_column(
+        ForeignKey("contacts.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    customer = relationship("Customer")
+    contact = relationship("Contact")
