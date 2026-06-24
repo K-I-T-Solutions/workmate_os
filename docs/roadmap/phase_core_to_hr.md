@@ -1,19 +1,7 @@
----
-layout: default
-title: Phase Core to HR
-parent: Roadmap
-nav_order: 1
----
-
 # 🧭 Workmate OS – Phaseplan: Core → HR
 
-> Ziel: Erweiterung des bestehenden Core-Systems um das **HR-Modul**,
+> Ziel: Erweiterung des bestehenden Core-Systems um das **HR-Modul**,  
 > inklusive Datenmodell, API-Struktur, UI-Komponenten und Dokumentation.
-
-**Letztes Update:** 08. Januar 2026 (v3.0.1)
-**Aktueller Stand:** Phase 3 ✅ | Phase 4 🔄 (20%)
-
-📄 **Detaillierter Implementierungsplan:** [phase4_hr_implementation_plan.md](./phase4_hr_implementation_plan.md)
 
 ---
 
@@ -35,98 +23,82 @@ nav_order: 1
 
 ---
 
-## 🧠 Phase 2 – HR-Konzept (Status: ✅ Abgeschlossen)
+## 🧠 Phase 2 – HR-Konzept (Geplant: Montag–Dienstag nächste Woche)
 
 **Ziele:**
-- [x] Definition der HR-Prozesse:
-  - [x] Urlaub (Leave Requests)
-  - [x] Krankmeldungen (Sick Notes)
-  - [x] Bewerbungen (Applications)
-  - [x] Teamkalender / Ressourcenübersicht
-- [x] Definition der Beziehungen zum Core:
+- Definition der HR-Prozesse:
+  - Urlaub (Leave Requests)
+  - Krankmeldungen (Sick Notes)
+  - Bewerbungen (Applications)
+  - Teamkalender / Ressourcenübersicht
+- Definition der Beziehungen zum Core:
   - `Employee ↔ LeaveRequest`
   - `Employee ↔ SickNote`
   - `Document ↔ SickNote`
-- [x] HR-Modul-Struktur definiert
-- [x] HR-Rollen-System entworfen
+- Erstellung eines **HR-Blueprints** (analog zu `architecture_blueprint.md`)
+- Diagramm: **HR Data Flow** (Mermaid)
+- ERM: **hr_erm.dbml**
 
 **Deliverables:**
-- [x] HR-Modul-Architektur
-- [x] Database Schema (Employees, Leave Requests, Leave Balances)
-- [x] Submodule identifiziert (Leave, Recruiting, Onboarding, etc.)
+- `/docs/wiki/hr/README.md`
+- `/docs/wiki/hr/hr_erm.md`
+- `/docs/wiki/hr/flows.md`
 
 ---
 
-## 🧱 Phase 3 – HR-Datenmodell (Status: ✅ Abgeschlossen - v3.0.1)
+## 🧱 Phase 3 – HR-Datenmodell (Woche 44)
 
 **Ziele:**
-- [x] Tabellen: `hr_employees`, `hr_leave_requests`, `hr_leave_balances`
-- [x] Modelle + Schemas im Backend:
+- Tabellen: `leave_requests`, `sick_notes`, `applications`
+- Modelle + Schemas im Backend:
   ```
   backend/app/modules/hr/
-    ├── leave/
-    │   ├── models.py       # Employee, LeaveRequest, LeaveBalance
-    │   ├── schemas.py      # Pydantic Schemas
-    │   ├── crud.py         # CRUD Operations
-    │   ├── routes.py       # FastAPI Router
-    │   └── __init__.py
-    ├── permissions.py      # HR Permission Helpers
-    ├── enums.py           # HR Enums
-    ├── utils.py           # Utility Functions
-    └── __init__.py        # Main Router
+    ├── models.py
+    ├── schemas.py
+    ├── router.py
+    ├── service.py
+    └── __init__.py
   ```
-- [x] HR-Rollen implementiert (`hr_admin`, `hr_manager`, `hr_recruiter`)
-- [x] FastAPI-Routen (CRUD)
-  - `/api/hr/employees`
-  - `/api/hr/leave-requests`
-  - `/api/hr/leave-balances`
+- Verbindung mit Core-Entities (`Employee`, `Document`)
+- FastAPI-Routen (CRUD)
+  - `/api/hr/leave`
+  - `/api/hr/sicknotes`
+  - `/api/hr/applications`
 
 **Deliverables:**
-- [x] 2 Alembic-Migrationen (2026-01-08)
-- [x] HR-Modul-Struktur mit Submodulen
-- [x] Version auf 3.0.1 erhöht
-
-**Commit:** `3cc546d` - feat(hr): Add HR Leave Management Module (v3.0.1)
-**Details:** Siehe `/docs/roadmap/phase4_hr_implementation_plan.md`
+- Alembic-Migration (`alembic/versions/add_hr_tables.py`)
+- `hr_erm.dbml` Diagramm
+- Unit-Tests (`tests/test_hr.py`)
 
 ---
 
-## 🖥 Phase 4 – HR-Frontend & Submodule (Status: 🔄 In Progress - 20%)
+## 🖥 Phase 4 – HR-Frontend (Woche 45)
 
 **Ziele:**
-- [x] Backend-Grundstruktur (v3.0.1)
-- [ ] Vue-Module-Struktur:
+- Vue-Module-Struktur:
   ```
   ui/src/modules/hr/
-    ├── pages/
-    │   ├── HRDashboard.vue
-    │   ├── LeaveManagement.vue
-    │   ├── EmployeeList.vue
-    │   └── EmployeeDetails.vue
-    └── components/
-        ├── LeaveRequestCard.vue
-        ├── LeaveBalanceWidget.vue
-        └── EmployeeCard.vue
+    ├── pages/LeaveOverview.vue
+    ├── pages/SickNote.vue
+    ├── pages/Applications.vue
+    └── components/HRCard.vue
   ```
-- [ ] HR-Dashboard Integration
-- [ ] API-Integration über `hrApi`
-- [ ] Recruiting Submodul (Backend + Frontend)
+- HR-Dashboard Integration:
+  - Übersicht aller HR-Einträge im User-Dashboard
+  - Neue HR-Kachel in DockNav (`"HR"`)
+- API-Integration über `useApi()`
 
 **Deliverables:**
-- [x] Backend-Struktur & Migrations
-- [ ] `ui/src/modules/hr/*`
-- [ ] API-Anbindung getestet
-- [ ] Recruiting-Modul implementiert
-
-**Status:** 20% Complete (nur Backend)
-**Details:** Siehe `/docs/roadmap/phase4_hr_implementation_plan.md`
+- `ui/src/modules/hr/*`
+- API-Anbindung getestet (`/api/hr/*`)
+- Screenshot + Demo-Flow im Wiki
 
 ---
 
-## 🧩 Phase 5 – HR-Dokumentation & Advanced Features
+## 🧩 Phase 5 – HR-Dokumentation (Woche 46)
 
 **Ziele:**
-- [ ] Wiki-Seiten:
+- Wiki-Seiten analog zum Core-Modul:
   ```
   docs/wiki/hr/
     ├── README.md
@@ -134,45 +106,30 @@ nav_order: 1
     ├── flows.md
     ├── hr_erm.md
     ├── api_endpoints.md
-    ├── leave_management.md
-    ├── recruiting.md
-    └── permissions.md
   ```
-- [ ] Flow-Diagramme (Mermaid)
-- [ ] ERM-Diagramm (DBML)
-- [ ] Advanced Features:
-  - [ ] Onboarding Submodul
-  - [ ] Training & Development
-  - [ ] Compensation Management
-  - [ ] Analytics & Reporting
+- Ergänzung im Haupt-Wiki:
+  - Verlinkung zwischen Core und HR
+  - Neues Kapitel in `architecture_blueprint.md`
 
 **Deliverables:**
-- [ ] Vollständige HR-Dokumentation
-- [ ] Flow-Diagramme in Mermaid + DBML
-- [ ] Advanced Submodule implementiert
-
-**Status:** Geplant für Q2 2026
+- Vollständiges HR-Wiki-Bundle (`workmate_hr_wiki.zip`)
+- Flow-Diagramme in Mermaid + DBML
 
 ---
 
-## ⚙️ Phase 6 – Integration, Testing & Production
+## ⚙️ Phase 6 – Integration & Testing (Woche 47)
 
 **Ziele:**
-- [ ] End-to-End-Tests: Core + HR
-- [ ] Zugriffskontrolle über Zitadel (HR-spezifische Rollen)
-- [ ] Email-Benachrichtigungen:
-  - Urlaubsantrag genehmigt/abgelehnt
-  - Erinnerungen für auslaufende Urlaube
-- [ ] Performance-Optimierung
-- [ ] Security Audit
+- End-to-End-Test: Core + HR
+- Zugriffskontrolle über Keycloak (HR-spezifische Rollen)
+- Reminder-Automatisierung:
+  - z. B. „Krankmeldung ausläuft in 2 Tagen“
+- Dokumentenverknüpfung prüfen (Uploads → SickNotes)
 
 **Deliverables:**
-- [ ] Integrationstests (`tests/test_hr_integration.py`)
-- [ ] API Health Check `/api/hr/health`
-- [ ] Production-Ready HR-Modul
-- [ ] Release v3.2 oder v4.0
-
-**Status:** Geplant für Q2 2026
+- Integrationstest (`tests/test_hr_integration.py`)
+- API Health Check `/api/hr/health`
+- Wiki-Eintrag: „HR-System Integration Tests“
 
 ---
 
