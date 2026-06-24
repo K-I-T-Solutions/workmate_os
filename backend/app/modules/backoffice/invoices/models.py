@@ -27,12 +27,14 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Date,
+    DateTime,
     Numeric,
     func,
     Index,
     CheckConstraint,
     event,
     Integer,
+    JSON,
     UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -613,3 +615,36 @@ class NumberSequence(Base, UUIDMixin, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<NumberSequence(type='{self.doc_type}', year={self.year}, current={self.current_number})>"
+
+
+class AuditLog(Base, UUIDMixin):
+    """Audit Trail für Compliance (GoBD, HGB, AO)."""
+    __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_entity", "entity_type", "entity_id"),
+        Index("ix_audit_logs_timestamp", "timestamp"),
+        Index("ix_audit_logs_action", "action"),
+        Index("ix_audit_logs_user_id", "user_id"),
+        CheckConstraint(
+            "action IN ("
+            "'create', 'update', 'delete', 'status_change',"
+            "'call', 'email', 'message', 'note',"
+            "'ticket_created', 'ticket_updated', 'ticket_closed',"
+            "'login', 'logout',"
+            "'upload'"
+            ")",
+            name="check_audit_action_valid"
+        ),
+    )
+
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    old_values: Mapped[dict | None] = mapped_column(JSON)
+    new_values: Mapped[dict | None] = mapped_column(JSON)
+    user_id: Mapped[str | None] = mapped_column(String(100))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    ip_address: Mapped[str | None] = mapped_column(String(45))
+
+    def __repr__(self) -> str:
+        return f"<AuditLog(entity='{self.entity_type}:{self.entity_id}', action='{self.action}')>"
