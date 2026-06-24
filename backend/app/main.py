@@ -6,12 +6,16 @@ from fastapi import FastAPI, Request
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from pathlib import Path
 import logging
 
 # Logging aktivieren
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Core
+from app.core.auth.routes import auth_router
 
 # Module Imports
 from app.modules.system.router import router as system_router
@@ -23,8 +27,15 @@ from app.modules.backoffice.crm.routes import router as crm_router
 from app.modules.backoffice.projects.routes import router as projects_router
 from app.modules.backoffice.time_tracking.routes import router as time_tracking_router
 from app.modules.backoffice.invoices.routes import router as invoices_router
+from app.modules.backoffice.products.routes import router as products_router
 from app.modules.backoffice.chat import routes as chat_routes
 from app.modules.backoffice.finance import routes as finance_routes
+from app.modules.admin.audit_routes import router as audit_router
+from app.modules.admin.settings_routes import router as settings_router
+from app.modules.hr import router as hr_router
+from app.modules.support.routes import router as support_router
+from app.modules.knowledge.routes import router as kb_router
+from app.modules.email_intake.routes import router as email_intake_router
 
 
 # ====== Basis Verzeichnis =====
@@ -47,6 +58,12 @@ origins = [
     "http://127.0.0.1:5173",
     "http://workmate_ui:5173",
 
+    # Production Domains
+    "https://workmate.kit-it-koblenz.de",
+    "https://api.workmate.kit-it-koblenz.de",
+    "http://workmate.kit-it-koblenz.de",
+    "http://api.workmate.kit-it-koblenz.de",
+
     # Interne Domains - ALLE Kombinationen
     "http://workmate.intern.phudevelopement.xyz",
     "http://workmate.intern.phudevelopement.xyz:5173",
@@ -58,11 +75,19 @@ origins = [
     "https://api.workmate.intern.phudevelopement.xyz",
     "https://api.workmate.intern.phudevelopement.xyz:8000",
 
+    # API Domain für Frontend
+    "https://workmate-api.phudevelopement.xyz",
+    "http://workmate-api.phudevelopement.xyz",
+
     "https://login.intern.phudevelopement.xyz",
 
     # Docker Services
     "http://keycloak:8080",
 ]
+
+# ProxyHeadersMiddleware — MUSS VOR CORS kommen (respektiert X-Forwarded-Proto von Caddy)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+
 # Debug Middleware um Origin zu sehen
 @app.middleware("http")
 async def log_origin(request: Request, call_next):
@@ -88,6 +113,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # === Module-Router ===
+app.include_router(auth_router, prefix="/api", tags=["Authentication"])
 app.include_router(system_router, prefix="/system", tags=["System"])
 app.include_router(employee_router, prefix="/api", tags=["Core"])
 app.include_router(documents_router, prefix="/api", tags=["Documents"])
@@ -96,9 +122,16 @@ app.include_router(dashboards_router, prefix="/api", tags=["Dashboards"])
 app.include_router(crm_router, prefix="/api", tags=["Backoffice CRM"])
 app.include_router(projects_router, prefix="/api", tags=["Backoffice Projects"])
 app.include_router(time_tracking_router, prefix="/api", tags=["Backoffice Time Tracking"])
+app.include_router(products_router, prefix="/api", tags=["Backoffice Products"])
 app.include_router(invoices_router, prefix="/api", tags=["Backoffice Invoices"])
 app.include_router(chat_routes.router, prefix="/api", tags=["Backoffice Chat"])
 app.include_router(finance_routes.router, prefix="/api", tags=["Backoffice Finance"])
+app.include_router(audit_router, tags=["Admin"])
+app.include_router(settings_router, tags=["Admin"])
+app.include_router(hr_router, prefix="/api", tags=["HR"])
+app.include_router(support_router, tags=["Support"])
+app.include_router(kb_router, tags=["Knowledge Base"])
+app.include_router(email_intake_router, tags=["Email Intake"])
 
 # === Core Endpoints ===
 @app.get("/", tags=["Root"])
