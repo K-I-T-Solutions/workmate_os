@@ -266,7 +266,7 @@ def generate_invoice_pdf(invoice, output_path: str):
             table_data.append([
                 str(idx),
                 item.description,
-                f"{float(item.quantity):.2f}",
+                f"{float(item.quantity):.2f}".replace(".", ","),
                 item.unit,
                 f"{float(item.unit_price):,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
                 f"{float(total):,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
@@ -384,11 +384,14 @@ def generate_invoice_pdf(invoice, output_path: str):
         t.textLine(line)
     responsible = getattr(invoice, "responsible_person", None) or COMPANY_OWNER
     t.textLine("")
-    t.textLine(f"Bei Rückfragen: ")
     c.drawText(t)
-    # "Name" fett
+    # "Bei Rückfragen: Name" — Label normal, Name fett in einer Zeile
+    label_y = terms_y - 6 * mm - (len(terms.split("\n")) + 1) * 11
+    c.setFont("Helvetica", 8)
+    c.setFillColor(NAVY)
+    c.drawString(margin, label_y, "Bei Rückfragen: ")
     c.setFont("Helvetica-Bold", 8)
-    c.drawString(margin + 22 * mm, terms_y - 6 * mm - 2 * 11 - 11, responsible)
+    c.drawString(margin + 22 * mm, label_y, responsible)
 
     # ── FOOTER ───────────────────────────────────────────────────────────────
     footer_y = 18 * mm
