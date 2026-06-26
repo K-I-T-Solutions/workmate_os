@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     SMTP_FROM: str = os.getenv("SMTP_FROM", "support@kit-it-koblenz.de")
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "K.I.T. Solutions Support")
 
+    # SMTP noreply (für Rechnungsversand)
+    NOREPLY_SMTP_USER: str = os.getenv("NOREPLY_SMTP_USER", "noreply@kit-it-koblenz.de")
+    NOREPLY_SMTP_PASSWORD: str = os.getenv("NOREPLY_SMTP_PASSWORD", "")
+    NOREPLY_SMTP_FROM: str = os.getenv("NOREPLY_SMTP_FROM", "noreply@kit-it-koblenz.de")
+    NOREPLY_SMTP_FROM_NAME: str = os.getenv("NOREPLY_SMTP_FROM_NAME", "K.I.T. Solutions")
+
     model_config = SettingsConfigDict(
         env_file=".env",  # In Docker: /app/.env
         env_file_encoding="utf-8",
