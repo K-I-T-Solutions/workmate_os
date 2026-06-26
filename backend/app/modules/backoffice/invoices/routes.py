@@ -19,6 +19,12 @@ from typing import List, Optional
 from datetime import date
 import uuid
 import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from pydantic import BaseModel, EmailStr
 
 from app.core.database import get_db
 from app.modules.backoffice.invoices import crud, schemas
@@ -383,6 +389,80 @@ def regenerate_pdf(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to regenerate PDF: {str(e)}"
         )
+
+
+# ============================================================================
+# SEND VIA EMAIL
+# ============================================================================
+
+class InvoiceSendRequest(BaseModel):
+    to_email: EmailStr
+    cc_email: Optional[EmailStr] = None
+    message: Optional[str] = None
+
+
+@router.post("/{invoice_id}/send", status_code=status.HTTP_204_NO_CONTENT)
+def send_invoice_email(
+    invoice_id: uuid.UUID,
+    data: InvoiceSendRequest,
+    db: Session = Depends(get_db),
+):
+    """Rechnung per E-Mail versenden (PDF als Anhang). Setzt Status auf 'sent'."""
+    from app.core.settings.config import settings
+
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
+
+    # PDF sicherstellen
+    if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
+        try:
+            pdf_dir = "/root/workmate_os_uploads/invoices"
+            os.makedirs(pdf_dir, exist_ok=True)
+            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+            generate_invoice_pdf(invoice, pdf_path)
+            invoice.pdf_path = pdf_path
+            db.commit()
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"PDF-Generierung fehlgeschlagen: {e}")
+
+    # E-Mail aufbauen
+    msg = MIMEMultipart()
+    msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM}>"
+    msg["To"] = data.to_email
+    msg["Subject"] = f"Rechnung {invoice.invoice_number}"
+    if data.cc_email:
+        msg["Cc"] = data.cc_email
+
+    body = data.message or (
+        f"Sehr geehrte Damen und Herren,\n\n"
+        f"anbei erhalten Sie unsere Rechnung {invoice.invoice_number}.\n\n"
+        f"Mit freundlichen Grüßen\nK.I.T. Solutions"
+    )
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+
+    # PDF anhängen
+    with open(invoice.pdf_path, "rb") as f:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(f.read())
+    encoders.encode_base64(part)
+    part.add_header("Content-Disposition", f'attachment; filename="{invoice.invoice_number}.pdf"')
+    msg.attach(part)
+
+    recipients = [data.to_email]
+    if data.cc_email:
+        recipients.append(data.cc_email)
+
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:
+            smtp.starttls()
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            smtp.sendmail(settings.SMTP_FROM, recipients, msg.as_string())
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"E-Mail-Versand fehlgeschlagen: {e}")
+
+    # Status auf sent setzen
+    crud.update_invoice_status(db, invoice_id, "sent")
 
 
 # ============================================================================
