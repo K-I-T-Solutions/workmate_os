@@ -1,5 +1,4 @@
 # app/modules/backoffice/invoices/pdf_generator.py
-
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
@@ -17,513 +16,392 @@ from app.core.config import settings
 
 ASSETS_DIR = settings.ASSETS_DIR
 
-# =====================================================================
-# DOKUMENTTYPEN → Titel, Farben, Default Terms
-# =====================================================================
+# ── Rebrand 2026 ────────────────────────────────────────────────────────────
+ORANGE   = colors.HexColor("#FF6B35")
+CYAN     = colors.HexColor("#06B6D4")
+NAVY     = colors.HexColor("#0F1629")
+GREY_LIGHT = colors.HexColor("#F8F9FA")
+GREY_MID   = colors.HexColor("#E9ECEF")
+GREY_TEXT  = colors.HexColor("#6C757D")
+GREEN_PAID = colors.HexColor("#22C55E")
 
 DOCUMENT_TYPES = {
     "invoice": {
         "title": "RECHNUNG",
-        "color": "#ff9100",
-        "terms_default": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum.",
+        "accent": ORANGE,
+        "badge": None,
+        "terms_default": "Zahlbar innerhalb von 14 Tagen ohne Abzug.",
     },
     "quote": {
         "title": "ANGEBOT",
-        "color": "#008cff",
+        "accent": CYAN,
+        "badge": None,
         "terms_default": "Dieses Angebot ist 14 Tage gültig.",
     },
     "credit_note": {
         "title": "GUTSCHRIFT",
-        "color": "#5dcc5d",
+        "accent": GREEN_PAID,
+        "badge": None,
         "terms_default": "Die Gutschrift wird mit offenen Posten verrechnet.",
     },
     "order_confirmation": {
         "title": "AUFTRAGSBESTÄTIGUNG",
-        "color": "#9933ff",
+        "accent": CYAN,
+        "badge": None,
         "terms_default": "Bitte prüfen Sie alle Angaben sorgfältig.",
     },
 }
 
-# Feste Stammdaten für Footer & SEPA-QR
-COMPANY_NAME = "K.I.T. Solutions"
-COMPANY_OWNER = "Joshua Phu Kuhrau"
-COMPANY_STREET = "Dietzstr. 1"
-COMPANY_ZIP_CITY = "56073 Koblenz"
-COMPANY_COUNTRY = "Germany"
-COMPANY_EMAIL = "info@kit-it-koblenz.de"
-COMPANY_WEBSITE = "https://kit-it-koblenz.de"
-COMPANY_PHONE = "Tel. 0162 / 2654262"
+COMPANY_NAME      = "K.I.T. Solutions"
+COMPANY_SUBTITLE  = "Kuhrau InformationsTechnik"
+COMPANY_OWNER     = "Joshua Phu Kuhrau"
+COMPANY_STREET    = "Dietzstr. 1"
+COMPANY_ZIP_CITY  = "56073 Koblenz"
+COMPANY_STATE     = "Rheinland-Pfalz"
+COMPANY_EMAIL     = "joshua@kit-it-koblenz.de"
+COMPANY_WEBSITE   = "kit-it-koblenz.de"
+COMPANY_PHONE     = "0162 2654262"
+COMPANY_TAGLINE   = "Business IT  •  Event Tech  •  Custom Software"
+COMPANY_FOOTER_TAGLINE = "Miteinander statt Führend."
+COMPANY_UST_HINWEIS = "Kleinunternehmer gem. § 19 UStG – Es wird keine Umsatzsteuer berechnet."
 
 BANK_IBAN = "DE94100110012706471170"
-BANK_BIC = "NTSBDEB1XX"
+BANK_BIC  = "NTSBDEB1XX"
 BANK_NAME = "N26 Bank AG"
 
-# =====================================================================
-# HELFER
-# =====================================================================
 
 def format_eur(value) -> str:
-    """
-    Formatiert Zahlen nach deutschem Firmenkunden-Schema:
-    1234.5 -> '1.234,50 €'
-    """
     if value is None:
-        return "0,00 €"
+        return "0,00 EUR"
     if isinstance(value, Decimal):
         value = float(value)
-
-    # 1,234.50 -> 1.234,50
-    s = f"{value:,.2f}"
-    # US-Format: 1,234.50  ->  deutsch: 1.234,50
-    s = s.replace(",", "_").replace(".", ",").replace("_", ".")
-    return f"{s} €"
-
-
-def draw_logo_watermark(c: canvas.Canvas, width, height):
-    """
-    Zeichnet ein halbtransparentes Logo als Wasserzeichen diagonal über die Seite.
-    Wird nur verwendet, wenn das Logo existiert.
-    """
-    logo_path = Path(ASSETS_DIR) / "KIT_IT_GREY_NO_BACKGROUND.png"
-    if not logo_path.exists():
-        return
-
-    try:
-        c.saveState()
-        # Mitte der Seite
-        c.translate(width / 2, height / 2)
-        # Diagonal drehen
-        c.rotate(45)
-        # Transparenz
-        try:
-            c.setFillAlpha(0.10)
-        except Exception:
-            # Wenn Alpha im Backend nicht verfügbar ist, einfach normal zeichnen
-            pass
-
-        # Bild relativ zur Mitte zeichnen
-        watermark_width = 120 * mm
-        c.drawImage(
-            str(logo_path),
-            -watermark_width / 2,
-            -watermark_width / 2,
-            width=watermark_width,
-            preserveAspectRatio=True,
-            mask="auto",
-        )
-        c.restoreState()
-    except Exception:
-        # Wasserzeichen ist nice-to-have; Fehler sollen das PDF nicht killen
-        c.restoreState()
-
-
-def build_epc_qr_string(amount: Decimal, invoice_number: str) -> str:
-    """
-    Baut den EPC-QR-String für SEPA-Zahlungen.
-    Siehe: EPC069-12 (vereinfachte Variante).
-    """
-    eur_amount = float(amount) if isinstance(amount, Decimal) else amount
-    amount_str = f"{eur_amount:.2f}"
-
-    # Zeilen: BCD-Header, Version, Service Tag, Charakter-Set,
-    #         Transfer Type, BIC, Name, IBAN, Betrag, Purpose, Verwendungszweck, leer
-    lines = [
-        "BCD",
-        "001",
-        "1",
-        "SCT",
-        BANK_BIC,
-        COMPANY_NAME,
-        BANK_IBAN,
-        f"EUR{amount_str}",
-        "",
-        f"Rechnung {invoice_number}",
-        "",
-    ]
-    return "\n".join(lines)
-
-
-def draw_qr_code(c: canvas.Canvas, x: float, y: float, size_mm: float, data: str):
-    """Zeichnet einen QR-Code an Position (x, y) mit gegebener Datenbasis."""
-    qr_code = qr.QrCodeWidget(data)
-    bounds = qr_code.getBounds()
-    w = bounds[2] - bounds[0]
-    h = bounds[3] - bounds[1]
-    size = size_mm * mm
-
-    d = Drawing(size, size)
-    d.add(qr_code)
-    d.scale(size / w, size / h)
-    renderPDF.draw(d, c, x, y)
+    s = f"{value:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    return f"{s} EUR"
 
 
 def format_customer_address(customer) -> list[str]:
-    """
-    Baut eine saubere Adress-Blockliste für den Kunden.
-    """
-    lines = []
     if not customer:
         return ["Unbekannter Kunde"]
-
+    lines = []
     if getattr(customer, "name", None):
         lines.append(customer.name)
-
-    street = getattr(customer, "street", None) or ""
-    zip_code = getattr(customer, "zip_code", None) or ""
-    city = getattr(customer, "city", None) or ""
-    country = getattr(customer, "country", None) or ""
-
-    if street:
-        lines.append(street)
-
-    zip_city = f"{zip_code} {city}".strip()
+    if getattr(customer, "street", None):
+        lines.append(customer.street)
+    zip_city = f"{getattr(customer, 'zip_code', '') or ''} {getattr(customer, 'city', '') or ''}".strip()
     if zip_city:
         lines.append(zip_city)
-
-    if country and country not in lines:
-        lines.append(country)
-
     return lines
 
 
-# =====================================================================
-# GENERATOR
-# =====================================================================
+def build_epc_qr_string(amount, invoice_number: str) -> str:
+    eur = float(amount) if isinstance(amount, Decimal) else float(amount)
+    return "\n".join([
+        "BCD", "001", "1", "SCT",
+        BANK_BIC, COMPANY_NAME, BANK_IBAN,
+        f"EUR{eur:.2f}", "", f"Rechnung {invoice_number}", "",
+    ])
+
+
+def draw_qr_code(c, x, y, size_mm, data):
+    qr_code = qr.QrCodeWidget(data)
+    b = qr_code.getBounds()
+    size = size_mm * mm
+    d = Drawing(size, size)
+    d.add(qr_code)
+    d.scale(size / (b[2] - b[0]), size / (b[3] - b[1]))
+    renderPDF.draw(d, c, x, y)
+
+
+def draw_badge(c, x, y, text, bg_color, text_color=colors.white, font_size=8):
+    w = len(text) * font_size * 0.65 + 8
+    h = font_size + 6
+    c.setFillColor(bg_color)
+    c.roundRect(x, y, w, h, 2, fill=1, stroke=0)
+    c.setFillColor(text_color)
+    c.setFont("Helvetica-Bold", font_size)
+    c.drawCentredString(x + w / 2, y + 4, text)
+    return w
+
+
+# ── MAIN GENERATOR ──────────────────────────────────────────────────────────
 
 def generate_invoice_pdf(invoice, output_path: str):
-    """
-    Universeller PDF-Generator für:
-    - Rechnung
-    - Angebot
-    - Gutschrift
-    - Auftragsbestätigung
-    inkl.:
-    - Logo-Wasserzeichen
-    - dynamischer Farb- & Titelwahl
-    - Summenblock mit doppelt unterstrichenem Gesamtbetrag
-    - Terms / Zahlungsbedingungen
-    - 3-Spalten-Footer
-    - SEPA-EPC-QR (und optional Payment-URL-QR)
-    """
-
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     c = canvas.Canvas(output_path, pagesize=A4)
-    width, height = A4
+    W, H = A4
     margin = 20 * mm
 
-    # ---------------------------------------------------------
-    # Dokumenttyp & Farbe
-    # ---------------------------------------------------------
     doc_type = getattr(invoice, "document_type", "invoice")
     cfg = DOCUMENT_TYPES.get(doc_type, DOCUMENT_TYPES["invoice"])
-    accent_color = colors.HexColor(cfg["color"])
+    accent = cfg["accent"]
 
-    # ---------------------------------------------------------
-    # Wasserzeichen (Logo)
-    # ---------------------------------------------------------
-    draw_logo_watermark(c, width, height)
+    # ── HEADER ──────────────────────────────────────────────────────────────
+    # Logo icon oben rechts (ohne Schriftzug)
+    logo_icon = Path(ASSETS_DIR) / "KIT_Solutions_logo_ohne_name.png"
+    if not logo_icon.exists():
+        logo_icon = Path(ASSETS_DIR) / "kit_logo.png"
 
-    # ---------------------------------------------------------
-    # HEADER (Logo oben links, Firmendaten oben rechts)
-    # ---------------------------------------------------------
-    logo_path = Path(ASSETS_DIR) / "KIT_IT_GREY_NO_BACKGROUND.png"
-    if logo_path.exists():
+    header_top = H - 18 * mm
+
+    if logo_icon.exists():
+        icon_w = 14 * mm
         c.drawImage(
-            str(logo_path),
-            margin,
-            height - 45 * mm,
-            width=40 * mm,
-            preserveAspectRatio=True,
-            mask="auto",
+            str(logo_icon), W - margin - icon_w, header_top - 14 * mm,
+            width=icon_w, preserveAspectRatio=True, mask="auto",
         )
+        text_right = W - margin - icon_w - 3 * mm
+    else:
+        text_right = W - margin
 
-    c.setFont("Helvetica-Bold", 14)
-    c.drawRightString(width - margin, height - 20 * mm, COMPANY_NAME)
+    # Firmenname groß
+    c.setFont("Helvetica-Bold", 16)
+    c.setFillColor(NAVY)
+    c.drawRightString(text_right, header_top, "K.I.T.  SOLUTIONS")
 
-    c.setFont("Helvetica", 9)
-    c.drawRightString(
-        width - margin,
-        height - 26 * mm,
-        f"Inhaber: {COMPANY_OWNER}",
-    )
-    c.drawRightString(
-        width - margin,
-        height - 31 * mm,
-        f"{COMPANY_STREET} · {COMPANY_ZIP_CITY}",
-    )
-    c.drawRightString(
-        width - margin,
-        height - 36 * mm,
-        f"{COMPANY_EMAIL} · kit-it-koblenz.de",
-    )
-    c.drawRightString(
-        width - margin,
-        height - 41 * mm,
-        COMPANY_PHONE,
-    )
+    # Untertitel kursiv orange
+    c.setFont("Helvetica-Oblique", 9)
+    c.setFillColor(ORANGE)
+    c.drawRightString(text_right, header_top - 6 * mm, COMPANY_SUBTITLE)
 
-    # ---------------------------------------------------------
-    # TITELBLOCK (Dokumenttyp, Nummer, Datum, Fälligkeit)
-    # ---------------------------------------------------------
-    c.setFont("Helvetica-Bold", 18)
-    c.setFillColor(accent_color)
-    c.drawString(margin, height - 55 * mm, cfg["title"])
+    # Kontaktzeile
+    c.setFont("Helvetica", 8)
+    c.setFillColor(NAVY)
+    contact_line = f"{COMPANY_EMAIL}  •  {COMPANY_PHONE}  •  {COMPANY_WEBSITE}"
+    c.drawRightString(text_right, header_top - 11 * mm, contact_line)
+    addr_line = f"{COMPANY_STREET}  •  {COMPANY_ZIP_CITY}  •  {COMPANY_STATE}"
+    c.drawRightString(text_right, header_top - 15 * mm, addr_line)
 
-    c.setFillColor(colors.black)
-    c.setFont("Helvetica", 10)
-    c.drawString(margin, height - 65 * mm, f"Nummer: {invoice.invoice_number}")
-    c.drawString(margin, height - 72 * mm, f"Datum: {invoice.issued_date}")
-    if doc_type == "invoice":
-        c.drawString(
-            margin,
-            height - 79 * mm,
-            f"Fällig bis: {getattr(invoice, 'due_date', None) or '—'}",
-        )
-    elif doc_type == "quote":
-        c.drawString(
-            margin,
-            height - 79 * mm,
-            "Dieses Angebot ist 14 Tage gültig.",
-        )
+    # Trennlinie (orange + cyan zweifarbig)
+    sep_y = H - 38 * mm
+    c.setLineWidth(2)
+    c.setStrokeColor(ORANGE)
+    c.line(margin, sep_y, margin + (W - 2 * margin) * 0.45, sep_y)
+    c.setStrokeColor(CYAN)
+    c.line(margin + (W - 2 * margin) * 0.45, sep_y, W - margin, sep_y)
 
-    # ---------------------------------------------------------
-    # KUNDENBLOCK
-    # ---------------------------------------------------------
-    y = height - 95 * mm
-    c.setFont("Helvetica-Bold", 11)
+    # ── RÜCKSENDEADRESSE (kleine Zeile über Kundenadresse) ──────────────────
+    retaddr_y = H - 46 * mm
+    c.setFont("Helvetica", 7)
+    c.setFillColor(GREY_TEXT)
+    c.drawString(margin, retaddr_y, f"{COMPANY_NAME}  •  {COMPANY_STREET}  •  {COMPANY_ZIP_CITY}")
 
-    address_lines = format_customer_address(getattr(invoice, "customer", None))
-    for i, line in enumerate(address_lines):
+    # ── KUNDENADRESSE (links) ────────────────────────────────────────────────
+    addr_start_y = retaddr_y - 5 * mm
+    addr_lines = format_customer_address(getattr(invoice, "customer", None))
+    c.setFillColor(NAVY)
+    for i, line in enumerate(addr_lines):
         if i == 0:
-            c.drawString(margin, y, line)
+            c.setFont("Helvetica-Bold", 10)
         else:
             c.setFont("Helvetica", 9)
-            c.drawString(margin, y - 5 * mm * i, line)
+        c.drawString(margin, addr_start_y - i * 5 * mm, line)
 
-    # ---------------------------------------------------------
-    # OPTIONALE HINWEISBOX (oberhalb der Tabelle)
-    # Verwendet invoice.notes, falls vorhanden
-    # ---------------------------------------------------------
-    notes = getattr(invoice, "notes", None)
-    y_table_top = y - 35 * mm
+    # ── RECHNUNGSMETA (rechts, als Key-Value-Block) ──────────────────────────
+    meta_x_label = W / 2 + 10 * mm
+    meta_x_value = W - margin
+    meta_y = retaddr_y - 2 * mm
+    meta_line_h = 5.5 * mm
 
-    if notes:
-        box_height = 15 * mm
-        box_y = y_table_top
-        c.setStrokeColor(accent_color)
-        c.setFillColor(colors.white)
-        c.setLineWidth(0.5)
-        c.roundRect(margin, box_y - box_height, width - 2 * margin, box_height, 3 * mm)
+    meta = [
+        ("Rechnungsnummer:", str(invoice.invoice_number)),
+        ("Datum:", str(invoice.issued_date)),
+    ]
+    if doc_type == "invoice":
+        meta.append(("Fällig bis:", str(getattr(invoice, "due_date", None) or "—")))
+    elif doc_type == "quote":
+        meta.append(("Gültig bis:", "14 Tage"))
 
-        c.setFont("Helvetica-Bold", 9)
-        c.setFillColor(accent_color)
-        c.drawString(margin + 3 * mm, box_y - 5, "Hinweis")
-        c.setFillColor(colors.black)
+    for i, (label, value) in enumerate(meta):
+        y = meta_y - i * meta_line_h
         c.setFont("Helvetica", 8)
+        c.setFillColor(GREY_TEXT)
+        c.drawString(meta_x_label, y, label)
+        c.setFont("Helvetica-Bold", 8)
+        c.setFillColor(NAVY)
+        c.drawRightString(meta_x_value, y, value)
 
-        text_obj = c.beginText(margin + 3 * mm, box_y - 10)
-        text_obj.setLeading(10)
-        for line in notes.split("\n"):
-            text_obj.textLine(line)
-        c.drawText(text_obj)
+    # ── STATUS-BADGE ─────────────────────────────────────────────────────────
+    inv_status = getattr(invoice, "status", None)
+    badge_y = meta_y - len(meta) * meta_line_h - 3 * mm
+    status_colors = {
+        "paid": (GREEN_PAID, "PAID"),
+        "sent": (CYAN, "VERSENDET"),
+        "overdue": (colors.red, "ÜBERFÄLLIG"),
+        "draft": (GREY_TEXT, "ENTWURF"),
+        "cancelled": (colors.HexColor("#9CA3AF"), "STORNIERT"),
+    }
+    if inv_status in status_colors:
+        bg, label = status_colors[inv_status]
+        draw_badge(c, meta_x_label, badge_y, label, bg)
 
-        y_table_top = box_y - box_height - 5 * mm
+    # ── DOKUMENT-TITEL ───────────────────────────────────────────────────────
+    title_y = addr_start_y - len(addr_lines) * 5 * mm - 12 * mm
+    c.setFont("Helvetica-Bold", 20)
+    c.setFillColor(NAVY)
+    c.drawString(margin, title_y, cfg["title"])
 
-    # ---------------------------------------------------------
-    # POSITIONSTABELLE
-    # ---------------------------------------------------------
-    data = [["Pos", "Beschreibung", "Menge", "Einheit", "Einzelpreis", "Gesamt"]]
+    # ── BETREFF-ZEILE ────────────────────────────────────────────────────────
+    subject = getattr(invoice, "notes", None)
+    subj_y = title_y - 10 * mm
+    if subject:
+        c.setFillColor(accent)
+        c.rect(margin, subj_y - 1, 2.5, 12, fill=1, stroke=0)
+        c.setFillColor(NAVY)
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(margin + 5, subj_y + 2, f"Betreff: {subject[:80]}")
+        subj_y -= 8 * mm
+    else:
+        # Kleiner Abstand
+        subj_y -= 3 * mm
+
+    # ── POSITIONSTABELLE ─────────────────────────────────────────────────────
+    table_data = [["Pos.", "Beschreibung", "Menge", "Einheit", "EP (EUR)", "GP (EUR)"]]
 
     if getattr(invoice, "line_items", None):
-        for idx, item in enumerate(invoice.line_items, start=1):
+        for idx, item in enumerate(invoice.line_items, 1):
             total = item.total if hasattr(item, "total") else (
-                (item.quantity * item.unit_price) * (1 - item.discount_percent / 100)
+                float(item.quantity) * float(item.unit_price) * (1 - float(getattr(item, "discount_percent", 0)) / 100)
             )
-            data.append(
-                [
-                    str(idx),
-                    item.description,
-                    f"{item.quantity:.2f}",
-                    item.unit,
-                    format_eur(item.unit_price),
-                    format_eur(total),
-                ]
-            )
+            table_data.append([
+                str(idx),
+                item.description,
+                f"{float(item.quantity):.2f}",
+                item.unit,
+                f"{float(item.unit_price):,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
+                f"{float(total):,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
+            ])
     else:
-        data.append(["-", "Keine Positionen vorhanden", "", "", "", ""])
+        table_data.append(["-", "Keine Positionen vorhanden", "", "", "", ""])
 
-    table = Table(
-        data,
-        colWidths=[15 * mm, 65 * mm, 22 * mm, 22 * mm, 28 * mm, 28 * mm],
-        repeatRows=1,
-    )
+    # Summenzeilen
+    table_data.append(["", "", "", "", "Nettobetrag:", format_eur(invoice.subtotal)])
+    tax_rate = getattr(invoice, "tax_rate", 0) or 0
+    table_data.append(["", "", "", "", f"zzgl. {int(tax_rate)} % USt. (§ 19 UStG):", format_eur(invoice.tax_amount)])
+    table_data.append(["", "", "", "", "GESAMT:", format_eur(invoice.total)])
 
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), accent_color),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-                ("TOPPADDING", (0, 0), (-1, 0), 6),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 9),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-                 [colors.whitesmoke, colors.Color(0.97, 0.97, 0.97)]),
-                ("LEFTPADDING", (0, 1), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 1), (-1, -1), 4),
-            ]
-        )
-    )
+    n_items = len(table_data) - 3  # ohne Summenzeilen
+    col_w = [12*mm, 68*mm, 18*mm, 20*mm, 30*mm, 27*mm]
 
-    avail_width = width - 2 * margin
-    table_w, table_h = table.wrap(avail_width, height)
-    table_y = y_table_top - table_h
-    table.drawOn(c, margin, table_y)
+    style = [
+        # Header
+        ("BACKGROUND",    (0, 0), (-1, 0),   NAVY),
+        ("TEXTCOLOR",     (0, 0), (-1, 0),   colors.white),
+        ("FONTNAME",      (0, 0), (-1, 0),   "Helvetica-Bold"),
+        ("FONTSIZE",      (0, 0), (-1, 0),   8),
+        ("TOPPADDING",    (0, 0), (-1, 0),   5),
+        ("BOTTOMPADDING", (0, 0), (-1, 0),   5),
+        ("ALIGN",         (0, 0), (-1, 0),   "CENTER"),
+        # Datenzeilen
+        ("FONTNAME",      (0, 1), (-1, n_items), "Helvetica"),
+        ("FONTSIZE",      (0, 1), (-1, n_items), 8.5),
+        ("ALIGN",         (2, 1), (-1, n_items), "RIGHT"),
+        ("TOPPADDING",    (0, 1), (-1, n_items), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, n_items), 4),
+        ("ROWBACKGROUNDS",(0, 1), (-1, n_items), [colors.white, GREY_LIGHT]),
+        ("GRID",          (0, 0), (-1, n_items), 0.25, GREY_MID),
+        # Summen Netto + USt (grau, kein Rand links)
+        ("SPAN",          (0, n_items+1), (3, n_items+1), ),
+        ("SPAN",          (0, n_items+2), (3, n_items+2), ),
+        ("FONTNAME",      (0, n_items+1), (-1, n_items+2), "Helvetica"),
+        ("FONTSIZE",      (0, n_items+1), (-1, n_items+2), 8),
+        ("TEXTCOLOR",     (4, n_items+1), (4, n_items+2), GREY_TEXT),
+        ("ALIGN",         (4, n_items+1), (-1, n_items+2), "RIGHT"),
+        ("TOPPADDING",    (0, n_items+1), (-1, n_items+2), 3),
+        ("BOTTOMPADDING", (0, n_items+1), (-1, n_items+2), 3),
+        ("LINEABOVE",     (0, n_items+1), (-1, n_items+1), 0.5, GREY_MID),
+        # GESAMT-Zeile (dunkel)
+        ("BACKGROUND",    (0, -1), (-1, -1), NAVY),
+        ("TEXTCOLOR",     (4, -1), (-1, -1), colors.white),
+        ("FONTNAME",      (4, -1), (-1, -1), "Helvetica-Bold"),
+        ("FONTSIZE",      (4, -1), (-1, -1), 9),
+        ("ALIGN",         (4, -1), (-1, -1), "RIGHT"),
+        ("TOPPADDING",    (0, -1), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, -1), (-1, -1), 5),
+    ]
 
-    # ---------------------------------------------------------
-    # SUMMENBLOCK (mit doppelt unterstrichenem Gesamtbetrag)
-    # ---------------------------------------------------------
-    y_totals = table_y - 10 * mm
+    tbl = Table(table_data, colWidths=col_w, repeatRows=1)
+    tbl.setStyle(TableStyle(style))
 
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(colors.black)
+    avail_w = W - 2 * margin
+    _, tbl_h = tbl.wrap(avail_w, H)
+    tbl_y = subj_y - tbl_h - 3 * mm
+    tbl.drawOn(c, margin, tbl_y)
 
-    c.drawRightString(width - margin - 60, y_totals, "Zwischensumme:")
-    c.drawRightString(width - margin, y_totals, format_eur(invoice.subtotal))
+    # ── ZAHLUNGSINFORMATIONEN BOX ─────────────────────────────────────────────
+    box_y = tbl_y - 35 * mm
+    box_h = 28 * mm
+    box_w = W - 2 * margin
 
-    c.drawRightString(width - margin - 60, y_totals - 6 * mm, "MwSt:")
-    c.drawRightString(width - margin, y_totals - 6 * mm, format_eur(invoice.tax_amount))
+    c.setFillColor(NAVY)
+    c.roundRect(margin, box_y, box_w, box_h, 3, fill=1, stroke=0)
 
-    total_y = y_totals - 12 * mm
-    c.setFillColor(accent_color)
-    c.drawRightString(width - margin - 60, total_y, "Gesamtbetrag:")
-    c.drawRightString(width - margin, total_y, format_eur(invoice.total))
-    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(CYAN)
+    c.drawString(margin + 5 * mm, box_y + box_h - 7 * mm, "Zahlungsinformationen")
 
-    # Doppelte Unterstreichung unter dem Gesamtbetrag
-    line_left = width - margin - 60
-    line_right = width - margin
-    c.setLineWidth(0.7)
-    c.setStrokeColor(accent_color)
-    c.line(line_left, total_y - 2, line_right, total_y - 2)
-    c.line(line_left, total_y - 4, line_right, total_y - 4)
+    fields = [
+        ("IBAN:",        BANK_IBAN),
+        ("BIC:",         BANK_BIC),
+        ("Bank:",        BANK_NAME),
+        ("Verwendung:",  f"Rechnung {invoice.invoice_number}"),
+    ]
+    for i, (k, v) in enumerate(fields):
+        fy = box_y + box_h - 12 * mm - i * 4.5 * mm
+        c.setFont("Helvetica-Bold", 7.5)
+        c.setFillColor(CYAN)
+        c.drawString(margin + 5 * mm, fy, k)
+        c.setFont("Helvetica", 7.5)
+        c.setFillColor(colors.white)
+        c.drawString(margin + 28 * mm, fy, v)
 
-    # ---------------------------------------------------------
-    # TERMS / ZAHLUNGSBEDINGUNGEN
-    # ---------------------------------------------------------
-    terms = getattr(invoice, "terms", None) or cfg["terms_default"]
-
-    c.setFont("Helvetica", 9)
-    terms_title_y = y_totals - 20 * mm
-    c.drawString(margin, terms_title_y, "Zahlungsbedingungen:")
-
-    text_obj = c.beginText(margin, terms_title_y - 5 * mm)
-    text_obj.setLeading(11)
-    for line in terms.split("\n"):
-        text_obj.textLine(line)
-
-    # Rückfragen-Hinweis
-    responsible = getattr(invoice, "responsible_person", None)
-    if not responsible:
-        # Fallback, falls kein Bearbeiter hinterlegt ist
-        responsible = f"{COMPANY_NAME} – {COMPANY_OWNER}"
-    text_obj.textLine("")
-    text_obj.textLine(f"Bei Rückfragen wenden Sie sich bitte an: {responsible}")
-    c.drawText(text_obj)
-
-    # ---------------------------------------------------------
-    # QR-CODES (SEPA & optional Payment-URL)
-    # ---------------------------------------------------------
-    qr_size = 30  # mm
-    qr_margin_top = 10 * mm
-    qr_y = terms_title_y - qr_margin_top - qr_size * mm
-
-    # SEPA-EPC-QR nur bei Rechnungen & positive Beträge
+    # ── QR-CODE ──────────────────────────────────────────────────────────────
     if doc_type == "invoice" and float(invoice.total) > 0:
-        epc_data = build_epc_qr_string(invoice.total, invoice.invoice_number)
-        qr_x = width - margin - qr_size * mm
-        draw_qr_code(c, qr_x, qr_y, qr_size, epc_data)
+        qr_size = 28
+        qr_x = W - margin - qr_size * mm
+        qr_y_pos = box_y - qr_size * mm - 3 * mm
+        draw_qr_code(c, qr_x, qr_y_pos, qr_size, build_epc_qr_string(invoice.total, invoice.invoice_number))
         c.setFont("Helvetica", 7)
-        c.drawRightString(
-            width - margin,
-            qr_y - 3,
-            "SEPA-Überweisung per Scan",
-        )
+        c.setFillColor(GREY_TEXT)
+        c.drawRightString(W - margin, qr_y_pos - 3, "SEPA-Überweisung per Scan")
 
-    # Optional: Payment-URL-QR (z.B. Stripe-Link), falls verfügbar
-    payment_url = getattr(invoice, "payment_url", None)
-    if payment_url:
-        qr2_x = width - margin - 2 * qr_size * mm - 5 * mm
-        draw_qr_code(c, qr2_x, qr_y, qr_size, payment_url)
-        c.setFont("Helvetica", 7)
-        c.drawString(
-            qr2_x,
-            qr_y - 3,
-            "Online-Zahlung",
-        )
+    # ── ZAHLUNGSBEDINGUNGEN ───────────────────────────────────────────────────
+    terms = getattr(invoice, "terms", None) or cfg["terms_default"]
+    terms_y = box_y - 8 * mm
 
-    # ---------------------------------------------------------
-    # FOOTER (3 Spalten) – Clean & Stable Version
-    # ---------------------------------------------------------
-    footer_y = 35 * mm   # etwas tiefer, wirkt ruhiger
+    c.setFont("Helvetica-Bold", 8.5)
+    c.setFillColor(NAVY)
+    c.drawString(margin, terms_y, "Zahlungsbedingungen")
+    c.setLineWidth(0.5)
+    c.setStrokeColor(ORANGE)
+    c.line(margin, terms_y - 1.5, margin + 55 * mm, terms_y - 1.5)
 
-    # Divider
-    c.setStrokeColor(accent_color)
-    c.setLineWidth(1)
-    c.line(margin, footer_y + 20, width - margin, footer_y + 20)
-
-    # Schrift
     c.setFont("Helvetica", 8)
-    c.setFillColor(colors.black)
+    c.setFillColor(NAVY)
+    t = c.beginText(margin, terms_y - 6 * mm)
+    t.setLeading(11)
+    for line in terms.split("\n"):
+        t.textLine(line)
+    responsible = getattr(invoice, "responsible_person", None) or COMPANY_OWNER
+    t.textLine("")
+    t.textLine(f"Bei Rückfragen: ")
+    c.drawText(t)
+    # "Name" fett
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(margin + 22 * mm, terms_y - 6 * mm - 2 * 11 - 11, responsible)
 
-    # Grid
-    usable_width = width - 2 * margin
-    col_width = usable_width / 3
+    # ── FOOTER ───────────────────────────────────────────────────────────────
+    footer_y = 18 * mm
+    c.setStrokeColor(GREY_MID)
+    c.setLineWidth(0.5)
+    c.line(margin, footer_y + 10, W - margin, footer_y + 10)
 
-    left_x  = margin
-    mid_x   = margin + col_width
-    right_x = margin + 2 * col_width
+    c.setFont("Helvetica", 7)
+    c.setFillColor(GREY_TEXT)
+    footer_left = f"{COMPANY_NAME}  •  {COMPANY_FOOTER_TAGLINE}  •  {COMPANY_TAGLINE}"
+    c.drawString(margin, footer_y + 3, footer_left)
+    c.drawRightString(W - margin, footer_y + 3, "Seite 1 / 1")
+    c.drawString(margin, footer_y - 4, COMPANY_UST_HINWEIS)
 
-    # Zeilenabstände (perfekt für 8pt Helvetica)
-    line_step = 12
-    line1 = 0
-    line2 = line_step
-    line3 = line_step * 2
-    line4 = line_step * 3
-
-    # -------------------------------
-    # SPALTE 1: ANSCHRIFT
-    # -------------------------------
-    c.drawString(left_x, footer_y,                 COMPANY_NAME)
-    c.drawString(left_x, footer_y - line2,         f"Inhaber: {COMPANY_OWNER}")
-    c.drawString(left_x, footer_y - line3,         COMPANY_STREET)
-    c.drawString(left_x, footer_y - line4,         COMPANY_ZIP_CITY)
-
-    # -------------------------------
-    # SPALTE 2: KONTAKT
-    # -------------------------------
-    c.drawString(mid_x, footer_y,                  "Kontakt")
-    c.drawString(mid_x, footer_y - line2,          COMPANY_EMAIL)
-    c.drawString(mid_x, footer_y - line3,          COMPANY_WEBSITE.replace("https://", ""))
-    c.drawString(mid_x, footer_y - line4,          COMPANY_PHONE)
-
-    # -------------------------------
-    # SPALTE 3: BANK
-    # -------------------------------
-    c.drawString(right_x, footer_y,                "Bankverbindung")
-    c.drawString(right_x, footer_y - line2,        f"IBAN: {BANK_IBAN}")
-    c.drawString(right_x, footer_y - line3,        f"BIC: {BANK_BIC}")
-    c.drawString(right_x, footer_y - line4,        BANK_NAME)
-
-    # ---------------------------------------------------------
-    # SAVE
-    # ---------------------------------------------------------
     c.showPage()
     c.save()
