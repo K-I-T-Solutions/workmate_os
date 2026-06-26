@@ -81,6 +81,10 @@ jobs:
             "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" \
             "SMTP_FROM=support@kit-it-koblenz.de" \
             "SMTP_FROM_NAME=K.I.T. Solutions Support" \
+            "NOREPLY_SMTP_USER=noreply@kit-it-koblenz.de" \
+            "NOREPLY_SMTP_PASSWORD=${{ secrets.NOREPLY_SMTP_PASSWORD }}" \
+            "NOREPLY_SMTP_FROM=noreply@kit-it-koblenz.de" \
+            "NOREPLY_SMTP_FROM_NAME=K.I.T. Solutions" \
             > .env.prod
           scp .env.prod joshua@77.42.17.200:/srv/workmate/env/.env.prod
           rm .env.prod
