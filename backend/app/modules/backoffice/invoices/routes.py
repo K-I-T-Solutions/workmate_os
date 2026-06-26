@@ -428,7 +428,7 @@ def send_invoice_email(
 
     # E-Mail aufbauen
     msg = MIMEMultipart()
-    msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM}>"
+    msg["From"] = f"{settings.NOREPLY_SMTP_FROM_NAME} <{settings.NOREPLY_SMTP_FROM}>"
     msg["To"] = data.to_email
     msg["Subject"] = f"Rechnung {invoice.invoice_number}"
     if data.cc_email:
@@ -456,8 +456,8 @@ def send_invoice_email(
     try:
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as smtp:
             smtp.starttls()
-            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            smtp.sendmail(settings.SMTP_FROM, recipients, msg.as_string())
+            smtp.login(settings.NOREPLY_SMTP_USER, settings.NOREPLY_SMTP_PASSWORD)
+            smtp.sendmail(settings.NOREPLY_SMTP_FROM, recipients, msg.as_string())
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"E-Mail-Versand fehlgeschlagen: {e}")
 
