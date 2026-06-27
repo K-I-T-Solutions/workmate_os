@@ -243,9 +243,16 @@ async def root():
     return HTMLResponse(_status_html())
 
 
-@app.get("/health", tags=["System"])
+@app.get("/health", tags=["System"], response_class=HTMLResponse)
 async def health_check():
-    """Health check endpoint für Docker und Monitoring"""
+    """Health check endpoint"""
+    from app.modules.system.router import _info_html, _uptime_str
+    return HTMLResponse(_info_html(_uptime_str()))
+
+
+@app.get("/health/json", tags=["System"], include_in_schema=False)
+async def health_check_json():
+    """JSON Health check für Docker / Monitoring"""
     return {
         "status": "healthy",
         "app": settings.APP_NAME,
