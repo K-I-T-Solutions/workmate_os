@@ -246,8 +246,64 @@ async def root():
 @app.get("/health", tags=["System"], response_class=HTMLResponse)
 async def health_check():
     """Health check endpoint"""
-    from app.modules.system.router import _info_html, _uptime_str
-    return HTMLResponse(_info_html(_uptime_str()))
+    from app.modules.system.router import _uptime_str
+    from datetime import datetime, timezone
+    env = settings.ENVIRONMENT
+    env_color = "#22c55e" if env == "production" else "#f59e0b"
+    uptime = _uptime_str()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    html = f"""<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorkmateOS — Health</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117; color: #e2e8f0;
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 2rem;
+    }}
+    .card {{
+      background: #1a1f2e; border: 1px solid #2d3748;
+      border-radius: 16px; padding: 2rem 2.5rem;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+      text-align: center;
+    }}
+    .status-icon {{ font-size: 2.5rem; margin-bottom: 1rem; }}
+    .status-text {{ font-size: 1.1rem; font-weight: 700; color: #22c55e; margin-bottom: 0.25rem; }}
+    .status-sub {{ font-size: 0.8rem; color: #64748b; margin-bottom: 1.75rem; }}
+    .divider {{ border: none; border-top: 1px solid #1e293b; margin: 1.5rem 0; }}
+    .row {{ display: flex; justify-content: space-between; align-items: center; padding: 7px 0; }}
+    .row-label {{ font-size: 0.8rem; color: #64748b; }}
+    .row-value {{ font-size: 0.8rem; font-weight: 500; color: #f1f5f9; font-family: "SF Mono", monospace; }}
+    .env-badge {{
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 0.7rem; font-weight: 600;
+      background: {env_color}22; color: {env_color};
+    }}
+    .link {{ display: block; margin-top: 1.5rem; font-size: 0.75rem; color: #475569; text-decoration: none; }}
+    .link:hover {{ color: #94a3b8; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="status-icon">✅</div>
+    <div class="status-text">Operational</div>
+    <div class="status-sub">WorkmateOS Backend läuft</div>
+    <hr class="divider">
+    <div class="row"><span class="row-label">Version</span><span class="row-value">{settings.APP_VERSION}</span></div>
+    <div class="row"><span class="row-label">Environment</span><span class="row-value"><span class="env-badge">{env}</span></span></div>
+    <div class="row"><span class="row-label">Uptime</span><span class="row-value">{uptime}</span></div>
+    <div class="row"><span class="row-label">Server Time</span><span class="row-value">{now}</span></div>
+    <a class="link" href="/system/info">→ System Info &amp; Module</a>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(html)
 
 
 @app.get("/health/json", tags=["System"], include_in_schema=False)
