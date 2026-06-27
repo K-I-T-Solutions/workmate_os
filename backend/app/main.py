@@ -3,7 +3,7 @@ WorkmateOS Backend - Main Application
 """
 import os
 from fastapi import FastAPI, Request
-from app.core.config import settings
+from app.core.settings.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
