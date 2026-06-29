@@ -8,6 +8,7 @@ import { EmployeeSelect } from "./employee-select"
 
 export function CompensationTab() {
   const [employeeId, setEmployeeId] = useState("")
+  const [employeeName, setEmployeeName] = useState("")
   const [inputValue, setInputValue] = useState("")
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([])
   const [benefits, setBenefits] = useState<Benefit[]>([])
@@ -20,10 +21,15 @@ export function CompensationTab() {
     setLoading(true)
     const id = inputValue.trim()
     setEmployeeId(id)
-    const [salary, bens] = await Promise.all([
+    const [emp, salary, bens] = await Promise.all([
+      hrService.getEmployee(id).catch(() => null),
       hrService.getEmployeeSalary(id).catch(() => []),
       hrService.getEmployeeBenefits(id).catch(() => []),
     ])
+    if (emp) {
+      const nr = emp.workmate_id ?? emp.employee_code
+      setEmployeeName(nr ? `${nr} — ${emp.first_name} ${emp.last_name}` : `${emp.first_name} ${emp.last_name}`)
+    }
     setSalaryRecords(salary)
     setBenefits(bens)
     setSearched(true)
@@ -56,7 +62,7 @@ export function CompensationTab() {
       {searched && !loading && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-sm font-semibold mb-3">Gehaltshistorie — {employeeId}</h2>
+            <h2 className="text-sm font-semibold mb-3">Gehaltshistorie — {employeeName || employeeId}</h2>
             {salaryRecords.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">Keine Gehaltsdaten vorhanden.</p>
             ) : (
