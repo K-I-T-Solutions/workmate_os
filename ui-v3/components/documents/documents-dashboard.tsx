@@ -13,8 +13,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   UploadIcon, DownloadIcon, Trash2Icon, SearchIcon, FileIcon,
-  FileTextIcon, FileImageIcon, LockIcon, FolderIcon,
+  FileTextIcon, FileImageIcon, LockIcon, FolderIcon, EyeIcon,
 } from "lucide-react"
+import Link from "next/link"
 
 const CATEGORIES = [
   "Vertrag", "Krankmeldung", "Zeugnis", "Rechnung", "Lohnabrechnung",
@@ -280,6 +281,13 @@ function DocTable({ documents, employeeMap, downloading, onDownload, onDeleteReq
               <td className="px-4 py-3 text-muted-foreground">{fmtDate(doc.uploaded_at)}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1 justify-end">
+                  <Link
+                    href={`/documents/${doc.id}`}
+                    className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    title="Details & Vorschau"
+                  >
+                    <EyeIcon className="h-4 w-4" />
+                  </Link>
                   <button
                     onClick={() => onDownload(doc)}
                     disabled={downloading === doc.id}
