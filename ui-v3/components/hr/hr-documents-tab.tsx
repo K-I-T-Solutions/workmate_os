@@ -3,8 +3,27 @@
 import { useState } from "react"
 import { apiClient } from "@/lib/api/client"
 import { hrService } from "@/lib/hr/service"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { EmployeeSelect } from "./employee-select"
+
+// ---------- Konstanten ----------
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  contract: "Arbeitsvertrag",
+  amendment: "Vertragsänderung",
+  certificate: "Zertifikat",
+  reference: "Arbeitszeugnis",
+  warning: "Abmahnung",
+  evaluation: "Beurteilung",
+  proof_of_employment: "Beschäftigungsnachweis",
+  tax_document: "Steuerdokument",
+  other: "Sonstiges",
+}
+
+// ---------- lokale Helpers ----------
 
 interface HrDocument {
   id: string
@@ -14,6 +33,100 @@ interface HrDocument {
   created_at: string
 }
 
+async function createHrDocument(employeeId: string, payload: object) {
+  const { data } = await apiClient.post(`/api/hr/documents/employees/${employeeId}/documents`, payload)
+  return data
+}
+
+// ---------- Dialog: Dokument anlegen ----------
+
+function CreateDocumentDialog({
+  open,
+  employeeId,
+  onClose,
+  onCreated,
+}: {
+  open: boolean
+  employeeId: string
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [docType, setDocType] = useState("contract")
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [filePath, setFilePath] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  function reset() { setDocType("contract"); setTitle(""); setDescription(""); setFilePath("") }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim() || !filePath.trim()) return
+    setSaving(true)
+    await createHrDocument(employeeId, {
+      document_type: docType,
+      title: title.trim(),
+      file_path: filePath.trim(),
+      ...(description.trim() ? { description: description.trim() } : {}),
+    }).catch(() => null)
+    setSaving(false)
+    reset()
+    onClose()
+    onCreated()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); onClose() } }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Dokument anlegen</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="doc-type">Dokumententyp</Label>
+            <select
+              id="doc-type"
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {Object.entries(DOC_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="doc-title">Titel *</Label>
+            <Input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="doc-desc">Beschreibung</Label>
+            <textarea
+              id="doc-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="doc-path">Nextcloud-Pfad *</Label>
+            <Input id="doc-path" value={filePath} onChange={(e) => setFilePath(e.target.value)} placeholder="/Mitarbeiter/..." required />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => { reset(); onClose() }}>Abbrechen</Button>
+            <Button type="submit" disabled={saving || !title.trim() || !filePath.trim()}>
+              {saving ? "Speichern…" : "Erstellen"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------- Haupt-Komponente ----------
+
 export function HrDocumentsTab() {
   const [employeeId, setEmployeeId] = useState("")
   const [employeeName, setEmployeeName] = useState("")
@@ -21,6 +134,14 @@ export function HrDocumentsTab() {
   const [documents, setDocuments] = useState<HrDocument[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [docDialogOpen, setDocDialogOpen] = useState(false)
+
+  async function fetchDocuments(id: string) {
+    const { data } = await apiClient
+      .get<HrDocument[] | { items: HrDocument[] }>(`/api/hr/documents`, { params: { employee_id: id } })
+      .catch(() => ({ data: [] as HrDocument[] }))
+    setDocuments(Array.isArray(data) ? data : (data as { items: HrDocument[] }).items ?? [])
+  }
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -33,12 +154,14 @@ export function HrDocumentsTab() {
       const nr = emp.workmate_id ?? emp.employee_code
       setEmployeeName(nr ? `${nr} — ${emp.first_name} ${emp.last_name}` : `${emp.first_name} ${emp.last_name}`)
     }
-    const { data } = await apiClient
-      .get<HrDocument[] | { items: HrDocument[] }>(`/api/hr/documents`, { params: { employee_id: id } })
-      .catch(() => ({ data: [] as HrDocument[] }))
-    setDocuments(Array.isArray(data) ? data : (data as { items: HrDocument[] }).items ?? [])
+    await fetchDocuments(id)
     setSearched(true)
     setLoading(false)
+  }
+
+  async function handleDocCreated() {
+    const id = employeeId || inputValue.trim()
+    if (id) await fetchDocuments(id)
   }
 
   return (
@@ -49,20 +172,25 @@ export function HrDocumentsTab() {
         </p>
       </div>
 
-      <form onSubmit={handleSearch} className="flex items-end gap-3 max-w-sm">
-        <div className="flex-1">
-          <EmployeeSelect
-            id="doc-emp"
-            label="Mitarbeiter"
-            value={inputValue}
-            onChange={setInputValue}
-            disabled={loading}
-          />
-        </div>
-        <Button type="submit" disabled={loading || !inputValue.trim()}>
-          {loading ? "Lädt…" : "Anzeigen"}
-        </Button>
-      </form>
+      <div className="flex items-end gap-3">
+        <form onSubmit={handleSearch} className="flex items-end gap-3 max-w-sm flex-1">
+          <div className="flex-1">
+            <EmployeeSelect
+              id="doc-emp"
+              label="Mitarbeiter"
+              value={inputValue}
+              onChange={setInputValue}
+              disabled={loading}
+            />
+          </div>
+          <Button type="submit" disabled={loading || !inputValue.trim()}>
+            {loading ? "Lädt…" : "Anzeigen"}
+          </Button>
+        </form>
+        {inputValue.trim() && (
+          <Button variant="outline" onClick={() => setDocDialogOpen(true)}>+ Dokument</Button>
+        )}
+      </div>
 
       {searched && !loading && (
         <div>
@@ -83,7 +211,9 @@ export function HrDocumentsTab() {
                   {documents.map((d) => (
                     <tr key={d.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium">{d.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{d.document_type}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {DOC_TYPE_LABELS[d.document_type] ?? d.document_type}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {new Date(d.created_at).toLocaleDateString("de-DE")}
                       </td>
@@ -95,6 +225,13 @@ export function HrDocumentsTab() {
           )}
         </div>
       )}
+
+      <CreateDocumentDialog
+        open={docDialogOpen}
+        employeeId={employeeId || inputValue.trim()}
+        onClose={() => setDocDialogOpen(false)}
+        onCreated={handleDocCreated}
+      />
     </div>
   )
 }
