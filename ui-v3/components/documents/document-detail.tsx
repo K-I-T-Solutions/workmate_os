@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { documentService } from "@/lib/documents/service"
 import { apiClient } from "@/lib/api/client"
 import type { DocumentRecord } from "@/lib/documents/types"
@@ -51,10 +53,24 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
   const type = (doc.type ?? doc.file_path.split(".").pop() ?? "").toLowerCase()
   const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(type)
   const isPdf = type === "pdf"
-  const canPreview = isImage || isPdf
+  const isMarkdown = type === "md"
+  const canPreview = isImage || isPdf || isMarkdown
+
+  const [markdownContent, setMarkdownContent] = useState<string | null>(null)
 
   useEffect(() => {
     if (!canPreview) { setLoading(false); return }
+    if (isMarkdown) {
+      apiClient
+        .get(`/api/documents/${doc.id}/download`, { responseType: "text" })
+        .then(({ data }) => setMarkdownContent(data))
+        .catch((err) => {
+          if (err?.response?.status === 404) setFileMissing(true)
+          else setError(true)
+        })
+        .finally(() => setLoading(false))
+      return
+    }
     apiClient
       .get(`/api/documents/${doc.id}/download`, { responseType: "blob" })
       .then(({ data }) => {
@@ -98,6 +114,16 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
         <p className="text-sm text-muted-foreground">
           {!canPreview ? "Keine Vorschau für diesen Dateityp verfügbar." : "Vorschau konnte nicht geladen werden."}
         </p>
+      </div>
+    )
+  }
+
+  if (isMarkdown && markdownContent !== null) {
+    return (
+      <div className="rounded-lg border bg-card p-6">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
+        </div>
       </div>
     )
   }
