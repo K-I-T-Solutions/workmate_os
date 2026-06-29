@@ -420,6 +420,23 @@ async def reject_leave_request(
     return leave_request
 
 
+@router.post("/requests/{request_id}/cancel", response_model=schemas.LeaveRequestResponse)
+@require_permissions(["hr.approve"])
+async def cancel_leave_request_admin(
+    request_id: UUID,
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Storniert einen Leave Request als Admin (benötigt: hr.approve)"""
+    leave_request = crud.cancel_leave_request(db, request_id)
+    if not leave_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Leave request not found or cannot be cancelled"
+        )
+    return leave_request
+
+
 @router.delete("/requests/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
 @require_permissions(["hr.delete"])
 async def delete_leave_request(

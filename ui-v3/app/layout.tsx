@@ -1,4 +1,3 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google'
 import { AuthProvider } from '@/components/providers/auth-provider'
@@ -59,7 +58,6 @@ export default function RootLayout({
             {children}
           </AuthProvider>
         </ThemeProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
