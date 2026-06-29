@@ -44,7 +44,6 @@ from app.modules.hr.onboarding.models import (
     OnboardingProcessTask,
 )
 from app.modules.hr.compensation.models import SalaryRecord, Bonus, Benefit
-from app.modules.hr.documents.models import HRDocument
 
 
 # Explicit exports für besseres Type-Checking
@@ -75,5 +74,4 @@ __all__ = [
     "SalaryRecord",
     "Bonus",
     "Benefit",
-    "HRDocument",
 ]
