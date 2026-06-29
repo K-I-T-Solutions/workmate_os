@@ -31,9 +31,11 @@ from app.modules.system.models import InfraService
 
 from app.modules.backoffice.crm.models import Customer, Contact
 from app.modules.backoffice.projects.models import Project
-from app.modules.backoffice.invoices.models import Invoice, InvoiceLineItem, Payment
-from app.modules.backoffice.finance.models import Expense
+from app.modules.backoffice.invoices.models import Invoice, InvoiceLineItem, Payment, InvoiceReminder
+from app.modules.backoffice.finance.models import Expense, StripeConfig
 from app.modules.backoffice.time_tracking.models import TimeEntry
+from app.modules.backoffice.products.models import Product
+from app.modules.support.models import TicketEvent
 
 # HR Sub-Module Models
 from app.modules.hr.training.models import TrainingCourse, TrainingParticipant, HRCertification
@@ -74,4 +76,8 @@ __all__ = [
     "SalaryRecord",
     "Bonus",
     "Benefit",
+    "InvoiceReminder",
+    "StripeConfig",
+    "Product",
+    "TicketEvent",
 ]
