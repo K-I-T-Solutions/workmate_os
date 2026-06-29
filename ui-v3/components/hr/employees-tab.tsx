@@ -9,7 +9,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
-import { PlusIcon, UserIcon } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { PlusIcon, Trash2Icon } from "lucide-react"
+import { apiClient } from "@/lib/api/client"
+
+async function deleteEmployee(id: string) {
+  await apiClient.delete(`/api/employees/${id}`)
+}
 
 const STATUS_LABELS: Record<EmployeeStatus, string> = {
   active: "Aktiv", inactive: "Inaktiv", on_leave: "Abwesend", terminated: "Ausgeschieden",
@@ -117,6 +123,8 @@ export function EmployeesTab({ stats }: { stats: EmployeeStatistics | null }) {
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [showForm, setShowForm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -132,6 +140,15 @@ export function EmployeesTab({ stats }: { stats: EmployeeStatistics | null }) {
   }
 
   useEffect(() => { load() }, [search, filterStatus])
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    await deleteEmployee(deleteTarget.id).catch(() => {})
+    setDeleting(false)
+    setDeleteTarget(null)
+    load()
+  }
 
   return (
     <div className="space-y-4">
@@ -194,6 +211,7 @@ export function EmployeesTab({ stats }: { stats: EmployeeStatistics | null }) {
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Anstellungsart</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Einstellung</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -231,12 +249,43 @@ export function EmployeesTab({ stats }: { stats: EmployeeStatistics | null }) {
                       </span>
                     ) : "–"}
                   </td>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      title="Mitarbeiter löschen"
+                      onClick={() => setDeleteTarget(emp)}
+                    >
+                      <Trash2Icon className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mitarbeiter löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && `„${deleteTarget.first_name} ${deleteTarget.last_name}" wird deaktiviert (Soft Delete). Dieser Vorgang kann nicht rückgängig gemacht werden.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Löschen…" : "Löschen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={showForm} onOpenChange={open => !open && setShowForm(false)}>
         <DialogContent>
