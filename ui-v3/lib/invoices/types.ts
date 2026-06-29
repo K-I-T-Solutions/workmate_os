@@ -52,6 +52,7 @@ export interface Invoice {
   tax_amount: string
   pdf_path: string | null
   line_items: InvoiceLineItem[]
+  reminders: InvoiceReminder[]
   created_at: string
   updated_at: string
 }
@@ -71,6 +72,19 @@ export interface Payment {
   method: PaymentMethod
   reference: string | null
   note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InvoiceReminder {
+  id: string
+  invoice_id: string
+  level: 1 | 2 | 3
+  fee: string
+  due_date: string | null
+  sent_at: string | null
+  pdf_path: string | null
+  notes: string | null
   created_at: string
   updated_at: string
 }

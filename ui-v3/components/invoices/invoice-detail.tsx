@@ -22,7 +22,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeftIcon, PencilIcon, Trash2Icon, DownloadIcon, PlusIcon, MailIcon, CheckCircleIcon } from "lucide-react"
+import { ArrowLeftIcon, PencilIcon, Trash2Icon, DownloadIcon, PlusIcon, MailIcon, CheckCircleIcon, BellIcon, SendIcon } from "lucide-react"
+import type { InvoiceReminder } from "@/lib/invoices/types"
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
   draft: "Entwurf",
@@ -236,6 +237,90 @@ function SendEmailModal({
   )
 }
 
+const REMINDER_LEVEL_LABELS: Record<number, string> = {
+  1: "1. Mahnung",
+  2: "2. Mahnung",
+  3: "3. Mahnung / Letzte Mahnung",
+}
+
+function ReminderModal({
+  invoiceId,
+  usedLevels,
+  onSaved,
+  onClose,
+}: {
+  invoiceId: string
+  usedLevels: number[]
+  onSaved: () => void
+  onClose: () => void
+}) {
+  const available = ([1, 2, 3] as const).filter(l => !usedLevels.includes(l))
+  const [level, setLevel] = useState<string>(String(available[0] ?? 1))
+  const [fee, setFee] = useState("0")
+  const [dueDate, setDueDate] = useState("")
+  const [notes, setNotes] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await invoiceService.createReminder(invoiceId, {
+        level: parseInt(level),
+        fee: fee || "0",
+        due_date: dueDate || undefined,
+        notes: notes || undefined,
+      })
+      onSaved()
+      onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={open => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Mahnung erstellen</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid gap-1.5">
+            <Label>Mahnstufe *</Label>
+            <Select value={level} onValueChange={v => v && setLevel(v)}>
+              <SelectTrigger>
+                <span data-slot="select-value">{REMINDER_LEVEL_LABELS[parseInt(level)]}</span>
+              </SelectTrigger>
+              <SelectContent>
+                {available.map(l => (
+                  <SelectItem key={l} value={String(l)}>{REMINDER_LEVEL_LABELS[l]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Mahngebühr (€)</Label>
+            <Input type="number" min="0" step="0.01" value={fee} onChange={e => setFee(e.target.value)} placeholder="0,00" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Zahlungsfrist</Label>
+            <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Notiz</Label>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Interne Notiz…" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button onClick={handleSave} disabled={saving || available.length === 0}>
+            {saving ? "Erstellen…" : "Mahnung erstellen"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function InvoiceDetail({ id }: { id: string }) {
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
@@ -243,19 +328,23 @@ export function InvoiceDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showReminderModal, setShowReminderModal] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [reminders, setReminders] = useState<InvoiceReminder[]>([])
   usePageTitle(invoice?.invoice_number)
 
   async function load() {
     setLoading(true)
     try {
-      const [inv, pmts] = await Promise.all([
+      const [inv, pmts, rems] = await Promise.all([
         invoiceService.get(id),
         invoiceService.getPayments(id),
+        invoiceService.getReminders(id),
       ])
       setInvoice(inv)
       setPayments(pmts)
+      setReminders(rems)
     } finally {
       setLoading(false)
     }
@@ -488,6 +577,77 @@ export function InvoiceDetail({ id }: { id: string }) {
         )}
       </div>
 
+      {/* Mahnwesen */}
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+            <BellIcon className="h-3.5 w-3.5" />
+            Mahnungen
+          </h2>
+          {reminders.length < 3 && (
+            <Button variant="outline" size="sm" onClick={() => setShowReminderModal(true)}>
+              <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
+              Mahnung erstellen
+            </Button>
+          )}
+        </div>
+        {reminders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Noch keine Mahnungen erstellt.</p>
+        ) : (
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Stufe</TableHead>
+                  <TableHead className="text-right">Mahngebühr</TableHead>
+                  <TableHead>Zahlungsfrist</TableHead>
+                  <TableHead>Gesendet</TableHead>
+                  <TableHead>Notiz</TableHead>
+                  <TableHead className="w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reminders.map(r => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium text-sm">{REMINDER_LEVEL_LABELS[r.level]}</TableCell>
+                    <TableCell className="text-right text-sm">{fmt(r.fee)}</TableCell>
+                    <TableCell className="text-sm">{fmtDate(r.due_date)}</TableCell>
+                    <TableCell className="text-sm">
+                      {r.sent_at ? (
+                        <span className="text-green-600 text-xs">{fmtDate(r.sent_at)}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Nicht gesendet</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground truncate max-w-[140px]">{r.notes ?? "–"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {!r.sent_at && (
+                          <button
+                            title="Als gesendet markieren"
+                            onClick={async () => { await invoiceService.markReminderSent(r.id); load() }}
+                            className="p-1 rounded hover:bg-green-100 hover:text-green-700 text-muted-foreground"
+                          >
+                            <SendIcon className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button
+                          title="Mahnung löschen"
+                          onClick={async () => { await invoiceService.deleteReminder(r.id); load() }}
+                          className="p-1 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
+                        >
+                          <Trash2Icon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
       {showPaymentModal && (
         <PaymentModal
           invoiceId={id}
@@ -502,6 +662,15 @@ export function InvoiceDetail({ id }: { id: string }) {
           defaultEmail={invoice.customer.email}
           onSent={() => handleStatusChange("sent")}
           onClose={() => setShowEmailModal(false)}
+        />
+      )}
+
+      {showReminderModal && (
+        <ReminderModal
+          invoiceId={id}
+          usedLevels={reminders.map(r => r.level)}
+          onSaved={load}
+          onClose={() => setShowReminderModal(false)}
         />
       )}
 

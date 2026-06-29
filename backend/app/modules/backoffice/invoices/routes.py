@@ -27,6 +27,8 @@ from email import encoders
 from pydantic import BaseModel, EmailStr
 
 from app.core.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 from app.modules.backoffice.invoices import crud, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices import payments_crud
@@ -583,4 +585,76 @@ def delete_payment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Payment {payment_id} not found"
         )
+    return None
+
+
+# ============================================================================
+# MAHNWESEN (Reminders)
+# ============================================================================
+
+@router.get("/{invoice_id}/reminders", response_model=List[schemas.InvoiceReminderResponse])
+def list_reminders(invoice_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Alle Mahnungen einer Rechnung."""
+    return crud.get_reminders(db, invoice_id)
+
+
+@router.post(
+    "/{invoice_id}/reminders",
+    response_model=schemas.InvoiceReminderResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+@require_permissions(["backoffice.invoices"])
+def create_reminder(
+    invoice_id: uuid.UUID,
+    data: schemas.InvoiceReminderCreate,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Neue Mahnung erstellen."""
+    invoice = crud.get_invoice(db, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return crud.create_reminder(db, invoice_id, data)
+
+
+@router.patch("/reminders/{reminder_id}", response_model=schemas.InvoiceReminderResponse)
+@require_permissions(["backoffice.invoices"])
+def update_reminder(
+    reminder_id: uuid.UUID,
+    data: schemas.InvoiceReminderUpdate,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Mahnung aktualisieren."""
+    reminder = crud.update_reminder(db, reminder_id, data)
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    return reminder
+
+
+@router.post("/reminders/{reminder_id}/mark-sent", response_model=schemas.InvoiceReminderResponse)
+@require_permissions(["backoffice.invoices"])
+def mark_reminder_sent(
+    reminder_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Mahnung als gesendet markieren (setzt sent_at = now)."""
+    reminder = crud.mark_reminder_sent(db, reminder_id)
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    return reminder
+
+
+@router.delete("/reminders/{reminder_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permissions(["backoffice.invoices"])
+def delete_reminder(
+    reminder_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Mahnung löschen."""
+    success = crud.delete_reminder(db, reminder_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Reminder not found")
     return None

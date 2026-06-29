@@ -502,6 +502,85 @@ def delete_invoice(db: Session, invoice_id: uuid.UUID) -> bool:
 
 
 # ============================================================================
+# REMINDERS (Mahnwesen)
+# ============================================================================
+
+def get_reminders(db: Session, invoice_id: uuid.UUID) -> List[models.InvoiceReminder]:
+    """Alle Mahnungen einer Rechnung, nach Mahnstufe sortiert."""
+    return (
+        db.query(models.InvoiceReminder)
+        .filter(models.InvoiceReminder.invoice_id == invoice_id)
+        .order_by(models.InvoiceReminder.level)
+        .all()
+    )
+
+
+def create_reminder(
+    db: Session,
+    invoice_id: uuid.UUID,
+    data: schemas.InvoiceReminderCreate,
+) -> models.InvoiceReminder:
+    """Erstellt eine neue Mahnung. Mahnstufe muss eindeutig pro Rechnung sein."""
+    from app.core.settings.database import generate_uuid
+    reminder = models.InvoiceReminder(
+        id=generate_uuid(),
+        invoice_id=invoice_id,
+        level=data.level,
+        fee=data.fee,
+        due_date=data.due_date,
+        notes=data.notes,
+    )
+    db.add(reminder)
+    try:
+        db.commit()
+        db.refresh(reminder)
+        return reminder
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Mahnstufe {data.level} existiert bereits für diese Rechnung.")
+
+
+def update_reminder(
+    db: Session,
+    reminder_id: uuid.UUID,
+    data: schemas.InvoiceReminderUpdate,
+) -> Optional[models.InvoiceReminder]:
+    """Aktualisiert eine Mahnung."""
+    reminder = db.query(models.InvoiceReminder).filter(models.InvoiceReminder.id == reminder_id).first()
+    if not reminder:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(reminder, field, value)
+    db.commit()
+    db.refresh(reminder)
+    return reminder
+
+
+def mark_reminder_sent(
+    db: Session,
+    reminder_id: uuid.UUID,
+) -> Optional[models.InvoiceReminder]:
+    """Setzt sent_at auf jetzt."""
+    reminder = db.query(models.InvoiceReminder).filter(models.InvoiceReminder.id == reminder_id).first()
+    if not reminder:
+        return None
+    reminder.sent_at = datetime.utcnow()
+    db.commit()
+    db.refresh(reminder)
+    return reminder
+
+
+def delete_reminder(db: Session, reminder_id: uuid.UUID) -> bool:
+    """Löscht eine Mahnung."""
+    reminder = db.query(models.InvoiceReminder).filter(models.InvoiceReminder.id == reminder_id).first()
+    if not reminder:
+        return False
+    db.delete(reminder)
+    db.commit()
+    return True
+
+
+# ============================================================================
 # STATISTICS
 # ============================================================================
 

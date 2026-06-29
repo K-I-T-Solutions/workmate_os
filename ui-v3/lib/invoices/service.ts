@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api/client"
 import type {
-  Invoice, InvoiceListResponse, InvoiceStatus, Payment,
+  Invoice, InvoiceListResponse, InvoiceStatus, Payment, InvoiceReminder,
   CreateInvoicePayload, UpdateInvoicePayload,
 } from "./types"
 
@@ -78,6 +78,25 @@ export const invoiceService = {
 
   async sendEmail(id: string, payload: { to_email: string; cc_email?: string; message?: string }): Promise<void> {
     await apiClient.post(`/api/backoffice/invoices/${id}/send`, payload)
+  },
+
+  async getReminders(invoiceId: string): Promise<InvoiceReminder[]> {
+    const { data } = await apiClient.get(`/api/backoffice/invoices/${invoiceId}/reminders`)
+    return Array.isArray(data) ? data : []
+  },
+
+  async createReminder(invoiceId: string, payload: { level: number; fee?: string; due_date?: string; notes?: string }): Promise<InvoiceReminder> {
+    const { data } = await apiClient.post(`/api/backoffice/invoices/${invoiceId}/reminders`, payload)
+    return data
+  },
+
+  async markReminderSent(reminderId: string): Promise<InvoiceReminder> {
+    const { data } = await apiClient.post(`/api/backoffice/invoices/reminders/${reminderId}/mark-sent`)
+    return data
+  },
+
+  async deleteReminder(reminderId: string): Promise<void> {
+    await apiClient.delete(`/api/backoffice/invoices/reminders/${reminderId}`)
   },
 
   async exportDatevCsv(params?: { status?: string; date_from?: string; date_to?: string }): Promise<void> {
