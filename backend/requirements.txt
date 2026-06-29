@@ -27,6 +27,9 @@ requests>=2.32,<3.0
 # HTTP Client
 httpx>=0.27.0,<1.0
 
+# WebDAV (Nextcloud Storage Backend)
+webdavclient3>=3.14.6,<4.0
+
 # Development & Testing (optional)
 pytest>=8.0.0,<9.0
 pytest-asyncio>=0.23.0,<1.0
