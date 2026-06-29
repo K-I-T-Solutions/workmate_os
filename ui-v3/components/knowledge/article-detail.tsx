@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { usePageTitle } from "@/lib/page-title-context"
 import { knowledgeService } from "@/lib/knowledge/service"
 import type { KBArticleDetail, KBCategory } from "@/lib/knowledge/types"
@@ -116,8 +118,10 @@ export function ArticleDetail({
 
       {/* Content */}
       <div className="rounded-lg border bg-card p-6">
-        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-          {article.content}
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {article.content}
+          </ReactMarkdown>
         </div>
       </div>
 

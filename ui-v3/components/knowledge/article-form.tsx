@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { knowledgeService } from "@/lib/knowledge/service"
 import type { KBArticleDetail, KBCategory, ArticleStatus } from "@/lib/knowledge/types"
 import { Button } from "@/components/ui/button"
@@ -8,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CheckCircle2Icon, CircleIcon } from "lucide-react"
+import { CheckCircle2Icon, CircleIcon, EyeIcon, PencilIcon } from "lucide-react"
 
 const STATUS_OPTIONS: { value: ArticleStatus; label: string }[] = [
   { value: "draft", label: "Entwurf" },
@@ -35,6 +37,7 @@ export function ArticleForm({
   const [tagsInput, setTagsInput] = useState((initial?.tags ?? []).join(", "))
   const [pinned, setPinned] = useState(initial?.pinned ?? false)
   const [saving, setSaving] = useState(false)
+  const [preview, setPreview] = useState(false)
 
   async function handleSave() {
     if (!title.trim() || !content.trim()) return
@@ -101,14 +104,33 @@ export function ArticleForm({
         <Input value={excerpt} onChange={e => setExcerpt(e.target.value)} placeholder="Kurze Zusammenfassung für die Listenansicht…" />
       </div>
       <div className="grid gap-1.5">
-        <Label>Inhalt *</Label>
-        <Textarea
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          rows={14}
-          placeholder="Artikel-Inhalt (Markdown wird unterstützt)…"
-          className="font-mono text-sm"
-        />
+        <div className="flex items-center justify-between">
+          <Label>Inhalt *</Label>
+          <button
+            type="button"
+            onClick={() => setPreview(v => !v)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {preview ? <PencilIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
+            {preview ? "Bearbeiten" : "Vorschau"}
+          </button>
+        </div>
+        {preview ? (
+          <div className="min-h-[280px] rounded-md border bg-muted/20 p-4 prose prose-sm dark:prose-invert max-w-none">
+            {content.trim()
+              ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+              : <p className="text-muted-foreground italic">Kein Inhalt zum Anzeigen.</p>
+            }
+          </div>
+        ) : (
+          <Textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            rows={14}
+            placeholder="Artikel-Inhalt (Markdown wird unterstützt)…"
+            className="font-mono text-sm"
+          />
+        )}
       </div>
       <div className="grid gap-1.5">
         <Label>Tags (kommagetrennt)</Label>
