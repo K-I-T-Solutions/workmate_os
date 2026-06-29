@@ -8,28 +8,40 @@ from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.config import settings
+from app.core.storage.factory import get_storage
 from app.modules.documents import crud, schemas
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
-# Upload directory
-UPLOAD_DIR = Path(settings.UPLOAD_DIR or "/app/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
 
 def calculate_checksum(file_content: bytes) -> str:
-    """Calculate SHA256 checksum of file"""
     return hashlib.sha256(file_content).hexdigest()
 
 
 def get_file_extension(filename: str) -> str:
-    """Get file extension from filename"""
     return Path(filename).suffix.lower()
+
+
+def _resolve_download(file_path_str: str) -> bytes:
+    """
+    Datei über Storage-Backend laden.
+    Fallback auf lokales Dateisystem für Legacy-Records mit absolutem Pfad.
+    """
+    storage = get_storage()
+    path = Path(file_path_str)
+
+    # Legacy: absoluter Pfad → direkt von Disk lesen
+    if path.is_absolute():
+        if not path.exists():
+            raise FileNotFoundError(f"File not found on disk: {file_path_str}")
+        return path.read_bytes()
+
+    # Neu: relativer Pfad → über Storage-Backend
+    return storage.download(file_path_str)
 
 
 # ============================================================================
@@ -47,17 +59,6 @@ def list_documents(
     is_confidential: Optional[bool] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """
-    Get list of documents with filtering and pagination
-    
-    - **skip**: Number of records to skip
-    - **limit**: Max number of records to return
-    - **search**: Search in title and filename
-    - **category**: Filter by category (Contract, Invoice, etc.)
-    - **linked_module**: Filter by module (HR, Finance, etc.)
-    - **owner_id**: Filter by owner
-    - **is_confidential**: Filter confidential documents
-    """
     documents, total = crud.get_documents(
         db,
         skip=skip,
@@ -68,16 +69,12 @@ def list_documents(
         owner_id=owner_id,
         is_confidential=is_confidential
     )
-    
-    # Add download URLs
     for doc in documents:
         doc.download_url = f"/api/documents/{doc.id}/download"  # type: ignore[attr-defined]
-    
-    page = (skip // limit) + 1
-    
+
     return {
         "total": total,
-        "page": page,
+        "page": (skip // limit) + 1,
         "page_size": limit,
         "documents": documents
     }
@@ -88,14 +85,10 @@ def get_document(
     document_id: UUID,
     db: Session = Depends(get_db)
 ):
-    """Get document metadata by ID"""
     document = crud.get_document(db, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    # Add download URL
     document.download_url = f"/api/documents/{document.id}/download"  # type: ignore[attr-defined]
-    
     return document
 
 
@@ -109,42 +102,25 @@ async def upload_document(
     owner_id: UUID = Form(...),
     db: Session = Depends(get_db)
 ):
-    """
-    Upload a new document
-    
-    **Form Data:**
-    - **file**: The file to upload (required)
-    - **owner_id**: UUID of the document owner (required)
-    - **title**: Document title (optional, uses filename if not provided)
-    - **category**: Document category (Contract, Invoice, etc.)
-    - **linked_module**: Origin module (HR, Finance, etc.)
-    - **is_confidential**: Mark as confidential (default: false)
-    """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
-    
-    # Read file content
+
     content = await file.read()
-    
-    # Calculate checksum
     checksum = calculate_checksum(content)
-    
-    # Generate unique filename
+
     file_extension = get_file_extension(file.filename)
     unique_filename = f"{uuid4()}{file_extension}"
-    file_path = UPLOAD_DIR / unique_filename
-    
-    # Save file
-    with open(file_path, "wb") as f:
-        f.write(content)
-    
-    # Detect file type from extension
+
+    # Storage-Backend verwenden (local / nextcloud / s3)
+    storage = get_storage()
+    try:
+        storage.upload(unique_filename, content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload fehlgeschlagen: {e}")
+
     file_type = file_extension.lstrip(".")
-    
-    # Use filename as title if not provided
     doc_title = title or file.filename
-    
-    # Create document record
+
     document_data = schemas.DocumentUpload(
         title=doc_title,
         type=file_type,
@@ -152,19 +128,17 @@ async def upload_document(
         linked_module=linked_module,
         is_confidential=is_confidential
     )
-    
+
     document = crud.create_document(
         db,
-        file_path=str(file_path),
+        file_path=unique_filename,   # relativer Pfad, nicht absolut
         checksum=checksum,
         owner_id=owner_id,
         document_data=document_data
     )
-    
-    # Add download URL
+
     document.download_url = f"/api/documents/{document.id}/download"  # type: ignore[attr-defined]
     document.file_size = len(content)  # type: ignore[attr-defined]
-    
     return document
 
 
@@ -173,27 +147,40 @@ async def download_document(
     document_id: UUID,
     db: Session = Depends(get_db)
 ):
-    """
-    Download document file
-    
-    Returns the actual file for download
-    """
     document = crud.get_document(db, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    file_path = Path(str(document.file_path))  # type: ignore[arg-type]
-    
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found on disk")
-    
-    # Get original filename from title or use document ID
-    filename: str = str(document.title) if document.title is not None else f"document_{document_id}{file_path.suffix}"
-    
-    return FileResponse(
-        path=str(file_path),
-        filename=filename,
-        media_type="application/octet-stream"
+
+    file_path_str = str(document.file_path)
+    suffix = Path(file_path_str).suffix
+    filename = str(document.title) if document.title else f"document_{document_id}{suffix}"
+
+    try:
+        content = _resolve_download(file_path_str)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden (Storage)")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage-Fehler: {e}")
+
+    # MIME-Typ aus Extension ableiten
+    ext = suffix.lstrip(".").lower()
+    mime_map = {
+        "pdf": "application/pdf",
+        "jpg": "image/jpeg", "jpeg": "image/jpeg",
+        "png": "image/png", "gif": "image/gif",
+        "webp": "image/webp", "svg": "image/svg+xml",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "csv": "text/csv",
+        "txt": "text/plain",
+        "zip": "application/zip",
+    }
+    media_type = mime_map.get(ext, "application/octet-stream")
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 
@@ -203,11 +190,9 @@ def update_document(
     document_update: schemas.DocumentUpdate,
     db: Session = Depends(get_db)
 ):
-    """Update document metadata (not the file itself)"""
     document = crud.update_document(db, document_id, document_update)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
     document.download_url = f"/api/documents/{document.id}/download"  # type: ignore[attr-defined]
     return document
 
@@ -217,20 +202,20 @@ def delete_document(
     document_id: UUID,
     db: Session = Depends(get_db)
 ):
-    """
-    Delete document (both database record and file)
-    """
     document = crud.delete_document(db, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    # Delete physical file
-    file_path = Path(str(document.file_path))  # type: ignore[arg-type]
-    if file_path.exists():
-        try:
-            os.remove(file_path)
-        except Exception as e:
-            # Log error but don't fail the request
-            print(f"Warning: Could not delete file {file_path}: {e}")
-    
+
+    file_path_str = str(document.file_path)
+    storage = get_storage()
+    try:
+        path = Path(file_path_str)
+        if path.is_absolute():
+            if path.exists():
+                os.remove(path)
+        else:
+            storage.delete(file_path_str)
+    except Exception:
+        pass  # Datei schon weg oder Storage-Fehler → DB-Eintrag trotzdem gelöscht
+
     return None
