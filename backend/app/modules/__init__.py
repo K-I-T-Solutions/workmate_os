@@ -35,6 +35,17 @@ from app.modules.backoffice.invoices.models import Invoice, InvoiceLineItem, Pay
 from app.modules.backoffice.finance.models import Expense
 from app.modules.backoffice.time_tracking.models import TimeEntry
 
+# HR Sub-Module Models
+from app.modules.hr.training.models import TrainingCourse, TrainingParticipant, HRCertification
+from app.modules.hr.onboarding.models import (
+    OnboardingTemplate,
+    OnboardingTemplateTask,
+    OnboardingProcess,
+    OnboardingProcessTask,
+)
+from app.modules.hr.compensation.models import SalaryRecord, Bonus, Benefit
+from app.modules.hr.documents.models import HRDocument
+
 
 # Explicit exports für besseres Type-Checking
 __all__ = [
@@ -53,4 +64,16 @@ __all__ = [
     "Payment",
     "Expense",
     "TimeEntry",
+    # HR Sub-Module
+    "TrainingCourse",
+    "TrainingParticipant",
+    "HRCertification",
+    "OnboardingTemplate",
+    "OnboardingTemplateTask",
+    "OnboardingProcess",
+    "OnboardingProcessTask",
+    "SalaryRecord",
+    "Bonus",
+    "Benefit",
+    "HRDocument",
 ]
