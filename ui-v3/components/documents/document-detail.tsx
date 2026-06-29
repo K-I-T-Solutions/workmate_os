@@ -45,6 +45,7 @@ function FileTypeIcon({ type }: { type: string | null }) {
 function DocumentPreview({ doc }: { doc: DocumentRecord }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fileMissing, setFileMissing] = useState(false)
   const [error, setError] = useState(false)
 
   const type = (doc.type ?? doc.file_path.split(".").pop() ?? "").toLowerCase()
@@ -62,7 +63,10 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
         const blob = new Blob([data], { type: mime })
         setObjectUrl(URL.createObjectURL(blob))
       })
-      .catch(() => setError(true))
+      .catch((err) => {
+        if (err?.response?.status === 404) setFileMissing(true)
+        else setError(true)
+      })
       .finally(() => setLoading(false))
 
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
@@ -73,6 +77,16 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border bg-muted/30">
         <p className="text-sm text-muted-foreground">Vorschau wird geladen…</p>
+      </div>
+    )
+  }
+
+  if (fileMissing) {
+    return (
+      <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/30">
+        <FileIcon className="h-10 w-10 text-orange-400" />
+        <p className="text-sm font-medium text-orange-700 dark:text-orange-400">Datei nicht mehr verfügbar</p>
+        <p className="text-xs text-muted-foreground">Die Datei wurde nicht gefunden. Bitte erneut hochladen.</p>
       </div>
     )
   }
@@ -112,6 +126,7 @@ export function DocumentDetail({ id }: { id: string }) {
   const [doc, setDoc] = useState<DocumentRecord | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   // edit state
   const [editing, setEditing] = useState(false)
@@ -123,6 +138,17 @@ export function DocumentDetail({ id }: { id: string }) {
   // delete
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  async function handleDownload() {
+    if (!doc) return
+    setDownloadError(null)
+    try {
+      await documentService.download(doc.id, doc.title ?? undefined)
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      setDownloadError(status === 404 ? "Datei nicht mehr verfügbar — bitte erneut hochladen." : "Download fehlgeschlagen.")
+    }
+  }
 
   useEffect(() => {
     documentService.get(id)
@@ -218,7 +244,7 @@ export function DocumentDetail({ id }: { id: string }) {
               <Button size="sm" variant="outline" onClick={startEdit}>
                 <PencilIcon className="h-4 w-4 mr-1" /> Bearbeiten
               </Button>
-              <Button size="sm" variant="outline" onClick={() => documentService.download(doc.id, doc.title ?? undefined)}>
+              <Button size="sm" variant="outline" onClick={handleDownload}>
                 <DownloadIcon className="h-4 w-4 mr-1" /> Download
               </Button>
               <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>
@@ -228,6 +254,12 @@ export function DocumentDetail({ id }: { id: string }) {
           )}
         </div>
       </div>
+
+      {downloadError && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-400">
+          {downloadError}
+        </div>
+      )}
 
       {/* Metadata */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
