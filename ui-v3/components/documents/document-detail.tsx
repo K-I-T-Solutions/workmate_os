@@ -47,7 +47,7 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  const type = doc.type?.toLowerCase() ?? ""
+  const type = (doc.type ?? doc.file_path.split(".").pop() ?? "").toLowerCase()
   const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(type)
   const isPdf = type === "pdf"
   const canPreview = isImage || isPdf
@@ -57,7 +57,8 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
     apiClient
       .get(`/api/documents/${doc.id}/download`, { responseType: "blob" })
       .then(({ data }) => {
-        const mime = isPdf ? "application/pdf" : `image/${type === "svg" ? "svg+xml" : type}`
+        const mimeExt = type === "svg" ? "svg+xml" : (type === "jpg" ? "jpeg" : type)
+        const mime = isPdf ? "application/pdf" : `image/${mimeExt}`
         const blob = new Blob([data], { type: mime })
         setObjectUrl(URL.createObjectURL(blob))
       })

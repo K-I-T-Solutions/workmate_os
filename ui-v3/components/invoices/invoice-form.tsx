@@ -4,8 +4,10 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { invoiceService } from "@/lib/invoices/service"
 import { crmService } from "@/lib/crm/service"
+import { productsService } from "@/lib/products/service"
 import type { Invoice, InvoiceLineItemInput, DocumentType } from "@/lib/invoices/types"
 import type { Customer } from "@/lib/crm/types"
+import type { Product } from "@/lib/products/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,7 +18,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { ArrowLeftIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
+import { ArrowLeftIcon, PlusIcon, Trash2Icon, BookOpenIcon } from "lucide-react"
 
 const DOC_TYPES: { value: DocumentType; label: string }[] = [
   { value: "invoice", label: "Rechnung" },
@@ -55,10 +60,6 @@ function calcLine(row: LineItemRow) {
   return { net, taxAmt, total: net + taxAmt }
 }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n)
-}
-
 function toPayloadLines(rows: LineItemRow[]): InvoiceLineItemInput[] {
   return rows.map((r, i) => ({
     position: i + 1,
@@ -76,10 +77,94 @@ interface Props {
   invoiceId?: string
 }
 
+function fmt(n: number) {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n)
+}
+
+function ProductPickerDialog({
+  open,
+  onOpenChange,
+  onSelect,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onSelect: (p: Product) => void
+}) {
+  const [products, setProducts] = useState<Product[]>([])
+  const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    productsService.list({ limit: 500 })
+      .then(setProducts)
+      .finally(() => setLoading(false))
+  }, [open])
+
+  const filtered = products.filter(
+    p => p.is_active && (
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (p.sku ?? "").toLowerCase().includes(search.toLowerCase())
+    )
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Produkt aus Katalog wählen</DialogTitle>
+        </DialogHeader>
+        <Input
+          placeholder="Suchen…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="mt-1"
+          autoFocus
+        />
+        <div className="mt-2 max-h-80 overflow-y-auto space-y-1">
+          {loading ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">Laden…</p>
+          ) : filtered.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">Keine Produkte gefunden</p>
+          ) : (
+            filtered.map(p => (
+              <button
+                key={p.id}
+                onClick={() => { onSelect(p); onOpenChange(false) }}
+                className="w-full text-left rounded-md px-3 py-2.5 hover:bg-accent transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{p.name}</p>
+                    {p.description && (
+                      <p className="text-xs text-muted-foreground truncate">{p.description}</p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium">
+                      {new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(
+                        typeof p.unit_price === "string" ? parseFloat(p.unit_price) : p.unit_price
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{p.unit}</p>
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function InvoiceForm({ initial, invoiceId }: Props) {
   const router = useRouter()
   const isEdit = !!invoiceId
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const [customerId, setCustomerId] = useState(initial?.customer_id ?? "")
   const [docType, setDocType] = useState<DocumentType>(initial?.document_type ?? "invoice")
@@ -114,6 +199,18 @@ export function InvoiceForm({ initial, invoiceId }: Props) {
 
   function addLine() {
     setLines(prev => [...prev, emptyLine()])
+  }
+
+  function addProductLine(p: Product) {
+    setLines(prev => [...prev, {
+      _key: uid(),
+      description: p.name + (p.description ? ` — ${p.description}` : ""),
+      quantity: "1",
+      unit: p.unit ?? "Stk.",
+      unit_price: String(p.unit_price),
+      tax_rate: String(p.default_tax_rate ?? "19"),
+      discount_percent: "0",
+    }])
   }
 
   function removeLine(key: string) {
@@ -213,10 +310,16 @@ export function InvoiceForm({ initial, invoiceId }: Props) {
       <div className="rounded-lg border bg-card">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h2 className="text-sm font-medium text-muted-foreground">Positionen</h2>
-          <Button variant="outline" size="sm" onClick={addLine}>
-            <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
-            Position hinzufügen
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
+              <BookOpenIcon className="mr-1.5 h-3.5 w-3.5" />
+              Aus Katalog
+            </Button>
+            <Button variant="outline" size="sm" onClick={addLine}>
+              <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
+              Position hinzufügen
+            </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
@@ -348,6 +451,12 @@ export function InvoiceForm({ initial, invoiceId }: Props) {
           {saving ? "Speichern…" : isEdit ? "Änderungen speichern" : "Rechnung erstellen"}
         </Button>
       </div>
+
+      <ProductPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={addProductLine}
+      />
     </div>
   )
 }

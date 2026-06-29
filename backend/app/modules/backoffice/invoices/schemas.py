@@ -218,6 +218,57 @@ class InvoiceStatusUpdate(BaseModel):
         return v
 
 
+# ============================================================================
+# REMINDERS (Mahnwesen)
+# ============================================================================
+
+class InvoiceReminderCreate(BaseModel):
+    """Schema für Mahnungs-Erstellung."""
+    level: int = Field(..., ge=1, le=3, description="Mahnstufe 1–3")
+    fee: Decimal = Field(Decimal("0.00"), ge=0, description="Mahngebühr (€)")
+    due_date: Optional[date] = Field(None, description="Zahlungsfrist")
+    notes: Optional[str] = Field(None, description="Interne Notiz")
+
+    @field_validator("fee", mode="before")
+    @classmethod
+    def convert_fee(cls, v):
+        if isinstance(v, str):
+            return Decimal(v)
+        return v
+
+
+class InvoiceReminderUpdate(BaseModel):
+    """Schema für Mahnungs-Update."""
+    fee: Optional[Decimal] = None
+    due_date: Optional[date] = None
+    notes: Optional[str] = None
+    sent_at: Optional[datetime] = None
+
+    @field_validator("fee", mode="before")
+    @classmethod
+    def convert_fee(cls, v):
+        if v is not None and isinstance(v, str):
+            return Decimal(v)
+        return v
+
+
+class InvoiceReminderResponse(BaseModel):
+    """Schema für Mahnungs-Response."""
+    id: uuid.UUID
+    invoice_id: uuid.UUID
+    level: int
+    fee: Decimal
+    due_date: Optional[date] = None
+    sent_at: Optional[datetime] = None
+    pdf_path: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class InvoiceResponse(InvoiceBase):
     """Schema für Invoice Response."""
     id: uuid.UUID
@@ -232,6 +283,7 @@ class InvoiceResponse(InvoiceBase):
     customer: CustomerBriefResponse
     line_items: List[InvoiceLineItemResponse] = []
     payments: List[PaymentResponse] = []
+    reminders: List[InvoiceReminderResponse] = []
 
     # Computed fields (from model properties)
     paid_amount: Decimal = Field(description="Summe aller Zahlungen")

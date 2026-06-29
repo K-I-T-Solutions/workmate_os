@@ -5,14 +5,16 @@ import { SettingsTab } from "./settings-tab"
 import { DepartmentsTab } from "./departments-tab"
 import { RolesTab } from "./roles-tab"
 import { AuditTab } from "./audit-tab"
+import { StripeTab } from "./stripe-tab"
 
-type Tab = "settings" | "departments" | "roles" | "audit"
+type Tab = "settings" | "departments" | "roles" | "audit" | "stripe"
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "settings", label: "Einstellungen" },
   { id: "departments", label: "Abteilungen" },
   { id: "roles", label: "Rollen" },
   { id: "audit", label: "Audit-Log" },
+  { id: "stripe", label: "Stripe" },
 ]
 
 export function AdminDashboard() {
@@ -42,6 +44,7 @@ export function AdminDashboard() {
       {tab === "departments" && <DepartmentsTab />}
       {tab === "roles" && <RolesTab />}
       {tab === "audit" && <AuditTab />}
+      {tab === "stripe" && <StripeTab />}
     </div>
   )
 }
