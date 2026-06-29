@@ -190,3 +190,14 @@ class BankTransaction(Base, UUIDMixin, TimestampMixin):
     reconciled_by: Mapped[Optional[str]] = mapped_column(String(100))
 
     account: Mapped["BankAccount"] = relationship("BankAccount", back_populates="transactions")
+
+
+class StripeConfig(Base, UUIDMixin, TimestampMixin):
+    """Stripe-Zahlungsintegration Konfiguration"""
+    __tablename__ = "stripe_config"
+
+    publishable_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    secret_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    webhook_secret: Mapped[Optional[str]] = mapped_column(String(255))
+    test_mode: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)

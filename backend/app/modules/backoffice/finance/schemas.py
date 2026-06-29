@@ -149,3 +149,41 @@ class BankTransactionResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# === Stripe ===
+
+class StripeConfigCreate(BaseModel):
+    publishable_key: str = Field(..., description="Beginnt mit pk_test_ oder pk_live_")
+    secret_key: str = Field(..., description="Beginnt mit sk_test_ oder sk_live_")
+    webhook_secret: Optional[str] = Field(None, description="whsec_...")
+    test_mode: bool = Field(default=True)
+    is_active: bool = Field(default=False)
+
+
+class StripeConfigUpdate(BaseModel):
+    publishable_key: Optional[str] = None
+    secret_key: Optional[str] = None
+    webhook_secret: Optional[str] = None
+    test_mode: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class StripeConfigResponse(BaseModel):
+    id: uuid.UUID
+    publishable_key: str
+    secret_key: str
+    webhook_secret: Optional[str] = None
+    test_mode: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StripeWebhookEvent(BaseModel):
+    id: str
+    type: str
+    data: dict
+    created: int
