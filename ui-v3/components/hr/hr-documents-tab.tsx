@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { apiClient } from "@/lib/api/client"
+import { hrService } from "@/lib/hr/service"
 import { Button } from "@/components/ui/button"
 import { EmployeeSelect } from "./employee-select"
 
@@ -15,6 +16,7 @@ interface HrDocument {
 
 export function HrDocumentsTab() {
   const [employeeId, setEmployeeId] = useState("")
+  const [employeeName, setEmployeeName] = useState("")
   const [inputValue, setInputValue] = useState("")
   const [documents, setDocuments] = useState<HrDocument[]>([])
   const [loading, setLoading] = useState(false)
@@ -26,6 +28,11 @@ export function HrDocumentsTab() {
     setLoading(true)
     const id = inputValue.trim()
     setEmployeeId(id)
+    const emp = await hrService.getEmployee(id).catch(() => null)
+    if (emp) {
+      const nr = emp.workmate_id ?? emp.employee_code
+      setEmployeeName(nr ? `${nr} — ${emp.first_name} ${emp.last_name}` : `${emp.first_name} ${emp.last_name}`)
+    }
     const { data } = await apiClient
       .get<HrDocument[] | { items: HrDocument[] }>(`/api/hr/documents`, { params: { employee_id: id } })
       .catch(() => ({ data: [] as HrDocument[] }))
@@ -59,7 +66,7 @@ export function HrDocumentsTab() {
 
       {searched && !loading && (
         <div>
-          <h2 className="text-sm font-semibold mb-3">Dokumente — {employeeId}</h2>
+          <h2 className="text-sm font-semibold mb-3">Dokumente — {employeeName || employeeId}</h2>
           {documents.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Keine Dokumente vorhanden.</p>
           ) : (
