@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from app.modules.employees.models import Employee, Department
     from app.modules.backoffice.invoices.models import Invoice
     from app.modules.backoffice.finance.models import Expense
-    from app.modules.backoffice.chat.models import ChatMessage
     from app.modules.backoffice.time_tracking.models import TimeEntry
 
 
@@ -217,13 +216,6 @@ class Project(Base, UUIDMixin, TimestampMixin):
         "Expense",
         back_populates="project",
         cascade="all, delete-orphan"
-    )
-
-    chat_messages: Mapped[list[ChatMessage]] = relationship(
-        "ChatMessage",
-        back_populates="project",
-        cascade="all, delete-orphan",
-        order_by="ChatMessage.created_at.desc()"
     )
 
     # ========================================================================
