@@ -27,12 +27,16 @@ export function EmployeeSelect({ id = "employee-select", label = "Mitarbeiter", 
     hrService.listEmployees({ limit: 500 }).catch(() => []).then(setEmployees)
   }, [])
 
+  const selected = employees.find(e => e.id === value)
+
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={onChange} disabled={disabled || employees.length === 0}>
         <SelectTrigger id={id}>
-          <SelectValue placeholder={employees.length === 0 ? "Lädt…" : "Mitarbeiter wählen"} />
+          <SelectValue placeholder={employees.length === 0 ? "Lädt…" : "Mitarbeiter wählen"}>
+            {selected ? employeeLabel(selected) : undefined}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {employees.map((e) => (
