@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
-import { CheckIcon, XIcon } from "lucide-react"
+import { CheckIcon, XIcon, BanIcon, Trash2Icon } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { apiClient } from "@/lib/api/client"
+
+async function deleteLeaveRequest(id: string) {
+  await apiClient.delete(`/api/hr/leave/requests/${id}`)
+}
 
 const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   vacation: "Urlaub", sick: "Krank", parental: "Elternzeit", other: "Sonstiges",
@@ -35,6 +42,8 @@ export function LeaveTab({ stats }: { stats: LeaveStatistics | null }) {
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
   const [processing, setProcessing] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<LeaveRequest | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<LeaveRequest | null>(null)
 
   const employeeMap = Object.fromEntries(
     employees.map(e => [e.id, `${e.first_name} ${e.last_name}`])
@@ -67,6 +76,22 @@ export function LeaveTab({ stats }: { stats: LeaveStatistics | null }) {
     } finally {
       setProcessing(null)
     }
+  }
+
+  async function handleCancel(req: LeaveRequest) {
+    setProcessing(req.id)
+    await hrService.cancelLeaveRequest(req.id).catch(() => {})
+    setProcessing(null)
+    setCancelTarget(null)
+    load()
+  }
+
+  async function handleDelete(id: string) {
+    setProcessing(id)
+    await deleteLeaveRequest(id).catch(() => {})
+    setProcessing(null)
+    setDeleteTarget(null)
+    load()
   }
 
   async function handleReject() {
@@ -159,28 +184,40 @@ export function LeaveTab({ stats }: { stats: LeaveStatistics | null }) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {req.status === "pending" && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon" variant="ghost"
-                          className="h-7 w-7 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                    <div className="flex gap-1">
+                      {req.status === "pending" && (
+                        <>
+                          <Button size="icon" variant="ghost"
+                            className="h-7 w-7 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                            disabled={processing === req.id}
+                            onClick={() => handleApprove(req.id)} title="Genehmigen">
+                            <CheckIcon className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost"
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                            disabled={processing === req.id}
+                            onClick={() => { setRejectId(req.id); setRejectReason("") }} title="Ablehnen">
+                            <XIcon className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {(req.status === "pending" || req.status === "approved") && (
+                        <Button size="icon" variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
                           disabled={processing === req.id}
-                          onClick={() => handleApprove(req.id)}
-                          title="Genehmigen"
-                        >
-                          <CheckIcon className="h-3.5 w-3.5" />
+                          onClick={() => setCancelTarget(req)} title="Stornieren">
+                          <BanIcon className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          size="icon" variant="ghost"
-                          className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                      )}
+                      {(req.status === "cancelled" || req.status === "rejected") && (
+                        <Button size="icon" variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                           disabled={processing === req.id}
-                          onClick={() => { setRejectId(req.id); setRejectReason("") }}
-                          title="Ablehnen"
-                        >
-                          <XIcon className="h-3.5 w-3.5" />
+                          onClick={() => setDeleteTarget(req)} title="Löschen">
+                          <Trash2Icon className="h-3.5 w-3.5" />
                         </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -188,6 +225,48 @@ export function LeaveTab({ stats }: { stats: LeaveStatistics | null }) {
           </table>
         </div>
       )}
+
+      {/* Stornieren */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={open => !open && setCancelTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Antrag stornieren?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelTarget && `Urlaubsantrag von ${employeeMap[cancelTarget.employee_id] ?? "–"} (${cancelTarget.total_days} Tage) wird storniert.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelTarget && handleCancel(cancelTarget)}
+              className="bg-orange-600 text-white hover:bg-orange-700"
+            >
+              Stornieren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Löschen */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Antrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && `Dieser Urlaubsantrag wird endgültig gelöscht.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && handleDelete(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!rejectId} onOpenChange={open => !open && setRejectId(null)}>
         <AlertDialogContent>
