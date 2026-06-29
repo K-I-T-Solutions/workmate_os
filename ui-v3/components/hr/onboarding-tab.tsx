@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { EmployeeSelect } from "./employee-select"
 
 function StartOnboardingDialog({
   open,
@@ -56,16 +57,13 @@ function StartOnboardingDialog({
           <DialogTitle>Onboarding starten</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="ob-emp">Mitarbeiter-ID *</Label>
-            <Input
-              id="ob-emp"
-              placeholder="UUID des Mitarbeiters"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              required
-            />
-          </div>
+          <EmployeeSelect
+            id="ob-emp"
+            label="Mitarbeiter *"
+            value={employeeId}
+            onChange={setEmployeeId}
+            disabled={saving}
+          />
           <div className="space-y-1.5">
             <Label htmlFor="ob-tpl">Vorlage *</Label>
             <select
