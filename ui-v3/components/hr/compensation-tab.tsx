@@ -4,8 +4,7 @@ import { useState } from "react"
 import { hrService } from "@/lib/hr/service"
 import type { SalaryRecord, Benefit } from "@/lib/hr/types"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { EmployeeSelect } from "./employee-select"
 
 export function CompensationTab() {
   const [employeeId, setEmployeeId] = useState("")
@@ -35,18 +34,18 @@ export function CompensationTab() {
     <div className="space-y-6">
       <div className="rounded-lg border bg-muted/30 p-4">
         <p className="text-sm text-muted-foreground">
-          Gehaltsdaten sind vertraulich. Mitarbeiter-ID eingeben um Details zu sehen.
+          Gehaltsdaten sind vertraulich. Mitarbeiter auswählen um Details zu sehen.
         </p>
       </div>
 
       <form onSubmit={handleSearch} className="flex items-end gap-3 max-w-sm">
-        <div className="flex-1 space-y-1.5">
-          <Label htmlFor="comp-emp">Mitarbeiter-ID</Label>
-          <Input
+        <div className="flex-1">
+          <EmployeeSelect
             id="comp-emp"
-            placeholder="UUID des Mitarbeiters"
+            label="Mitarbeiter"
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={setInputValue}
+            disabled={loading}
           />
         </div>
         <Button type="submit" disabled={loading || !inputValue.trim()}>

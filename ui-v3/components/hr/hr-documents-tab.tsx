@@ -3,8 +3,7 @@
 import { useState } from "react"
 import { apiClient } from "@/lib/api/client"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { EmployeeSelect } from "./employee-select"
 
 interface HrDocument {
   id: string
@@ -39,18 +38,18 @@ export function HrDocumentsTab() {
     <div className="space-y-6">
       <div className="rounded-lg border bg-muted/30 p-4">
         <p className="text-sm text-muted-foreground">
-          Mitarbeiter-Dokumente sind personenbezogen. Mitarbeiter-ID eingeben um Dokumente zu filtern.
+          Mitarbeiter-Dokumente sind personenbezogen. Mitarbeiter auswählen um Dokumente zu filtern.
         </p>
       </div>
 
       <form onSubmit={handleSearch} className="flex items-end gap-3 max-w-sm">
-        <div className="flex-1 space-y-1.5">
-          <Label htmlFor="doc-emp">Mitarbeiter-ID</Label>
-          <Input
+        <div className="flex-1">
+          <EmployeeSelect
             id="doc-emp"
-            placeholder="UUID des Mitarbeiters"
+            label="Mitarbeiter"
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={setInputValue}
+            disabled={loading}
           />
         </div>
         <Button type="submit" disabled={loading || !inputValue.trim()}>
