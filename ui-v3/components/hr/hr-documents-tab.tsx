@@ -138,9 +138,9 @@ export function HrDocumentsTab() {
 
   async function fetchDocuments(id: string) {
     const { data } = await apiClient
-      .get<HrDocument[] | { items: HrDocument[] }>(`/api/hr/documents`, { params: { employee_id: id } })
+      .get<HrDocument[]>(`/api/hr/documents/employees/${id}/documents`)
       .catch(() => ({ data: [] as HrDocument[] }))
-    setDocuments(Array.isArray(data) ? data : (data as { items: HrDocument[] }).items ?? [])
+    setDocuments(Array.isArray(data) ? data : [])
   }
 
   async function handleSearch(e: React.FormEvent) {
