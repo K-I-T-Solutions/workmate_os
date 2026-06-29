@@ -33,15 +33,13 @@ from app.modules.backoffice.crm.models import Customer, Contact
 from app.modules.backoffice.projects.models import Project
 from app.modules.backoffice.invoices.models import Invoice, InvoiceLineItem, Payment
 from app.modules.backoffice.finance.models import Expense
-from app.modules.backoffice.chat.models import ChatMessage
 from app.modules.backoffice.time_tracking.models import TimeEntry
-
 
 
 # Explicit exports für besseres Type-Checking
 __all__ = [
     "Department",
-    "Role", 
+    "Role",
     "Employee",
     "Document",
     "Reminder",
@@ -54,7 +52,5 @@ __all__ = [
     "InvoiceLineItem",
     "Payment",
     "Expense",
-    "ChatMessage",
     "TimeEntry",
-    
 ]

@@ -23,7 +23,6 @@ MODULES = [
     ("Documents",    "Datei-Upload"),
     ("Dashboards",   "Dashboards, Notifications"),
     ("Reminders",    "Erinnerungen"),
-    ("Chat",         "Internes Messaging"),
     ("Email Intake", "E-Mail → Ticket"),
     ("Admin",        "Audit-Log, System-Settings"),
 ]
