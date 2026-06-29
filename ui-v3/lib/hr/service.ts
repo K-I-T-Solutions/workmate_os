@@ -3,6 +3,9 @@ import type {
   Employee, EmployeeListResponse, EmployeeCreate, EmployeeUpdate, EmployeeStatistics,
   LeaveRequest, LeaveRequestCreate, LeaveStatistics,
   JobPosting, JobPostingCreate, Application,
+  Course, CourseCreate, OnboardingTemplate, OnboardingProcess,
+  HeadcountStats, LeaveSummary, RecruitingFunnel,
+  SalaryRecord, Benefit,
 } from "./types"
 
 export const hrService = {
@@ -88,5 +91,52 @@ export const hrService = {
   async updateApplication(id: string, payload: { status?: string; notes?: string; interview_date?: string | null; rating?: number | null }): Promise<Application> {
     const { data } = await apiClient.patch(`/api/hr/recruiting/applications/${id}`, payload)
     return data
+  },
+
+  // Training
+  async listCourses(): Promise<Course[]> {
+    const { data } = await apiClient.get("/api/hr/training/courses")
+    return Array.isArray(data) ? data : (data.items ?? [])
+  },
+  async createCourse(payload: CourseCreate): Promise<Course> {
+    const { data } = await apiClient.post("/api/hr/training/courses", payload)
+    return data
+  },
+  async enrollEmployee(courseId: string, employeeId: string): Promise<void> {
+    await apiClient.post(`/api/hr/training/courses/${courseId}/enroll`, { employee_id: employeeId })
+  },
+
+  // Onboarding
+  async listOnboardingTemplates(): Promise<OnboardingTemplate[]> {
+    const { data } = await apiClient.get("/api/hr/onboarding/templates")
+    return Array.isArray(data) ? data : (data.items ?? [])
+  },
+  async startOnboarding(payload: { employee_id: string; template_id: string; start_date: string }): Promise<OnboardingProcess> {
+    const { data } = await apiClient.post("/api/hr/onboarding/processes", payload)
+    return data
+  },
+
+  // Analytics
+  async getHeadcount(): Promise<HeadcountStats> {
+    const { data } = await apiClient.get("/api/hr/analytics/headcount")
+    return data
+  },
+  async getLeaveSummary(): Promise<LeaveSummary> {
+    const { data } = await apiClient.get("/api/hr/analytics/leave-summary")
+    return data
+  },
+  async getRecruitingFunnel(): Promise<RecruitingFunnel> {
+    const { data } = await apiClient.get("/api/hr/analytics/recruiting-funnel")
+    return data
+  },
+
+  // Compensation
+  async getEmployeeSalary(employeeId: string): Promise<SalaryRecord[]> {
+    const { data } = await apiClient.get(`/api/hr/compensation/employees/${employeeId}/salary`)
+    return Array.isArray(data) ? data : (data.items ?? [])
+  },
+  async getEmployeeBenefits(employeeId: string): Promise<Benefit[]> {
+    const { data } = await apiClient.get(`/api/hr/compensation/employees/${employeeId}/benefits`)
+    return Array.isArray(data) ? data : (data.items ?? [])
   },
 }

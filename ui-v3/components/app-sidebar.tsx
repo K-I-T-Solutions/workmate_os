@@ -17,6 +17,8 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
+  Package,
+  Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -43,6 +45,7 @@ const navGroups: NavGroup[] = [
       { label: "Projekte", icon: FolderKanban, href: "/projects", matchKey: "/projects" },
       { label: "Rechnungen", icon: FileText, href: "/invoices", matchKey: "/invoices" },
       { label: "Finanzen", icon: Wallet, href: "/finance", matchKey: "/finance" },
+      { label: "Produkte", icon: Package, href: "/products", matchKey: "/products" },
     ],
   },
   {
@@ -58,6 +61,12 @@ const navGroups: NavGroup[] = [
       { label: "Tickets", icon: LifeBuoy, href: "/support", matchKey: "/support" },
       { label: "Wiki", icon: BookOpen, href: "/knowledge", matchKey: "/knowledge" },
       { label: "Dokumente", icon: FolderOpen, href: "/documents", matchKey: "/documents" },
+    ],
+  },
+  {
+    label: "Tools",
+    items: [
+      { label: "Erinnerungen", icon: Bell, href: "/reminders", matchKey: "/reminders" },
     ],
   },
 ]
