@@ -107,6 +107,7 @@ class EmployeeBase(BaseModel):
 class EmployeeCreate(EmployeeBase):
     """Create new employee"""
     employee_code: str = Field(..., description="Unique employee code like KIT-0001")
+    workmate_id: Optional[str] = Field(None, description="Short display ID like WM-001")
     email: EmailStr
 
 
@@ -116,6 +117,7 @@ class EmployeeUpdate(BaseModel):
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+    workmate_id: Optional[str] = None
     gender: Optional[str] = None
     birth_date: Optional[date] = None
     nationality: Optional[str] = None
@@ -151,6 +153,7 @@ class EmployeeResponse(EmployeeBase):
     """Employee response with all fields"""
     id: UUID
     employee_code: str
+    workmate_id: Optional[str] = None
     uuid_keycloak: Optional[str] = None
     photo_url: Optional[str] = None
     bio: Optional[str] = None
