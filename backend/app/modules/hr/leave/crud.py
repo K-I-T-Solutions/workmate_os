@@ -413,13 +413,13 @@ def cancel_leave_request(
 
 
 def delete_leave_request(db: Session, request_id: UUID) -> bool:
-    """Löscht einen Leave Request (nur pending)"""
+    """Löscht einen Leave Request (pending, cancelled oder rejected)"""
     leave_request = get_leave_request(db, request_id)
     if not leave_request:
         return False
 
-    # Nur pending requests können gelöscht werden
-    if leave_request.status != LeaveStatus.PENDING.value:
+    deletable = [LeaveStatus.PENDING.value, LeaveStatus.CANCELLED.value, LeaveStatus.REJECTED.value]
+    if leave_request.status not in deletable:
         return False
 
     db.delete(leave_request)
