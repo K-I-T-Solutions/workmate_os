@@ -167,3 +167,75 @@ export interface Application {
   created_at: string
   updated_at: string
 }
+
+// Training
+export interface Course {
+  id: string
+  title: string
+  description: string | null
+  provider: string | null
+  course_type: string
+  duration_hours: number | null
+  cost: number | null
+  is_active: boolean
+}
+export interface CourseCreate {
+  title: string
+  description?: string
+  provider?: string
+  course_type: string
+  duration_hours?: number
+  cost?: number
+}
+
+// Onboarding
+export interface OnboardingTemplate {
+  id: string
+  name: string
+  description: string | null
+  is_active: boolean
+}
+export interface OnboardingProcess {
+  id: string
+  employee_id: string
+  template_id: string | null
+  start_date: string
+  status: string
+}
+
+// Analytics
+export interface HeadcountStats {
+  total: number
+  active: number
+  by_department: Record<string, number>
+  by_employment_type: Record<string, number>
+}
+export interface LeaveSummary {
+  pending_requests: number
+  approved_this_month: number
+  total_days_taken_this_year: number
+}
+export interface RecruitingFunnel {
+  open_positions: number
+  total_applications: number
+  by_status: Record<string, number>
+}
+
+// Compensation
+export interface SalaryRecord {
+  id: string
+  employee_id: string
+  amount: number | string
+  currency: string
+  effective_date: string
+  notes: string | null
+}
+export interface Benefit {
+  id: string
+  employee_id: string
+  benefit_type: string
+  description: string | null
+  value: number | string | null
+  start_date: string | null
+  end_date: string | null
+}
