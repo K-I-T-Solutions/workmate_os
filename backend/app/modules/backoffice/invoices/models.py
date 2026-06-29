@@ -20,7 +20,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
     String,
@@ -219,8 +219,12 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         back_populates="invoice",
         cascade="all, delete-orphan"
     )
-
-
+    reminders: Mapped[list["InvoiceReminder"]] = relationship(
+        "InvoiceReminder",
+        back_populates="invoice",
+        cascade="all, delete-orphan",
+        order_by="InvoiceReminder.level"
+    )
 
     # ========================================================================
     # METHODS
@@ -557,6 +561,30 @@ class Payment(Base, UUIDMixin, TimestampMixin):
             f"<Payment(invoice='{invoice_number}', "
             f"amount={self.amount}, date={self.payment_date})>"
         )
+
+
+class InvoiceReminder(Base, UUIDMixin, TimestampMixin):
+    """Mahnwesen — 3-stufige Mahnstufen für überfällige Rechnungen"""
+    __tablename__ = "invoice_reminders"
+    __table_args__ = (
+        Index("ix_invoice_reminders_invoice_id", "invoice_id"),
+        Index("ix_invoice_reminders_level", "invoice_id", "level"),
+        UniqueConstraint("invoice_id", "level", name="uq_invoice_reminder_level"),
+        CheckConstraint("level IN (1, 2, 3)", name="check_reminder_level_valid"),
+        CheckConstraint("fee >= 0", name="check_reminder_fee_positive"),
+    )
+
+    invoice_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False
+    )
+    level: Mapped[int] = mapped_column(comment="Mahnstufe 1–3")
+    fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), comment="Mahngebühr")
+    due_date: Mapped[Optional[date]] = mapped_column(Date)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    pdf_path: Mapped[Optional[str]] = mapped_column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="reminders")
 
 
 # ============================================================================
