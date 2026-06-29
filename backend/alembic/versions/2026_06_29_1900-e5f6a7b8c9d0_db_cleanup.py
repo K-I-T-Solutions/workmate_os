@@ -16,45 +16,53 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Leichen droppen
-    op.drop_table('chat_messages')
+    conn = op.get_bind()
 
-    # products erstellen
-    op.create_table(
-        'products',
-        sa.Column('id', UUID(as_uuid=True), primary_key=True),
-        sa.Column('name', sa.String(200), nullable=False, index=True),
-        sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('short_description', sa.String(500), nullable=True),
-        sa.Column('sku', sa.String(100), nullable=True, unique=True),
-        sa.Column('category', sa.String(50), nullable=False),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
-        sa.Column('is_service', sa.Boolean(), nullable=False, server_default='true'),
-        sa.Column('price_type', sa.String(50), nullable=False, server_default='fixed'),
-        sa.Column('unit_price', sa.Numeric(10, 2), nullable=False, server_default='0.00'),
-        sa.Column('unit', sa.String(50), nullable=False, server_default='Stk.'),
-        sa.Column('default_tax_rate', sa.Numeric(5, 2), nullable=False, server_default='19.00'),
-        sa.Column('min_quantity', sa.Numeric(10, 2), nullable=True),
-        sa.Column('max_quantity', sa.Numeric(10, 2), nullable=True),
-        sa.Column('internal_notes', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
-    )
+    # chat_messages droppen (nur wenn noch vorhanden)
+    conn.execute(sa.text("DROP TABLE IF EXISTS chat_messages CASCADE"))
 
-    # ticket_events erstellen
-    op.create_table(
-        'ticket_events',
-        sa.Column('id', UUID(as_uuid=True), primary_key=True),
-        sa.Column('ticket_id', UUID(as_uuid=True), sa.ForeignKey('support_tickets.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('event_type', sa.String(50), nullable=False),
-        sa.Column('actor_id', sa.String(100), nullable=True),
-        sa.Column('old_value', JSONB, nullable=True),
-        sa.Column('new_value', JSONB, nullable=True),
-        sa.Column('comment', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
-    )
-    op.create_index('ix_ticket_events_ticket_id', 'ticket_events', ['ticket_id'])
-    op.create_index('ix_ticket_events_created_at', 'ticket_events', ['created_at'])
+    # products erstellen (idempotent)
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS products (
+            id UUID PRIMARY KEY,
+            name VARCHAR(200) NOT NULL,
+            description TEXT,
+            short_description VARCHAR(500),
+            sku VARCHAR(100) UNIQUE,
+            category VARCHAR(50) NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            is_service BOOLEAN NOT NULL DEFAULT TRUE,
+            price_type VARCHAR(50) NOT NULL DEFAULT 'fixed',
+            unit_price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+            unit VARCHAR(50) NOT NULL DEFAULT 'Stk.',
+            default_tax_rate NUMERIC(5,2) NOT NULL DEFAULT 19.00,
+            min_quantity NUMERIC(10,2),
+            max_quantity NUMERIC(10,2),
+            internal_notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+
+    # ticket_events erstellen (idempotent)
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS ticket_events (
+            id UUID PRIMARY KEY,
+            ticket_id UUID NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+            event_type VARCHAR(50) NOT NULL,
+            actor_id VARCHAR(100),
+            old_value JSONB,
+            new_value JSONB,
+            comment TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    conn.execute(sa.text("""
+        CREATE INDEX IF NOT EXISTS ix_ticket_events_ticket_id ON ticket_events(ticket_id)
+    """))
+    conn.execute(sa.text("""
+        CREATE INDEX IF NOT EXISTS ix_ticket_events_created_at ON ticket_events(created_at)
+    """))
 
 
 def downgrade() -> None:
