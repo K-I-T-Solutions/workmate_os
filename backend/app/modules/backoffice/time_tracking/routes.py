@@ -82,7 +82,7 @@ def create_invoice_from_entries(
 @require_permissions(["backoffice.time_tracking.view", "backoffice.*"])
 def list_entries(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=1000),
     employee_id: Optional[UUID] = Query(None),
     project_id: Optional[UUID] = Query(None),
     start_date: Optional[date] = Query(None),

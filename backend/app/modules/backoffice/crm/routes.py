@@ -28,7 +28,7 @@ router = APIRouter(
 @router.get("/customers", response_model=list[schemas.CustomerResponse])
 def list_customers(
     skip: int = Query(0, ge=0, description="Anzahl zu überspringende Einträge"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum Anzahl Einträge"),
+    limit: int = Query(50, ge=1, le=1000, description="Maximum Anzahl Einträge"),
     status: Optional[str] = Query(None, description="Filter nach Status"),
     search: Optional[str] = Query(None, description="Suche in Name und Email"),
     db: Session = Depends(get_db)
