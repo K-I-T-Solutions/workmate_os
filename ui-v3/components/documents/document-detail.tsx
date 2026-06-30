@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import ReactMarkdown from "react-markdown"
+import dynamic from "next/dynamic"
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false })
 import remarkGfm from "remark-gfm"
 import { documentService } from "@/lib/documents/service"
 import { apiClient } from "@/lib/api/client"

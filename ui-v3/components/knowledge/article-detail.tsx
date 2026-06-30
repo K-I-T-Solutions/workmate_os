@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import ReactMarkdown from "react-markdown"
+import dynamic from "next/dynamic"
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false })
 import remarkGfm from "remark-gfm"
 import { usePageTitle } from "@/lib/page-title-context"
 import { knowledgeService } from "@/lib/knowledge/service"

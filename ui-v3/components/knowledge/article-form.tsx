@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import ReactMarkdown from "react-markdown"
+import dynamic from "next/dynamic"
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false })
 import remarkGfm from "remark-gfm"
 import { knowledgeService } from "@/lib/knowledge/service"
 import type { KBArticleDetail, KBCategory, ArticleStatus } from "@/lib/knowledge/types"
