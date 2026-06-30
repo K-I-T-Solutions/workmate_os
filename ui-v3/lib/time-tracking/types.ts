@@ -58,3 +58,22 @@ export interface TimeListParams {
   is_invoiced?: boolean
   search?: string
 }
+
+export interface BillableEntry {
+  id: string
+  date: string
+  employee_name: string
+  project_id: string | null
+  project_name: string | null
+  task_type: string | null
+  note: string | null
+  duration_hours: number
+  hourly_rate: number | null
+  amount: number | null
+}
+
+export interface BillableUninvoicedResponse {
+  entries: BillableEntry[]
+  total_hours: number
+  total_amount: number
+}
