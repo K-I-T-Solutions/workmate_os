@@ -269,9 +269,7 @@ export function InvoiceForm({ initial, invoiceId }: Props) {
             <Label>Kunde *</Label>
             <Select value={customerId} onValueChange={v => v && setCustomerId(v)}>
               <SelectTrigger>
-                <span data-slot="select-value" className={customerId ? "" : "text-muted-foreground"}>
-                  {customerId ? (customers.find(c => c.id === customerId)?.name ?? "…") : "Kunde auswählen…"}
-                </span>
+                <SelectValue placeholder="Kunde auswählen…" />
               </SelectTrigger>
               <SelectContent>
                 {customers.map(c => (
@@ -284,9 +282,7 @@ export function InvoiceForm({ initial, invoiceId }: Props) {
             <Label>Dokumenttyp</Label>
             <Select value={docType} onValueChange={v => setDocType(v as DocumentType)}>
               <SelectTrigger>
-                <span data-slot="select-value">
-                  {DOC_TYPES.find(t => t.value === docType)?.label ?? docType}
-                </span>
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {DOC_TYPES.map(t => (

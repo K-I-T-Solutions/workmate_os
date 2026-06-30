@@ -141,9 +141,7 @@ export function TimeBilling() {
       <div className="flex flex-wrap items-center gap-3">
         <Select value={filterProject || "__all__"} onValueChange={v => setFilterProject(!v || v === "__all__" ? "" : v)}>
           <SelectTrigger className="w-52">
-            <span data-slot="select-value" className={filterProject ? "" : "text-muted-foreground"}>
-              {filterProject ? (projects.find(p => p.id === filterProject)?.title ?? "Projekt") : "Alle Projekte"}
-            </span>
+            <SelectValue placeholder="Alle Projekte" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Alle Projekte</SelectItem>
@@ -156,9 +154,7 @@ export function TimeBilling() {
         {employeeNames.length > 1 && (
           <Select value={filterEmployee || "__all__"} onValueChange={v => setFilterEmployee(!v || v === "__all__" ? "" : v)}>
             <SelectTrigger className="w-52">
-              <span data-slot="select-value" className={filterEmployee ? "" : "text-muted-foreground"}>
-                {filterEmployee || "Alle Mitarbeiter"}
-              </span>
+              <SelectValue placeholder="Alle Mitarbeiter" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Alle Mitarbeiter</SelectItem>
@@ -293,11 +289,7 @@ export function TimeBilling() {
                 <Label>Kunde *</Label>
                 <Select value={dialogCustomerId} onValueChange={v => v && setDialogCustomerId(v)}>
                   <SelectTrigger>
-                    <span data-slot="select-value" className={dialogCustomerId ? "" : "text-muted-foreground"}>
-                      {dialogCustomerId
-                        ? (customers.find(c => c.id === dialogCustomerId)?.name ?? "…")
-                        : "Kunde auswählen…"}
-                    </span>
+                    <SelectValue placeholder="Kunde auswählen…" />
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map(c => (
