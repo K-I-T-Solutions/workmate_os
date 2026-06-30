@@ -8,6 +8,7 @@ import { crmService } from "@/lib/crm/service"
 import type { BillableEntry } from "@/lib/time-tracking/types"
 import type { Project } from "@/lib/projects/types"
 import type { Customer } from "@/lib/crm/types"
+import { CustomerSelect } from "@/components/crm/customer-select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -287,16 +288,11 @@ export function TimeBilling() {
 
               <div className="grid gap-1.5">
                 <Label>Kunde *</Label>
-                <Select value={dialogCustomerId} onValueChange={v => v && setDialogCustomerId(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Kunde auswählen…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CustomerSelect
+                  customers={customers}
+                  value={dialogCustomerId}
+                  onChange={setDialogCustomerId}
+                />
               </div>
 
               <div className="grid gap-1.5">
