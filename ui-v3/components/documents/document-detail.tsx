@@ -108,6 +108,16 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
     )
   }
 
+  if (isMarkdown && markdownContent !== null) {
+    return (
+      <div className="rounded-lg border bg-card p-6">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
+        </div>
+      </div>
+    )
+  }
+
   if (error || !canPreview || !objectUrl) {
     return (
       <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border bg-muted/30">
@@ -115,16 +125,6 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
         <p className="text-sm text-muted-foreground">
           {!canPreview ? "Keine Vorschau für diesen Dateityp verfügbar." : "Vorschau konnte nicht geladen werden."}
         </p>
-      </div>
-    )
-  }
-
-  if (isMarkdown && markdownContent !== null) {
-    return (
-      <div className="rounded-lg border bg-card p-6">
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
-        </div>
       </div>
     )
   }
