@@ -4,6 +4,7 @@ REST endpoints for document management (Upload, Download, List, Delete)
 """
 import hashlib
 import os
+import re
 from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
@@ -109,7 +110,8 @@ async def upload_document(
     checksum = calculate_checksum(content)
 
     file_extension = get_file_extension(file.filename)
-    unique_filename = f"{uuid4()}{file_extension}"
+    stem = re.sub(r'[^\w\-. ]+', '_', Path(file.filename).stem).strip()
+    unique_filename = f"{stem}_{uuid4().hex[:8]}{file_extension}"
 
     # Storage-Backend verwenden (local / nextcloud / s3)
     storage = get_storage()
