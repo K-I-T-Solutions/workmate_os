@@ -69,7 +69,11 @@ jobs:
             "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
             "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
             "ENVIRONMENT=production" \
-            "STORAGE_BACKEND=local" \
+            "STORAGE_BACKEND=nextcloud" \
+            "NEXTCLOUD_URL=${{ secrets.NEXTCLOUD_URL }}" \
+            "NEXTCLOUD_USER=${{ secrets.NEXTCLOUD_USER }}" \
+            "NEXTCLOUD_PASSWORD=${{ secrets.NEXTCLOUD_PASSWORD }}" \
+            "NEXTCLOUD_BASE_PATH=workmate/documents" \
             "KEYCLOAK_URL=${{ secrets.KEYCLOAK_URL }}" \
             "KEYCLOAK_INTERNAL_URL=${{ secrets.KEYCLOAK_INTERNAL_URL }}" \
             "KEYCLOAK_REALM=${{ secrets.KEYCLOAK_REALM }}" \
