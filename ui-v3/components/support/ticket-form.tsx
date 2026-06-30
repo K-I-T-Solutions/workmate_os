@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supportService } from "@/lib/support/service"
 import { crmService } from "@/lib/crm/service"
 import type { Customer } from "@/lib/crm/types"
+import { CustomerSelect } from "@/components/crm/customer-select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -120,17 +121,12 @@ export function TicketForm() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Kunde</Label>
-              <Select value={customerId} onValueChange={v => v && setCustomerId(v)}>
-                <SelectTrigger>
-                  <span data-slot="select-value" className={customerId !== "none" ? "" : "text-muted-foreground"}>
-                    {customerId !== "none" ? (customers.find(c => c.id === customerId)?.name ?? "…") : "Kein Kunde"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Kein Kunde</SelectItem>
-                  {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <CustomerSelect
+                customers={customers}
+                value={customerId === "none" ? "" : customerId}
+                onChange={v => setCustomerId(v || "none")}
+                placeholder="Kein Kunde"
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>E-Mail Melder</Label>

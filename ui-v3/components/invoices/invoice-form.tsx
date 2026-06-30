@@ -8,6 +8,7 @@ import { productsService } from "@/lib/products/service"
 import type { Invoice, InvoiceLineItemInput, DocumentType } from "@/lib/invoices/types"
 import type { Customer } from "@/lib/crm/types"
 import type { Product } from "@/lib/products/types"
+import { CustomerSelect } from "@/components/crm/customer-select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -267,16 +268,11 @@ export function InvoiceForm({ initial, invoiceId }: Props) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="lg:col-span-2 grid gap-1.5">
             <Label>Kunde *</Label>
-            <Select value={customerId} onValueChange={v => v && setCustomerId(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kunde auswählen…" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CustomerSelect
+              customers={customers}
+              value={customerId}
+              onChange={setCustomerId}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Dokumenttyp</Label>
