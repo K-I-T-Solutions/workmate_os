@@ -109,9 +109,11 @@ async def upload_document(
     content = await file.read()
     checksum = calculate_checksum(content)
 
+    from datetime import datetime, timezone
     file_extension = get_file_extension(file.filename)
     stem = re.sub(r'[^\w\-. ]+', '_', Path(file.filename).stem).strip()
-    unique_filename = f"{stem}_{uuid4().hex[:8]}{file_extension}"
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
+    unique_filename = f"{now}-{stem}_{uuid4().hex[:8]}{file_extension}"
 
     # Storage-Backend verwenden (local / nextcloud / s3)
     storage = get_storage()
