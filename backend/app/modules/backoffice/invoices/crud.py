@@ -20,6 +20,7 @@ from datetime import date, datetime
 from typing import Optional, List
 import uuid
 import os
+import tempfile
 
 from fastapi import HTTPException
 
@@ -28,6 +29,7 @@ from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.documents.models import Document
 from app.modules.backoffice.crm.models import Customer
 from app.modules.backoffice.projects.models import Project
+from app.core.storage.factory import get_storage
 
 
 # ============================================================================
@@ -368,48 +370,34 @@ def create_invoice(
 
 
 def _generate_and_save_pdf(db: Session, invoice: models.Invoice) -> str:
-    """
-    Generiert PDF und registriert Dokument.
+    """PDF generieren, in Storage hochladen und als Document registrieren."""
+    remote_path = f"invoices/{invoice.invoice_number}.pdf"
 
-    Dateiname (deine Wahl 6):
-      KIT-RE-001.pdf
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        generate_invoice_pdf(invoice, tmp_path)
+        with open(tmp_path, "rb") as f:
+            content = f.read()
+        get_storage().upload(remote_path, content)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
-    Umsetzung:
-    - aus invoice.invoice_number z.B. 'RE-2025-0001'
-    - extrahieren wir '0001'
-    - daraus 'KIT-RE-0001.pdf'
-    """
-    # PDF Directory
-    pdf_dir = "/root/workmate_os_uploads/invoices"
-    os.makedirs(pdf_dir, exist_ok=True)
+    doc = Document(
+        id=uuid.uuid4(),
+        title=f"Rechnung {invoice.invoice_number}",
+        file_path=remote_path,
+        type="pdf",
+        category="Rechnungen",
+        owner_id=None,
+        linked_module="invoices",
+        checksum=None,
+        is_confidential=False,
+    )
+    db.add(doc)
 
-    # Laufende Nummer aus Rechnungsnummer extrahieren
-    seq_str = _extract_seq_from_invoice_number(invoice.invoice_number)
-
-    # Standard für Rechnungen → KIT-RE-<SEQ>.pdf
-    # (Wenn du später Angebote hier drüber laufen lässt, kannst du z.B. KIT-AN- etc. machen)
-    pdf_filename = f"KIT-RE-{seq_str}.pdf"
-    pdf_path = os.path.join(pdf_dir, pdf_filename)
-
-    # PDF generieren
-    generate_invoice_pdf(invoice, pdf_path)
-
-    # Dokument registrieren
-    if os.path.exists(pdf_path):
-        doc = Document(
-            id=uuid.uuid4(),
-            title=f"Rechnung {invoice.invoice_number}",
-            file_path=pdf_path,
-            type="pdf",
-            category="Rechnungen",
-            owner_id=None,
-            linked_module="invoices",
-            checksum=None,
-            is_confidential=False,
-        )
-        db.add(doc)
-
-    return pdf_path
+    return remote_path
 
 
 # ============================================================================
