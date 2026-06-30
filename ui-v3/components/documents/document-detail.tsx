@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { usePageTitle } from "@/lib/page-title-context"
 import dynamic from "next/dynamic"
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false })
 import remarkGfm from "remark-gfm"
@@ -152,6 +153,7 @@ export function DocumentDetail({ id }: { id: string }) {
   const router = useRouter()
   const [doc, setDoc] = useState<DocumentRecord | null>(null)
   const [loading, setLoading] = useState(true)
+  usePageTitle(doc ? (doc.title || doc.file_path.split("/").pop() || null) : null)
   const [notFound, setNotFound] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
 

@@ -10,6 +10,9 @@ import { NotificationsPanel } from "@/components/notifications-panel"
 
 const labels: Record<string, string> = {
   dashboard: "Dashboard",
+  documents: "Dokumente",
+  products: "Produkte",
+  reminders: "Erinnerungen",
   crm: "CRM",
   customers: "Kunden",
   pipeline: "Pipeline",
@@ -19,12 +22,12 @@ const labels: Record<string, string> = {
   finance: "Finanzen",
   time: "Zeiterfassung",
   hr: "Personal",
+  employees: "Mitarbeiter",
+  "my-leave": "Meine Abwesenheiten",
   support: "Support",
   knowledge: "Wissensdatenbank",
   admin: "Administration",
   settings: "Einstellungen",
-  employees: "Mitarbeiter",
-  "my-leave": "Meine Abwesenheiten",
   edit: "Bearbeiten",
   new: "Neu",
 }
