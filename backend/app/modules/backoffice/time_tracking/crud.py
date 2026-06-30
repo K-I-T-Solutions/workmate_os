@@ -1,8 +1,12 @@
 # app/modules/backoffice/time_tracking/crud.py
+from collections import defaultdict
 from datetime import datetime, date, timedelta, time
+from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
+from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.modules.backoffice.time_tracking import models, schemas
@@ -151,6 +155,162 @@ def get_stats(db: Session, employee_id: Optional[UUID] = None) -> dict:
         "hours_by_project": hours_by_project,
         "hours_by_task_type": hours_by_task_type,
     }
+
+
+def get_billable_uninvoiced(
+    db: Session,
+    customer_id: Optional[UUID] = None,
+    project_id: Optional[UUID] = None,
+    employee_id: Optional[UUID] = None,
+) -> schemas.BillableUninvoicedResponse:
+    from app.modules.employees.models import Employee
+    from app.modules.backoffice.projects.models import Project
+
+    query = (
+        db.query(models.TimeEntry)
+        .join(Employee, models.TimeEntry.employee_id == Employee.id)
+        .outerjoin(Project, models.TimeEntry.project_id == Project.id)
+        .filter(
+            models.TimeEntry.billable == True,
+            models.TimeEntry.is_invoiced == False,
+        )
+    )
+
+    if customer_id:
+        query = query.filter(
+            or_(
+                Project.customer_id == customer_id,
+                models.TimeEntry.customer_id == customer_id,
+            )
+        )
+    if project_id:
+        query = query.filter(models.TimeEntry.project_id == project_id)
+    if employee_id:
+        query = query.filter(models.TimeEntry.employee_id == employee_id)
+
+    entries = query.order_by(models.TimeEntry.start_time.desc()).all()
+
+    billable_entries: list[schemas.BillableEntry] = []
+    total_hours = 0.0
+    total_amount = Decimal("0.00")
+
+    for entry in entries:
+        duration_hours = entry.duration_hours or 0.0
+        hourly_rate = entry.hourly_rate
+        amount: Optional[Decimal] = None
+        if hourly_rate is not None:
+            amount = Decimal(str(round(duration_hours, 4))) * hourly_rate
+            total_amount += amount
+
+        total_hours += duration_hours
+
+        # customer_id: direkt auf Entry oder über Projekt
+        effective_customer_id = entry.customer_id or (
+            entry.project.customer_id if entry.project else None
+        )
+        billable_entries.append(
+            schemas.BillableEntry(
+                id=entry.id,
+                date=entry.start_time.date(),
+                employee_name=f"{entry.employee.first_name} {entry.employee.last_name}",
+                project_id=entry.project_id,
+                project_name=entry.project.title if entry.project else None,
+                customer_id=effective_customer_id,
+                task_type=entry.task_type,
+                note=entry.note,
+                duration_hours=round(duration_hours, 2),
+                hourly_rate=hourly_rate,
+                amount=amount,
+            )
+        )
+
+    return schemas.BillableUninvoicedResponse(
+        entries=billable_entries,
+        total_hours=round(total_hours, 2),
+        total_amount=total_amount,
+    )
+
+
+def create_invoice_from_entries(
+    db: Session,
+    data: schemas.CreateInvoiceFromEntries,
+):
+    from app.modules.backoffice.invoices import crud as invoices_crud
+    from app.modules.backoffice.invoices import schemas as invoice_schemas
+
+    # 1. Einträge laden und validieren
+    entries = (
+        db.query(models.TimeEntry)
+        .filter(models.TimeEntry.id.in_(data.time_entry_ids))
+        .all()
+    )
+
+    found_ids = {e.id for e in entries}
+    missing = set(data.time_entry_ids) - found_ids
+    if missing:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Zeiteinträge nicht gefunden: {[str(i) for i in missing]}",
+        )
+
+    invalid = [e for e in entries if not e.billable or e.is_invoiced]
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Folgende Einträge sind nicht billable oder bereits abgerechnet: "
+                f"{[str(e.id) for e in invalid]}"
+            ),
+        )
+
+    # 2. Line Items erstellen
+    if data.group_by_task_type:
+        groups: dict[str, list] = defaultdict(list)
+        for entry in entries:
+            key = entry.task_type or "IT-Dienstleistung"
+            groups[key].append(entry)
+
+        line_items = []
+        for pos, (task_type, group_entries) in enumerate(groups.items(), start=1):
+            total_group_hours = sum(e.duration_hours or 0.0 for e in group_entries)
+            line_items.append(
+                invoice_schemas.InvoiceLineItemCreate(
+                    position=pos,
+                    description=task_type,
+                    quantity=Decimal(str(round(total_group_hours, 2))),
+                    unit="Stunden",
+                    unit_price=data.hourly_rate,
+                )
+            )
+    else:
+        total_hours = sum(e.duration_hours or 0.0 for e in entries)
+        line_items = [
+            invoice_schemas.InvoiceLineItemCreate(
+                position=1,
+                description="Erbrachte Leistungen",
+                quantity=Decimal(str(round(total_hours, 2))),
+                unit="Stunden",
+                unit_price=data.hourly_rate,
+            )
+        ]
+
+    # 3. Rechnung erstellen (AUTO-Nummernvergabe)
+    invoice_create = invoice_schemas.InvoiceCreate(
+        invoice_number="AUTO",
+        customer_id=data.customer_id,
+        project_id=data.project_id,
+        issued_date=date.today(),
+        notes=data.notes,
+        line_items=line_items,
+    )
+    invoice = invoices_crud.create_invoice(db, invoice_create)
+
+    # 4. Einträge als abgerechnet markieren
+    for entry in entries:
+        entry.is_invoiced = True
+    db.commit()
+
+    return invoice
 
 
 def get_weekly_summary(db: Session, employee_id: UUID, year: int, week: int) -> dict:

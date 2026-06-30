@@ -1,10 +1,10 @@
 # app/modules/backoffice/time_tracking/schemas.py
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 from decimal import Decimal
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ─── Time Entry Schemas ──────────────────────────────────────
@@ -81,3 +81,34 @@ class WeeklySummaryResponse(BaseModel):
     week: str
     total_hours: float
     daily_breakdown: list[DaySummary]
+
+
+# ─── Billable / Invoice Schemas ──────────────────────────────
+
+class BillableEntry(BaseModel):
+    id: uuid.UUID
+    date: date
+    employee_name: str
+    project_id: Optional[uuid.UUID] = None
+    project_name: Optional[str] = None
+    customer_id: Optional[uuid.UUID] = None
+    task_type: Optional[str] = None
+    note: Optional[str] = None
+    duration_hours: float
+    hourly_rate: Optional[Decimal] = None
+    amount: Optional[Decimal] = None
+
+
+class BillableUninvoicedResponse(BaseModel):
+    entries: list[BillableEntry]
+    total_hours: float
+    total_amount: Decimal  # Summe aller amounts wo rate bekannt
+
+
+class CreateInvoiceFromEntries(BaseModel):
+    time_entry_ids: list[uuid.UUID] = Field(..., min_length=1)
+    customer_id: uuid.UUID
+    project_id: Optional[uuid.UUID] = None
+    hourly_rate: Decimal
+    group_by_task_type: bool = True
+    notes: Optional[str] = None

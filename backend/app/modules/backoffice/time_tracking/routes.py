@@ -10,6 +10,7 @@ from app.core.settings.database import get_db
 from app.core.auth.auth import get_current_user
 from app.core.auth.roles import require_permissions
 from app.modules.backoffice.time_tracking import crud, schemas
+from app.modules.backoffice.invoices.schemas import InvoiceResponse
 
 router = APIRouter(prefix="/backoffice/time-tracking", tags=["Backoffice Time Tracking"])
 
@@ -44,6 +45,35 @@ def get_weekly_summary(
             detail="Ungueltiges Wochenformat. Erwartet: YYYY-Www (z.B. 2026-W06)",
         )
     return crud.get_weekly_summary(db, employee_id, year, week_num)
+
+
+# ─── Billable / Invoice Endpoints ────────────────────────────
+
+@router.get("/billable-uninvoiced", response_model=schemas.BillableUninvoicedResponse)
+@require_permissions(["backoffice.time_tracking"])
+def get_billable_uninvoiced(
+    customer_id: Optional[UUID] = Query(None, description="Filter nach Kunde (über Projekt)"),
+    project_id: Optional[UUID] = Query(None, description="Filter nach Projekt"),
+    employee_id: Optional[UUID] = Query(None, description="Filter nach Mitarbeiter"),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    return crud.get_billable_uninvoiced(
+        db,
+        customer_id=customer_id,
+        project_id=project_id,
+        employee_id=employee_id,
+    )
+
+
+@router.post("/create-invoice", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+@require_permissions(["backoffice.time_tracking"])
+def create_invoice_from_entries(
+    data: schemas.CreateInvoiceFromEntries,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    return crud.create_invoice_from_entries(db, data)
 
 
 # ─── CRUD Endpoints ─────────────────────────────────────────

@@ -25,6 +25,7 @@ from app.core.database import Base
 if TYPE_CHECKING:
     from app.modules.employees.models import Employee
     from app.modules.backoffice.projects.models import Project
+    from app.modules.backoffice.crm.models import Customer
 
 
 
@@ -48,6 +49,11 @@ class TimeEntry(Base, UUIDMixin, TimestampMixin):
         ForeignKey("projects.id", ondelete="CASCADE"),
         index=True,
         comment="Optional - for internal time without project"
+    )
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"),
+        index=True,
+        comment="Direkter Kundenbezug — auch ohne Projekt (z.B. Support-Einsatz)"
     )
 
     # Time Tracking
@@ -83,6 +89,7 @@ class TimeEntry(Base, UUIDMixin, TimestampMixin):
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="time_entries")
     employee: Mapped["Employee"] = relationship("Employee")
+    customer: Mapped["Customer"] = relationship("Customer")
 
     @property
     def duration_hours(self) -> float | None:
