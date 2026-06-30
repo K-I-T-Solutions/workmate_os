@@ -13,12 +13,13 @@ CHANGES:
 - ✅ Recalculate endpoint
 """
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 import uuid
 import os
+import tempfile
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -29,12 +30,45 @@ from pydantic import BaseModel, EmailStr
 from app.core.database import get_db
 from app.core.auth.auth import get_current_user
 from app.core.auth.roles import require_permissions
+from app.core.storage.factory import get_storage
 from app.modules.backoffice.invoices import crud, schemas
 from app.modules.backoffice.invoices.pdf_generator import generate_invoice_pdf
 from app.modules.backoffice.invoices import payments_crud
 
 
 router = APIRouter(prefix="/backoffice/invoices", tags=["Backoffice Invoices"])
+
+
+def _pdf_remote_path(invoice_number: str) -> str:
+    return f"invoices/{invoice_number}.pdf"
+
+
+def _generate_and_upload_pdf(invoice, db) -> bytes:
+    """PDF generieren, in Storage hochladen, pdf_path in DB speichern. Gibt PDF-Bytes zurück."""
+    remote_path = _pdf_remote_path(invoice.invoice_number)
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        generate_invoice_pdf(invoice, tmp_path)
+        with open(tmp_path, "rb") as f:
+            content = f.read()
+        get_storage().upload(remote_path, content)
+        invoice.pdf_path = remote_path
+        db.commit()
+        return content
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def _get_pdf_bytes(invoice, db) -> bytes:
+    """PDF-Bytes holen — aus Storage oder neu generieren."""
+    if invoice.pdf_path and not os.path.isabs(invoice.pdf_path):
+        try:
+            return get_storage().download(invoice.pdf_path)
+        except FileNotFoundError:
+            pass
+    return _generate_and_upload_pdf(invoice, db)
 
 
 # ============================================================================
@@ -194,14 +228,7 @@ def _generate_pdf_background(invoice_id: uuid.UUID, db: Session):
     try:
         invoice = crud.get_invoice(db, invoice_id)
         if invoice and not invoice.pdf_path:
-            pdf_dir = "/root/workmate_os_uploads/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
-
-            generate_invoice_pdf(invoice, pdf_path)
-            invoice.pdf_path = pdf_path
-            db.commit()
-
+            _generate_and_upload_pdf(invoice, db)
     except Exception as e:
         print(f"❌ Background PDF generation failed: {e}")
 
@@ -313,7 +340,7 @@ def delete_invoice(
 # PDF OPERATIONS
 # ============================================================================
 
-@router.get("/{invoice_id}/pdf", response_class=FileResponse)
+@router.get("/{invoice_id}/pdf")
 def download_invoice_pdf(
     invoice_id: uuid.UUID,
     db: Session = Depends(get_db)
@@ -330,27 +357,15 @@ def download_invoice_pdf(
             detail=f"Invoice {invoice_id} not found"
         )
 
-    # PDF generieren falls nicht vorhanden
-    if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
-        try:
-            pdf_dir = "/root/workmate_os_uploads/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
+    try:
+        content = _get_pdf_bytes(invoice, db)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"PDF-Fehler: {e}")
 
-            generate_invoice_pdf(invoice, pdf_path)
-            invoice.pdf_path = pdf_path
-            db.commit()
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to generate PDF: {str(e)}"
-            )
-
-    return FileResponse(
-        path=invoice.pdf_path,
-        filename=os.path.basename(invoice.pdf_path),
-        media_type="application/pdf"
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{invoice.invoice_number}.pdf"'},
     )
 
 
@@ -370,27 +385,17 @@ def regenerate_pdf(
         )
 
     try:
-        pdf_dir = "/root/workmate_os_uploads/invoices"
-        os.makedirs(pdf_dir, exist_ok=True)
-        pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
-
-        # Altes PDF löschen
-        if invoice.pdf_path and os.path.exists(invoice.pdf_path):
-            os.remove(invoice.pdf_path)
-
-        # Neues PDF generieren
-        generate_invoice_pdf(invoice, pdf_path)
-        invoice.pdf_path = pdf_path
-        db.commit()
+        # Altes PDF aus Storage löschen
+        if invoice.pdf_path and not os.path.isabs(invoice.pdf_path):
+            try:
+                get_storage().delete(invoice.pdf_path)
+            except Exception:
+                pass
+        _generate_and_upload_pdf(invoice, db)
         db.refresh(invoice)
-
         return invoice
-
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to regenerate PDF: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"PDF-Fehler: {e}")
 
 
 # ============================================================================
@@ -417,16 +422,10 @@ def send_invoice_email(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
 
     # PDF sicherstellen
-    if not invoice.pdf_path or not os.path.exists(invoice.pdf_path):
-        try:
-            pdf_dir = "/root/workmate_os_uploads/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = os.path.join(pdf_dir, f"{invoice.invoice_number}.pdf")
-            generate_invoice_pdf(invoice, pdf_path)
-            invoice.pdf_path = pdf_path
-            db.commit()
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"PDF-Generierung fehlgeschlagen: {e}")
+    try:
+        pdf_bytes = _get_pdf_bytes(invoice, db)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"PDF-Generierung fehlgeschlagen: {e}")
 
     # E-Mail aufbauen
     msg = MIMEMultipart()
@@ -444,9 +443,8 @@ def send_invoice_email(
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
     # PDF anhängen
-    with open(invoice.pdf_path, "rb") as f:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(f.read())
+    part = MIMEBase("application", "octet-stream")
+    part.set_payload(pdf_bytes)
     encoders.encode_base64(part)
     part.add_header("Content-Disposition", f'attachment; filename="{invoice.invoice_number}.pdf"')
     msg.attach(part)
