@@ -359,7 +359,6 @@ function DayGroup({ date, entries, projects, onDelete, onRefresh }: {
   onDelete: (id: string) => void
   onRefresh: () => void
 }) {
-  const projectMap = Object.fromEntries(projects.map(p => [p.id, p.title]))
   const compliance = checkCompliance(entries)
   const totalMin = entries.reduce((s, e) => s + (e.duration_minutes ?? 0), 0)
 
@@ -417,7 +416,7 @@ function DayGroup({ date, entries, projects, onDelete, onRefresh }: {
           <EntryRow
             key={entry.id}
             entry={entry}
-            projectTitle={entry.project_id ? projectMap[entry.project_id] : null}
+            projects={projects}
             onDelete={onDelete}
             onRefresh={onRefresh}
           />
@@ -427,21 +426,169 @@ function DayGroup({ date, entries, projects, onDelete, onRefresh }: {
   )
 }
 
-// ─── Einzelne Zeile ───────────────────────────────────────────
+// ─── Einzelne Zeile mit Edit-Modus ────────────────────────────
 
-function EntryRow({ entry, projectTitle, onDelete, onRefresh }: {
+function toLocalDatetimeValue(iso: string) {
+  // "2026-07-01T08:30:00Z" → "2026-07-01T08:30" (für datetime-local Input)
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function EntryRow({ entry, projects, onDelete, onRefresh }: {
   entry: TimeEntry
-  projectTitle: string | null | undefined
+  projects: Project[]
   onDelete: (id: string) => void
   onRefresh: () => void
 }) {
   const isRunning = !entry.end_time
   const isPause = entry.task_type === PAUSE_TYPE
 
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Edit-Felder
+  const [editNote, setEditNote] = useState("")
+  const [editTaskType, setEditTaskType] = useState("")
+  const [editProjectId, setEditProjectId] = useState("none")
+  const [editBillable, setEditBillable] = useState(true)
+  const [editStart, setEditStart] = useState("")
+  const [editEnd, setEditEnd] = useState("")
+
+  function startEdit() {
+    setEditNote(entry.note ?? "")
+    setEditTaskType(entry.task_type ?? "Sonstiges")
+    setEditProjectId(entry.project_id ?? "none")
+    setEditBillable(entry.billable)
+    setEditStart(toLocalDatetimeValue(entry.start_time))
+    setEditEnd(entry.end_time ? toLocalDatetimeValue(entry.end_time) : "")
+    setEditing(true)
+  }
+
+  async function saveEdit() {
+    setSaving(true)
+    try {
+      await timeTrackingService.update(entry.id, {
+        note: editNote || null,
+        task_type: editTaskType || null,
+        project_id: editTaskType === PAUSE_TYPE ? null : (editProjectId === "none" ? null : editProjectId),
+        billable: editTaskType === PAUSE_TYPE ? false : editBillable,
+        start_time: editStart ? new Date(editStart).toISOString() : undefined,
+        end_time: editEnd ? new Date(editEnd).toISOString() : null,
+      })
+      setEditing(false)
+      onRefresh()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const projectTitle = entry.project_id
+    ? projects.find(p => p.id === entry.project_id)?.title ?? null
+    : null
+
+  // ── Edit-Modus ──
+  if (editing) {
+    return (
+      <div className="bg-card px-4 py-3 space-y-3">
+        {/* Zeitfelder */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="grid gap-1">
+            <label className="text-xs text-muted-foreground">Start</label>
+            <input
+              type="datetime-local"
+              value={editStart}
+              onChange={e => setEditStart(e.target.value)}
+              className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+          <div className="grid gap-1">
+            <label className="text-xs text-muted-foreground">Ende</label>
+            <input
+              type="datetime-local"
+              value={editEnd}
+              onChange={e => setEditEnd(e.target.value)}
+              className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+        </div>
+
+        {/* Notiz */}
+        <Input
+          value={editNote}
+          onChange={e => setEditNote(e.target.value)}
+          placeholder="Notiz"
+          className="h-8 text-sm"
+        />
+
+        {/* Tasktyp + Projekt + Billable */}
+        <div className="flex flex-wrap gap-2">
+          <Select value={editTaskType} onValueChange={v => {
+            if (!v) return
+            setEditTaskType(v)
+            if (v === PAUSE_TYPE) setEditBillable(false)
+          }}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TASK_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          {editTaskType !== PAUSE_TYPE && (
+            <Select value={editProjectId} onValueChange={v => v && setEditProjectId(v)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Kein Projekt" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Kein Projekt</SelectItem>
+                {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+
+          {editTaskType !== PAUSE_TYPE && (
+            <button
+              onClick={() => setEditBillable(v => !v)}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${editBillable ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+            >
+              <CheckIcon className="h-3.5 w-3.5" />
+              Abrechenbar
+            </button>
+          )}
+        </div>
+
+        {/* Aktionen */}
+        <div className="flex gap-2">
+          <Button size="sm" onClick={saveEdit} disabled={saving}>
+            {saving ? "Speichern…" : "Speichern"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>
+            Abbrechen
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => { setEditing(false); onDelete(entry.id) }}
+            className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+            disabled={saving}
+          >
+            <Trash2Icon className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Anzeigemodus ──
   return (
-    <div className={`group flex items-center gap-3 px-4 py-3 ${
-      isRunning ? "bg-primary/5" : isPause ? "bg-muted/40" : "bg-card"
-    }`}>
+    <div
+      onClick={startEdit}
+      className={`group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40 ${
+        isRunning ? "bg-primary/5" : isPause ? "bg-muted/30" : "bg-card"
+      }`}
+    >
       {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
       {isPause && !isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />}
 
@@ -474,12 +621,6 @@ function EntryRow({ entry, projectTitle, onDelete, onRefresh }: {
         <span className={`text-sm tabular-nums ${isPause ? "text-muted-foreground" : "font-medium"}`}>
           {isRunning ? <ElapsedTimer startTime={entry.start_time} /> : fmtMinutes(entry.duration_minutes)}
         </span>
-        <button
-          onClick={() => onDelete(entry.id)}
-          className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-opacity"
-        >
-          <Trash2Icon className="h-3.5 w-3.5" />
-        </button>
       </div>
     </div>
   )

@@ -24,7 +24,9 @@ class TimeEntryCreate(TimeEntryBase):
 
 
 class TimeEntryUpdate(BaseModel):
+    start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    project_id: Optional[uuid.UUID] = None
     note: Optional[str] = None
     task_type: Optional[str] = None
     billable: Optional[bool] = None
