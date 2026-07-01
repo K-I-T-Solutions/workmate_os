@@ -27,7 +27,9 @@ export interface TimeEntryCreate {
 }
 
 export interface TimeEntryUpdate {
+  start_time?: string | null
   end_time?: string | null
+  project_id?: string | null
   note?: string | null
   task_type?: string | null
   billable?: boolean | null
