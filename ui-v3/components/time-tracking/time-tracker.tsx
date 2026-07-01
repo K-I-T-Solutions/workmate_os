@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { PlayIcon, SquareIcon, ClockIcon, Trash2Icon, CheckIcon, AlertTriangleIcon, AlertCircleIcon } from "lucide-react"
+import { PlayIcon, SquareIcon, ClockIcon, Trash2Icon, CheckIcon, AlertTriangleIcon, AlertCircleIcon, PencilIcon, TimerIcon } from "lucide-react"
 
 // ArbZG §4: Pausen ab 6h Arbeit 30min, ab 9h 45min
 // ArbZG §3: Max 8h/Tag, Ausnahme bis 10h wenn Ausgleich
@@ -135,6 +135,7 @@ export function TimeTracker() {
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState<TimeEntry | null>(null)
 
+  // Timer-Modus
   const [note, setNote] = useState("")
   const [taskType, setTaskType] = useState("Entwicklung")
   const [projectId, setProjectId] = useState("none")
@@ -142,6 +143,18 @@ export function TimeTracker() {
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  // Manuell-Modus
+  const [inputMode, setInputMode] = useState<"timer" | "manual">("timer")
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const [manualDate, setManualDate] = useState(todayStr)
+  const [manualStart, setManualStart] = useState("")
+  const [manualEnd, setManualEnd] = useState("")
+  const [manualNote, setManualNote] = useState("")
+  const [manualTaskType, setManualTaskType] = useState("Entwicklung")
+  const [manualProjectId, setManualProjectId] = useState("none")
+  const [manualBillable, setManualBillable] = useState(true)
+  const [manualSaving, setManualSaving] = useState(false)
 
   const load = useCallback(async () => {
     const [data, statsData] = await Promise.all([
@@ -178,6 +191,30 @@ export function TimeTracker() {
       load()
     } finally {
       setStarting(false)
+    }
+  }
+
+  async function handleManualSave() {
+    if (!user || !manualStart || !manualEnd) return
+    setManualSaving(true)
+    try {
+      const startISO = new Date(`${manualDate}T${manualStart}`).toISOString()
+      const endISO = new Date(`${manualDate}T${manualEnd}`).toISOString()
+      await timeTrackingService.create({
+        employee_id: user.sub,
+        project_id: manualTaskType === PAUSE_TYPE ? null : (manualProjectId === "none" ? null : manualProjectId),
+        start_time: startISO,
+        end_time: endISO,
+        note: manualNote || null,
+        task_type: manualTaskType || null,
+        billable: manualTaskType === PAUSE_TYPE ? false : manualBillable,
+      })
+      setManualNote("")
+      setManualStart("")
+      setManualEnd("")
+      load()
+    } finally {
+      setManualSaving(false)
     }
   }
 
@@ -222,9 +259,10 @@ export function TimeTracker() {
         </div>
       )}
 
-      {/* Timer-Widget */}
+      {/* Erfassungs-Widget */}
       <div className="rounded-xl border bg-card p-5">
         {running ? (
+          /* Laufender Timer */
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-xs text-muted-foreground mb-1">
@@ -239,58 +277,177 @@ export function TimeTracker() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <Input
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="Woran arbeitest du?"
-                className="flex-1"
-                onKeyDown={e => e.key === "Enter" && !starting && handleStart()}
-              />
-              <Button onClick={handleStart} disabled={starting} size="sm">
-                <PlayIcon className="mr-2 h-4 w-4" />
-                {starting ? "Start…" : "Starten"}
-              </Button>
+          <div className="space-y-4">
+            {/* Modus-Toggle */}
+            <div className="flex gap-1 rounded-lg border bg-muted p-1 w-fit">
+              <button
+                onClick={() => setInputMode("timer")}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${inputMode === "timer" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <TimerIcon className="h-3.5 w-3.5" />
+                Timer
+              </button>
+              <button
+                onClick={() => setInputMode("manual")}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${inputMode === "manual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <PencilIcon className="h-3.5 w-3.5" />
+                Manuell
+              </button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Select value={taskType} onValueChange={v => {
-                if (!v) return
-                setTaskType(v)
-                if (v === PAUSE_TYPE) setBillable(false)
-              }}>
-                <SelectTrigger className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TASK_TYPES.map(t => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
-              {taskType !== PAUSE_TYPE && (
-                <Select value={projectId} onValueChange={v => v && setProjectId(v)}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Kein Projekt" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Kein Projekt</SelectItem>
-                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
+            {inputMode === "timer" ? (
+              /* Timer-Modus */
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={note}
+                    onChange={e => setNote(e.target.value)}
+                    placeholder="Woran arbeitest du?"
+                    className="flex-1"
+                    onKeyDown={e => e.key === "Enter" && !starting && handleStart()}
+                  />
+                  <Button onClick={handleStart} disabled={starting} size="sm">
+                    <PlayIcon className="mr-2 h-4 w-4" />
+                    {starting ? "Start…" : "Starten"}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Select value={taskType} onValueChange={v => {
+                    if (!v) return
+                    setTaskType(v)
+                    if (v === PAUSE_TYPE) setBillable(false)
+                  }}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TASK_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {taskType !== PAUSE_TYPE && (
+                    <Select value={projectId} onValueChange={v => v && setProjectId(v)}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Kein Projekt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Projekt</SelectItem>
+                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {taskType !== PAUSE_TYPE && (
+                    <button
+                      onClick={() => setBillable(v => !v)}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${billable ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      Abrechenbar
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Manuell-Modus */
+              <div className="space-y-3">
+                {/* Datum + Zeiten */}
+                <div className="flex flex-wrap gap-2 items-end">
+                  <div className="grid gap-1">
+                    <label className="text-xs text-muted-foreground">Datum</label>
+                    <input
+                      type="date"
+                      value={manualDate}
+                      max={todayStr}
+                      onChange={e => setManualDate(e.target.value)}
+                      className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <label className="text-xs text-muted-foreground">Von</label>
+                    <input
+                      type="time"
+                      value={manualStart}
+                      onChange={e => setManualStart(e.target.value)}
+                      className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <label className="text-xs text-muted-foreground">Bis</label>
+                    <input
+                      type="time"
+                      value={manualEnd}
+                      onChange={e => setManualEnd(e.target.value)}
+                      className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    />
+                  </div>
+                  {manualStart && manualEnd && manualEnd > manualStart && (
+                    <span className="text-xs text-muted-foreground pb-1.5">
+                      {(() => {
+                        const [sh, sm] = manualStart.split(":").map(Number)
+                        const [eh, em] = manualEnd.split(":").map(Number)
+                        const mins = (eh * 60 + em) - (sh * 60 + sm)
+                        return fmtMinutes(mins)
+                      })()}
+                    </span>
+                  )}
+                </div>
 
-              {taskType !== PAUSE_TYPE && (
-                <button
-                  onClick={() => setBillable(v => !v)}
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${billable ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-                >
-                  <CheckIcon className="h-3.5 w-3.5" />
-                  Abrechenbar
-                </button>
-              )}
-            </div>
+                {/* Notiz */}
+                <Input
+                  value={manualNote}
+                  onChange={e => setManualNote(e.target.value)}
+                  placeholder="Beschreibung (optional)"
+                  className="h-8 text-sm"
+                />
+
+                {/* Typ + Projekt + Billable + Speichern */}
+                <div className="flex flex-wrap gap-2">
+                  <Select value={manualTaskType} onValueChange={v => {
+                    if (!v) return
+                    setManualTaskType(v)
+                    if (v === PAUSE_TYPE) setManualBillable(false)
+                  }}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TASK_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+
+                  {manualTaskType !== PAUSE_TYPE && (
+                    <Select value={manualProjectId} onValueChange={v => v && setManualProjectId(v)}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Kein Projekt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Projekt</SelectItem>
+                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {manualTaskType !== PAUSE_TYPE && (
+                    <button
+                      onClick={() => setManualBillable(v => !v)}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${manualBillable ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      Abrechenbar
+                    </button>
+                  )}
+
+                  <Button
+                    onClick={handleManualSave}
+                    disabled={manualSaving || !manualStart || !manualEnd || manualEnd <= manualStart}
+                    size="sm"
+                    className="ml-auto"
+                  >
+                    {manualSaving ? "Speichern…" : "Erfassen"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
