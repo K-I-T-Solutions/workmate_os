@@ -27,7 +27,7 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>
   href: string
   matchKey: string
-  permission?: string
+  permission?: string | string[]   // ein Treffer reicht
 }
 
 type NavGroup = {
@@ -52,8 +52,8 @@ const navGroups: NavGroup[] = [
   {
     label: "Team",
     items: [
-      { label: "Zeiterfassung", icon: Clock, href: "/time", matchKey: "/time", permission: "backoffice.time_tracking.view" },
-      { label: "Personal", icon: UserCog, href: "/hr", matchKey: "/hr", permission: "hr.view" },
+      { label: "Zeiterfassung", icon: Clock, href: "/time", matchKey: "/time", permission: ["backoffice.time_tracking.view", "backoffice.time_tracking.write"] },
+      { label: "Personal", icon: UserCog, href: "/hr", matchKey: "/hr", permission: ["hr.view", "hr.view_own", "hr.request"] },
     ],
   },
   {
@@ -136,7 +136,11 @@ export function AppSidebar({
             )}
             {group.label && collapsed && gi > 0 && <div className="mx-3 mb-3 border-t border-border" />}
             <ul className="flex flex-col gap-1">
-              {group.items.filter(item => !item.permission || hasPermission(item.permission)).map((item) => {
+              {group.items.filter(item => {
+                if (!item.permission) return true
+                const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
+                return perms.some(p => hasPermission(p))
+              }).map((item) => {
                 const Icon = item.icon
                 const active = isActive(item.matchKey)
                 return (
