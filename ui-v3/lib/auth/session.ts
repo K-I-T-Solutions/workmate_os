@@ -45,6 +45,7 @@ export interface JwtPayload {
   given_name?: string
   family_name?: string
   realm_access?: { roles: string[] }
+  permissions?: string[]
   exp: number
 }
 
