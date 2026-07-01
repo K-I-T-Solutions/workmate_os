@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { timeTrackingService } from "@/lib/time-tracking/service"
 import { projectService } from "@/lib/projects/service"
 import { useAuth } from "@/components/providers/auth-provider"
@@ -10,9 +10,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { PlayIcon, SquareIcon, ClockIcon, Trash2Icon, CheckIcon, XIcon } from "lucide-react"
+import { PlayIcon, SquareIcon, ClockIcon, Trash2Icon, CheckIcon, AlertTriangleIcon, AlertCircleIcon } from "lucide-react"
 
-const TASK_TYPES = ["Entwicklung", "Beratung", "Support", "Planung", "Design", "Meeting", "Dokumentation", "Sonstiges"]
+// ArbZG §4: Pausen ab 6h Arbeit 30min, ab 9h 45min
+// ArbZG §3: Max 8h/Tag, Ausnahme bis 10h wenn Ausgleich
+// ArbZG §5: Min 11h Ruhezeit zwischen Arbeitstagen
+
+const TASK_TYPES = ["Entwicklung", "Beratung", "Support", "Planung", "Design", "Meeting", "Dokumentation", "Pause", "Sonstiges"]
+const PAUSE_TYPE = "Pause"
+
+// ─── Formatierung ────────────────────────────────────────────
 
 function fmtMinutes(min: number | null | undefined) {
   if (!min) return "–"
@@ -25,13 +32,77 @@ function fmtHours(h: number) {
   return `${h.toFixed(1)}h`
 }
 
-function fmtDateTime(dt: string) {
-  return new Date(dt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })
+function fmtTime(dt: string) {
+  return new Date(dt).toLocaleTimeString("de-DE", { timeStyle: "short" })
 }
 
-function fmtDate(dt: string) {
-  return new Date(dt).toLocaleDateString("de-DE")
+function fmtDayLabel(isoDate: string) {
+  const d = new Date(isoDate + "T12:00:00")
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+
+  const isoToday = today.toISOString().slice(0, 10)
+  const isoYesterday = yesterday.toISOString().slice(0, 10)
+
+  if (isoDate === isoToday) return "Heute"
+  if (isoDate === isoYesterday) return "Gestern"
+
+  return d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })
 }
+
+// ─── ArbZG Compliance ────────────────────────────────────────
+
+type ComplianceStatus = "ok" | "warn" | "violation"
+
+interface DayCompliance {
+  status: ComplianceStatus
+  issues: string[]
+  netMinutes: number   // Arbeitszeit ohne Pausen
+  pauseMinutes: number
+  firstStart: string | null
+  lastEnd: string | null
+}
+
+function checkCompliance(entries: TimeEntry[]): DayCompliance {
+  const issues: string[] = []
+  const finished = entries.filter(e => e.end_time)
+
+  const pauseEntries = finished.filter(e => e.task_type === PAUSE_TYPE)
+  const workEntries = finished.filter(e => e.task_type !== PAUSE_TYPE)
+
+  const pauseMinutes = pauseEntries.reduce((s, e) => s + (e.duration_minutes ?? 0), 0)
+  const netMinutes = workEntries.reduce((s, e) => s + (e.duration_minutes ?? 0), 0)
+  const netHours = netMinutes / 60
+
+  const allStarts = finished.map(e => new Date(e.start_time).getTime())
+  const allEnds = finished.map(e => new Date(e.end_time!).getTime())
+  const firstStart = allStarts.length ? new Date(Math.min(...allStarts)).toISOString() : null
+  const lastEnd = allEnds.length ? new Date(Math.max(...allEnds)).toISOString() : null
+
+  // ArbZG §3: Über 10h ist Überschreitung
+  if (netHours > 10) {
+    issues.push("Arbeitszeit über 10h (ArbZG §3)")
+  } else if (netHours > 8) {
+    issues.push("Arbeitszeit über 8h — Ausgleich erforderlich (ArbZG §3)")
+  }
+
+  // ArbZG §4: Pause bei >6h mind. 30min, bei >9h mind. 45min
+  if (netHours > 9 && pauseMinutes < 45) {
+    issues.push(`Pause zu kurz: ${pauseMinutes}min erfasst, mind. 45min erforderlich (ArbZG §4)`)
+  } else if (netHours > 6 && pauseMinutes < 30) {
+    issues.push(`Pause zu kurz: ${pauseMinutes}min erfasst, mind. 30min erforderlich (ArbZG §4)`)
+  }
+
+  const status: ComplianceStatus =
+    issues.some(i => i.includes("über 10h") || i.includes("Pause zu kurz")) ? "violation"
+    : issues.length > 0 ? "warn"
+    : "ok"
+
+  return { status, issues, netMinutes, pauseMinutes, firstStart, lastEnd }
+}
+
+// ─── Timer ───────────────────────────────────────────────────
 
 function ElapsedTimer({ startTime }: { startTime: string }) {
   const [elapsed, setElapsed] = useState(0)
@@ -54,6 +125,8 @@ function ElapsedTimer({ startTime }: { startTime: string }) {
   )
 }
 
+// ─── Hauptkomponente ──────────────────────────────────────────
+
 export function TimeTracker() {
   const { user } = useAuth()
   const [entries, setEntries] = useState<TimeEntry[]>([])
@@ -62,19 +135,17 @@ export function TimeTracker() {
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState<TimeEntry | null>(null)
 
-  // New entry state
   const [note, setNote] = useState("")
   const [taskType, setTaskType] = useState("Entwicklung")
   const [projectId, setProjectId] = useState("none")
   const [billable, setBillable] = useState(true)
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
-
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const [data, statsData] = await Promise.all([
-      timeTrackingService.list({ limit: 50 }),
+      timeTrackingService.list({ limit: 200 }),
       timeTrackingService.getStats().catch(() => null),
     ])
     setEntries(data)
@@ -88,6 +159,9 @@ export function TimeTracker() {
     load()
   }, [load])
 
+  // Pause-Einträge sollen nie billable sein
+  const effectiveBillable = taskType === PAUSE_TYPE ? false : billable
+
   async function handleStart() {
     if (!user) return
     setStarting(true)
@@ -98,7 +172,7 @@ export function TimeTracker() {
         start_time: new Date().toISOString(),
         note: note || null,
         task_type: taskType || null,
-        billable,
+        billable: effectiveBillable,
       })
       setNote("")
       load()
@@ -125,12 +199,12 @@ export function TimeTracker() {
     load()
   }
 
-  const today = new Date().toLocaleDateString("de-DE")
-  const todayEntries = entries.filter(e => fmtDate(e.start_time) === today)
-  const olderEntries = entries.filter(e => fmtDate(e.start_time) !== today)
+  // Nach Datum gruppieren
+  const grouped = groupByDate(entries)
 
   return (
     <div className="space-y-6 px-8 py-6">
+
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -148,12 +222,14 @@ export function TimeTracker() {
         </div>
       )}
 
-      {/* Timer */}
+      {/* Timer-Widget */}
       <div className="rounded-xl border bg-card p-5">
         {running ? (
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <p className="text-xs text-muted-foreground mb-1">Läuft seit {fmtDateTime(running.start_time)}</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                {running.task_type === PAUSE_TYPE ? "⏸ Pause läuft seit" : "▶ Läuft seit"} {fmtTime(running.start_time)}
+              </p>
               <ElapsedTimer startTime={running.start_time} />
               {running.note && <p className="mt-1 text-sm text-muted-foreground">{running.note}</p>}
             </div>
@@ -178,51 +254,67 @@ export function TimeTracker() {
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Select value={taskType} onValueChange={v => v && setTaskType(v)}>
+              <Select value={taskType} onValueChange={v => {
+                if (!v) return
+                setTaskType(v)
+                if (v === PAUSE_TYPE) setBillable(false)
+              }}>
                 <SelectTrigger className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TASK_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {TASK_TYPES.map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Select value={projectId} onValueChange={v => v && setProjectId(v)}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Kein Projekt" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Kein Projekt</SelectItem>
-                  {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <button
-                onClick={() => setBillable(v => !v)}
-                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${billable ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
-              >
-                <CheckIcon className="h-3.5 w-3.5" />
-                Abrechenbar
-              </button>
+
+              {taskType !== PAUSE_TYPE && (
+                <Select value={projectId} onValueChange={v => v && setProjectId(v)}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Kein Projekt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Kein Projekt</SelectItem>
+                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {taskType !== PAUSE_TYPE && (
+                <button
+                  onClick={() => setBillable(v => !v)}
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${billable ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                >
+                  <CheckIcon className="h-3.5 w-3.5" />
+                  Abrechenbar
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Entries */}
+      {/* Einträge nach Tag */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">Laden…</div>
-      ) : entries.length === 0 ? (
+      ) : grouped.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
           <ClockIcon className="h-10 w-10 opacity-30" />
           <p className="text-sm">Noch keine Einträge.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {todayEntries.length > 0 && (
-            <EntryGroup label="Heute" entries={todayEntries} projects={projects} onDelete={id => setDeleteId(id)} onRefresh={load} />
-          )}
-          {olderEntries.length > 0 && (
-            <EntryGroup label="Früher" entries={olderEntries} projects={projects} onDelete={id => setDeleteId(id)} onRefresh={load} />
-          )}
+          {grouped.map(({ date, entries: dayEntries }) => (
+            <DayGroup
+              key={date}
+              date={date}
+              entries={dayEntries}
+              projects={projects}
+              onDelete={id => setDeleteId(id)}
+              onRefresh={load}
+            />
+          ))}
         </div>
       )}
 
@@ -244,30 +336,98 @@ export function TimeTracker() {
   )
 }
 
-function EntryGroup({ label, entries, projects, onDelete, onRefresh }: {
-  label: string
+// ─── Datumsgruppierung ────────────────────────────────────────
+
+function groupByDate(entries: TimeEntry[]): { date: string; entries: TimeEntry[] }[] {
+  const map = new Map<string, TimeEntry[]>()
+  for (const e of entries) {
+    const date = e.start_time.slice(0, 10)
+    if (!map.has(date)) map.set(date, [])
+    map.get(date)!.push(e)
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, entries]) => ({ date, entries }))
+}
+
+// ─── Tagesgruppe mit ArbZG-Check ─────────────────────────────
+
+function DayGroup({ date, entries, projects, onDelete, onRefresh }: {
+  date: string
   entries: TimeEntry[]
   projects: Project[]
   onDelete: (id: string) => void
   onRefresh: () => void
 }) {
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p.title]))
+  const compliance = checkCompliance(entries)
   const totalMin = entries.reduce((s, e) => s + (e.duration_minutes ?? 0), 0)
+
+  const sortedEntries = [...entries].sort(
+    (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+  )
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">{label}</h2>
-        <span className="text-sm text-muted-foreground">{fmtMinutes(totalMin)}</span>
+      {/* Tages-Header */}
+      <div className="mb-2 flex items-center gap-3">
+        <span className="text-sm font-medium">{fmtDayLabel(date)}</span>
+
+        {/* ArbZG-Indikator */}
+        {compliance.status === "ok" && entries.filter(e => e.end_time).length > 0 && (
+          <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/40 dark:text-green-300">
+            <CheckIcon className="h-3 w-3" /> Konform
+          </span>
+        )}
+        {compliance.status === "warn" && (
+          <span title={compliance.issues.join("\n")} className="flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 cursor-help">
+            <AlertTriangleIcon className="h-3 w-3" /> Hinweis
+          </span>
+        )}
+        {compliance.status === "violation" && (
+          <span title={compliance.issues.join("\n")} className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-900/40 dark:text-red-300 cursor-help">
+            <AlertCircleIcon className="h-3 w-3" /> Verstoß
+          </span>
+        )}
+
+        <span className="ml-auto text-sm text-muted-foreground tabular-nums">
+          {fmtMinutes(compliance.netMinutes)}
+          {compliance.pauseMinutes > 0 && (
+            <span className="ml-1 text-xs text-muted-foreground/70">+ {fmtMinutes(compliance.pauseMinutes)} Pause</span>
+          )}
+        </span>
       </div>
+
+      {/* Compliance-Hinweise */}
+      {compliance.issues.length > 0 && (
+        <div className={`mb-2 rounded-lg px-3 py-2 text-xs space-y-0.5 ${
+          compliance.status === "violation"
+            ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+            : "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400"
+        }`}>
+          {compliance.issues.map((issue, i) => (
+            <p key={i}>⚠ {issue}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Einträge */}
       <div className="divide-y rounded-lg border overflow-hidden">
-        {entries.map(entry => (
-          <EntryRow key={entry.id} entry={entry} projectTitle={entry.project_id ? projectMap[entry.project_id] : null} onDelete={onDelete} onRefresh={onRefresh} />
+        {sortedEntries.map(entry => (
+          <EntryRow
+            key={entry.id}
+            entry={entry}
+            projectTitle={entry.project_id ? projectMap[entry.project_id] : null}
+            onDelete={onDelete}
+            onRefresh={onRefresh}
+          />
         ))}
       </div>
     </div>
   )
 }
+
+// ─── Einzelne Zeile ───────────────────────────────────────────
 
 function EntryRow({ entry, projectTitle, onDelete, onRefresh }: {
   entry: TimeEntry
@@ -276,23 +436,34 @@ function EntryRow({ entry, projectTitle, onDelete, onRefresh }: {
   onRefresh: () => void
 }) {
   const isRunning = !entry.end_time
+  const isPause = entry.task_type === PAUSE_TYPE
 
   return (
-    <div className={`group flex items-center gap-3 bg-card px-4 py-3 ${isRunning ? "bg-primary/5" : ""}`}>
+    <div className={`group flex items-center gap-3 px-4 py-3 ${
+      isRunning ? "bg-primary/5" : isPause ? "bg-muted/40" : "bg-card"
+    }`}>
       {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
+      {isPause && !isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />}
+
+      {/* Zeitspanne */}
+      <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums w-24">
+        {fmtTime(entry.start_time)}
+        {entry.end_time ? ` – ${fmtTime(entry.end_time)}` : " – läuft"}
+      </span>
+
+      {/* Inhalt */}
       <div className="flex-1 min-w-0">
-        <p className="truncate text-sm font-medium">
+        <p className={`truncate text-sm ${isPause ? "text-muted-foreground italic" : "font-medium"}`}>
           {entry.note || entry.task_type || "–"}
         </p>
-        <p className="text-xs text-muted-foreground">
-          {entry.task_type && <span className="mr-2">{entry.task_type}</span>}
-          {projectTitle && <span className="mr-2">· {projectTitle}</span>}
-          {new Date(entry.start_time).toLocaleTimeString("de-DE", { timeStyle: "short" })}
-          {entry.end_time && ` – ${new Date(entry.end_time).toLocaleTimeString("de-DE", { timeStyle: "short" })}`}
-        </p>
+        {projectTitle && (
+          <p className="text-xs text-muted-foreground truncate">{projectTitle}</p>
+        )}
       </div>
+
+      {/* Badges + Dauer */}
       <div className="flex items-center gap-2 shrink-0">
-        {entry.billable && (
+        {entry.billable && !isPause && (
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">€</span>
         )}
         {entry.is_approved && (
@@ -300,7 +471,7 @@ function EntryRow({ entry, projectTitle, onDelete, onRefresh }: {
             <CheckIcon className="inline h-3 w-3" />
           </span>
         )}
-        <span className="text-sm font-medium tabular-nums">
+        <span className={`text-sm tabular-nums ${isPause ? "text-muted-foreground" : "font-medium"}`}>
           {isRunning ? <ElapsedTimer startTime={entry.start_time} /> : fmtMinutes(entry.duration_minutes)}
         </span>
         <button
