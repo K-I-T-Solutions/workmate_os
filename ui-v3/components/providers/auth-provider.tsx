@@ -11,15 +11,17 @@ interface AuthUser {
   email: string
   username: string
   initials: string
+  permissions: string[]
 }
 
 interface AuthCtx {
   user: AuthUser | null
   loading: boolean
   logout: () => void
+  hasPermission: (perm: string) => boolean
 }
 
-const Context = createContext<AuthCtx>({ user: null, loading: true, logout: () => {} })
+const Context = createContext<AuthCtx>({ user: null, loading: true, logout: () => {}, hasPermission: () => false })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -69,7 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router])
 
-  return <Context.Provider value={{ user, loading, logout }}>{children}</Context.Provider>
+  const hasPermission = useCallback((required: string): boolean => {
+    const perms = user?.permissions ?? []
+    if (perms.includes("*")) return true
+    if (perms.includes(required)) return true
+    return perms.some(p => p.endsWith(".*") && required.startsWith(p.slice(0, -1)))
+  }, [user])
+
+  return <Context.Provider value={{ user, loading, logout, hasPermission }}>{children}</Context.Provider>
 }
 
 export function useAuth() {
@@ -88,5 +97,6 @@ function buildUser(p: JwtPayload): AuthUser {
     email: p.email ?? "",
     username: p.preferred_username ?? "",
     initials,
+    permissions: p.permissions ?? [],
   }
 }

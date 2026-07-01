@@ -27,6 +27,7 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>
   href: string
   matchKey: string
+  permission?: string
 }
 
 type NavGroup = {
@@ -41,32 +42,32 @@ const navGroups: NavGroup[] = [
   {
     label: "Business",
     items: [
-      { label: "CRM", icon: Users, href: "/crm", matchKey: "/crm" },
-      { label: "Projekte", icon: FolderKanban, href: "/projects", matchKey: "/projects" },
-      { label: "Rechnungen", icon: FileText, href: "/invoices", matchKey: "/invoices" },
-      { label: "Finanzen", icon: Wallet, href: "/finance", matchKey: "/finance" },
-      { label: "Produkte", icon: Package, href: "/products", matchKey: "/products" },
+      { label: "CRM", icon: Users, href: "/crm", matchKey: "/crm", permission: "backoffice.crm.read" },
+      { label: "Projekte", icon: FolderKanban, href: "/projects", matchKey: "/projects", permission: "backoffice.projects.read" },
+      { label: "Rechnungen", icon: FileText, href: "/invoices", matchKey: "/invoices", permission: "backoffice.invoices.read" },
+      { label: "Finanzen", icon: Wallet, href: "/finance", matchKey: "/finance", permission: "backoffice.finance.read" },
+      { label: "Produkte", icon: Package, href: "/products", matchKey: "/products", permission: "backoffice.products.read" },
     ],
   },
   {
     label: "Team",
     items: [
-      { label: "Zeiterfassung", icon: Clock, href: "/time", matchKey: "/time" },
-      { label: "Personal", icon: UserCog, href: "/hr", matchKey: "/hr" },
+      { label: "Zeiterfassung", icon: Clock, href: "/time", matchKey: "/time", permission: "backoffice.time_tracking.view" },
+      { label: "Personal", icon: UserCog, href: "/hr", matchKey: "/hr", permission: "hr.view" },
     ],
   },
   {
     label: "Support",
     items: [
-      { label: "Tickets", icon: LifeBuoy, href: "/support", matchKey: "/support" },
-      { label: "Wiki", icon: BookOpen, href: "/knowledge", matchKey: "/knowledge" },
-      { label: "Dokumente", icon: FolderOpen, href: "/documents", matchKey: "/documents" },
+      { label: "Tickets", icon: LifeBuoy, href: "/support", matchKey: "/support", permission: "support.view" },
+      { label: "Wiki", icon: BookOpen, href: "/knowledge", matchKey: "/knowledge", permission: "kb.view" },
+      { label: "Dokumente", icon: FolderOpen, href: "/documents", matchKey: "/documents", permission: "documents.read" },
     ],
   },
   {
     label: "Tools",
     items: [
-      { label: "Erinnerungen", icon: Bell, href: "/reminders", matchKey: "/reminders" },
+      { label: "Erinnerungen", icon: Bell, href: "/reminders", matchKey: "/reminders", permission: "reminders.read" },
     ],
   },
 ]
@@ -79,7 +80,7 @@ export function AppSidebar({
   onToggle: () => void
 }) {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, hasPermission } = useAuth()
 
   function isActive(matchKey: string) {
     return pathname.startsWith(matchKey)
@@ -135,7 +136,7 @@ export function AppSidebar({
             )}
             {group.label && collapsed && gi > 0 && <div className="mx-3 mb-3 border-t border-border" />}
             <ul className="flex flex-col gap-1">
-              {group.items.map((item) => {
+              {group.items.filter(item => !item.permission || hasPermission(item.permission)).map((item) => {
                 const Icon = item.icon
                 const active = isActive(item.matchKey)
                 return (
@@ -165,19 +166,21 @@ export function AppSidebar({
       {/* Footer */}
       <div className="border-t border-border px-3 py-4">
         <ul className="flex flex-col gap-1">
-          <li>
-            <Link
-              href="/admin"
-              title={collapsed ? "Administration" : undefined}
-              className={cn(
-                "flex items-center rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
-                collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2",
-              )}
-            >
-              <Settings className="h-[22px] w-[22px] shrink-0" />
-              {!collapsed && <span>Administration</span>}
-            </Link>
-          </li>
+          {hasPermission("admin.read") && (
+            <li>
+              <Link
+                href="/admin"
+                title={collapsed ? "Administration" : undefined}
+                className={cn(
+                  "flex items-center rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+                  collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2",
+                )}
+              >
+                <Settings className="h-[22px] w-[22px] shrink-0" />
+                {!collapsed && <span>Administration</span>}
+              </Link>
+            </li>
+          )}
           <li>
             <button
               type="button"
