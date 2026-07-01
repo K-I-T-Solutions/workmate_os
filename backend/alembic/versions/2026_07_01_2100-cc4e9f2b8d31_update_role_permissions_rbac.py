@@ -47,7 +47,7 @@ def upgrade() -> None:
     conn = op.get_bind()
     for name, perms in ROLE_PERMISSIONS.items():
         conn.execute(
-            sa.text("UPDATE roles SET permissions_json = :perms::jsonb WHERE name = :name"),
+            sa.text("UPDATE roles SET permissions_json = CAST(:perms AS jsonb) WHERE name = :name"),
             {"perms": json.dumps(perms), "name": name},
         )
 
