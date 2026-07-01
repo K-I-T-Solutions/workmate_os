@@ -3,15 +3,18 @@
 import { useEffect, useState, useCallback } from "react"
 import { timeTrackingService } from "@/lib/time-tracking/service"
 import { projectService } from "@/lib/projects/service"
+import { crmService } from "@/lib/crm/service"
 import { useAuth } from "@/components/providers/auth-provider"
 import type { TimeEntry, TimeTrackingStats } from "@/lib/time-tracking/types"
 import type { Project } from "@/lib/projects/types"
+import type { Customer } from "@/lib/crm/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { PlayIcon, SquareIcon, ClockIcon, Trash2Icon, CheckIcon, AlertTriangleIcon, AlertCircleIcon, PencilIcon, TimerIcon } from "lucide-react"
 import { ProjectSelect } from "@/components/projects/project-select"
+import { CustomerSelect } from "@/components/crm/customer-select"
 
 // ArbZG §4: Pausen ab 6h Arbeit 30min, ab 9h 45min
 // ArbZG §3: Max 8h/Tag, Ausnahme bis 10h wenn Ausgleich
@@ -133,6 +136,7 @@ export function TimeTracker() {
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [stats, setStats] = useState<TimeTrackingStats | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState<TimeEntry | null>(null)
 
@@ -140,6 +144,7 @@ export function TimeTracker() {
   const [note, setNote] = useState("")
   const [taskType, setTaskType] = useState("Entwicklung")
   const [projectId, setProjectId] = useState("none")
+  const [customerId, setCustomerId] = useState("")
   const [billable, setBillable] = useState(true)
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
@@ -154,6 +159,7 @@ export function TimeTracker() {
   const [manualNote, setManualNote] = useState("")
   const [manualTaskType, setManualTaskType] = useState("Entwicklung")
   const [manualProjectId, setManualProjectId] = useState("none")
+  const [manualCustomerId, setManualCustomerId] = useState("")
   const [manualBillable, setManualBillable] = useState(true)
   const [manualSaving, setManualSaving] = useState(false)
 
@@ -170,6 +176,7 @@ export function TimeTracker() {
 
   useEffect(() => {
     projectService.list().then(setProjects)
+    crmService.getCustomers({ limit: 1000 }).then(setCustomers)
     load()
   }, [load])
 
@@ -183,6 +190,7 @@ export function TimeTracker() {
       await timeTrackingService.create({
         employee_id: user.sub,
         project_id: projectId === "none" ? null : projectId,
+        customer_id: (projectId === "none" && customerId) ? customerId : null,
         start_time: new Date().toISOString(),
         note: note || null,
         task_type: taskType || null,
@@ -201,9 +209,11 @@ export function TimeTracker() {
     try {
       const startISO = new Date(`${manualDate}T${manualStart}`).toISOString()
       const endISO = new Date(`${manualDate}T${manualEnd}`).toISOString()
+      const manualProjId = manualTaskType === PAUSE_TYPE ? null : (manualProjectId === "none" ? null : manualProjectId)
       await timeTrackingService.create({
         employee_id: user.sub,
-        project_id: manualTaskType === PAUSE_TYPE ? null : (manualProjectId === "none" ? null : manualProjectId),
+        project_id: manualProjId,
+        customer_id: (!manualProjId && manualCustomerId) ? manualCustomerId : null,
         start_time: startISO,
         end_time: endISO,
         note: manualNote || null,
@@ -330,7 +340,16 @@ export function TimeTracker() {
                     <ProjectSelect
                       projects={projects}
                       value={projectId}
-                      onChange={setProjectId}
+                      onChange={v => { setProjectId(v); if (v !== "none") setCustomerId("") }}
+                      className="w-48"
+                    />
+                  )}
+                  {taskType !== PAUSE_TYPE && projectId === "none" && (
+                    <CustomerSelect
+                      customers={customers}
+                      value={customerId}
+                      onChange={setCustomerId}
+                      placeholder="Kunde (optional)"
                       className="w-48"
                     />
                   )}
@@ -417,7 +436,17 @@ export function TimeTracker() {
                     <ProjectSelect
                       projects={projects}
                       value={manualProjectId}
-                      onChange={setManualProjectId}
+                      onChange={v => { setManualProjectId(v); if (v !== "none") setManualCustomerId("") }}
+                      className="w-48"
+                    />
+                  )}
+
+                  {manualTaskType !== PAUSE_TYPE && manualProjectId === "none" && (
+                    <CustomerSelect
+                      customers={customers}
+                      value={manualCustomerId}
+                      onChange={setManualCustomerId}
+                      placeholder="Kunde (optional)"
                       className="w-48"
                     />
                   )}
@@ -463,6 +492,7 @@ export function TimeTracker() {
               date={date}
               entries={dayEntries}
               projects={projects}
+              customers={customers}
               onDelete={id => setDeleteId(id)}
               onRefresh={load}
             />
@@ -504,10 +534,11 @@ function groupByDate(entries: TimeEntry[]): { date: string; entries: TimeEntry[]
 
 // ─── Tagesgruppe mit ArbZG-Check ─────────────────────────────
 
-function DayGroup({ date, entries, projects, onDelete, onRefresh }: {
+function DayGroup({ date, entries, projects, customers, onDelete, onRefresh }: {
   date: string
   entries: TimeEntry[]
   projects: Project[]
+  customers: Customer[]
   onDelete: (id: string) => void
   onRefresh: () => void
 }) {
@@ -569,6 +600,7 @@ function DayGroup({ date, entries, projects, onDelete, onRefresh }: {
             key={entry.id}
             entry={entry}
             projects={projects}
+            customers={customers}
             onDelete={onDelete}
             onRefresh={onRefresh}
           />
@@ -587,9 +619,10 @@ function toLocalDatetimeValue(iso: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function EntryRow({ entry, projects, onDelete, onRefresh }: {
+function EntryRow({ entry, projects, customers, onDelete, onRefresh }: {
   entry: TimeEntry
   projects: Project[]
+  customers: Customer[]
   onDelete: (id: string) => void
   onRefresh: () => void
 }) {
@@ -603,6 +636,7 @@ function EntryRow({ entry, projects, onDelete, onRefresh }: {
   const [editNote, setEditNote] = useState("")
   const [editTaskType, setEditTaskType] = useState("")
   const [editProjectId, setEditProjectId] = useState("none")
+  const [editCustomerId, setEditCustomerId] = useState("")
   const [editBillable, setEditBillable] = useState(true)
   const [editStart, setEditStart] = useState("")
   const [editEnd, setEditEnd] = useState("")
@@ -611,6 +645,7 @@ function EntryRow({ entry, projects, onDelete, onRefresh }: {
     setEditNote(entry.note ?? "")
     setEditTaskType(entry.task_type ?? "Sonstiges")
     setEditProjectId(entry.project_id ?? "none")
+    setEditCustomerId(entry.customer_id ?? "")
     setEditBillable(entry.billable)
     setEditStart(toLocalDatetimeValue(entry.start_time))
     setEditEnd(entry.end_time ? toLocalDatetimeValue(entry.end_time) : "")
@@ -620,10 +655,12 @@ function EntryRow({ entry, projects, onDelete, onRefresh }: {
   async function saveEdit() {
     setSaving(true)
     try {
+      const editProjId = editTaskType === PAUSE_TYPE ? null : (editProjectId === "none" ? null : editProjectId)
       await timeTrackingService.update(entry.id, {
         note: editNote || null,
         task_type: editTaskType || null,
-        project_id: editTaskType === PAUSE_TYPE ? null : (editProjectId === "none" ? null : editProjectId),
+        project_id: editProjId,
+        customer_id: (!editProjId && editCustomerId) ? editCustomerId : null,
         billable: editTaskType === PAUSE_TYPE ? false : editBillable,
         start_time: editStart ? new Date(editStart).toISOString() : undefined,
         end_time: editEnd ? new Date(editEnd).toISOString() : null,
@@ -692,7 +729,17 @@ function EntryRow({ entry, projects, onDelete, onRefresh }: {
             <ProjectSelect
               projects={projects}
               value={editProjectId}
-              onChange={setEditProjectId}
+              onChange={v => { setEditProjectId(v); if (v !== "none") setEditCustomerId("") }}
+              className="w-48"
+            />
+          )}
+
+          {editTaskType !== PAUSE_TYPE && editProjectId === "none" && (
+            <CustomerSelect
+              customers={customers}
+              value={editCustomerId}
+              onChange={setEditCustomerId}
+              placeholder="Kunde (optional)"
               className="w-48"
             />
           )}

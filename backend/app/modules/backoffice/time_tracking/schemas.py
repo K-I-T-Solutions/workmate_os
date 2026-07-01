@@ -18,6 +18,7 @@ class TimeEntryBase(BaseModel):
 
 
 class TimeEntryCreate(TimeEntryBase):
+    customer_id: Optional[uuid.UUID] = None
     task_type: Optional[str] = None
     billable: bool = True
     hourly_rate: Optional[Decimal] = None
@@ -27,6 +28,7 @@ class TimeEntryUpdate(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     project_id: Optional[uuid.UUID] = None
+    customer_id: Optional[uuid.UUID] = None
     note: Optional[str] = None
     task_type: Optional[str] = None
     billable: Optional[bool] = None
@@ -35,6 +37,7 @@ class TimeEntryUpdate(BaseModel):
 
 class TimeEntryResponse(TimeEntryBase):
     id: uuid.UUID
+    customer_id: Optional[uuid.UUID] = None
     duration_minutes: Optional[int]
     task_type: Optional[str]
     billable: bool
