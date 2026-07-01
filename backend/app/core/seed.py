@@ -55,35 +55,44 @@ def seed_database():
                 {
                     "name": "Admin",
                     "description": "Full system access",
-                    "permissions_json": [
-                        "system.*",
-                        "employees.*",
-                        "hr.*",
-                        "finance.*",
-                        "backoffice.*",
-                        "support.*"
-                    ],
+                    "permissions_json": ["*"],
                 },
                 {
                     "name": "CEO",
                     "description": "Chief Executive Officer - Full business access",
                     "permissions_json": [
-                        "employees.view",
-                        "employees.edit",
+                        "employees.read",
+                        "employees.write",
                         "hr.*",
-                        "finance.*",
                         "backoffice.*",
-                        "reports.*",
+                        "documents.read",
+                        "documents.write",
+                        "reminders.read",
+                        "reminders.write",
+                        "reminders.delete",
+                        "support.view",
+                        "kb.view",
+                        "dashboards.read",
+                        "admin.read",
                     ],
                 },
                 {
                     "name": "Manager",
                     "description": "Department Manager",
                     "permissions_json": [
-                        "employees.view",
+                        "employees.read",
                         "hr.view",
                         "hr.approve",
-                        "reports.view",
+                        "backoffice.time_tracking.view",
+                        "backoffice.projects.read",
+                        "backoffice.crm.read",
+                        "support.view",
+                        "documents.read",
+                        "reminders.read",
+                        "reminders.write",
+                        "reminders.delete",
+                        "kb.view",
+                        "dashboards.read",
                     ],
                 },
                 {
@@ -92,7 +101,12 @@ def seed_database():
                     "permissions_json": [
                         "hr.view_own",
                         "hr.request",
-                        "documents.view_own",
+                        "backoffice.time_tracking.write",
+                        "documents.read",
+                        "reminders.read",
+                        "reminders.write",
+                        "reminders.delete",
+                        "dashboards.read",
                     ],
                 },
             ]
@@ -107,8 +121,11 @@ def seed_database():
                     roles[role_data["name"]] = role
                     print(f"  ✓ Created role: {role_data['name']}")
                 else:
+                    # Permissions immer aktualisieren (nicht nur beim Erstellen)
+                    existing.permissions_json = role_data["permissions_json"]
+                    existing.description = role_data["description"]
                     roles[role_data["name"]] = existing
-                    print(f"  ⊙ Role already exists: {role_data['name']}")
+                    print(f"  ↺ Updated role: {role_data['name']}")
 
             db.commit()
 
