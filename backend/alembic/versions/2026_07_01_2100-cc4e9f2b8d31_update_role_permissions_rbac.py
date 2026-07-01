@@ -1,6 +1,6 @@
 """Update role permissions to match new RBAC schema
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: cc4e9f2b8d31
 Revises: 27b96c7e0ec2
 Create Date: 2026-07-01 21:00:00.000000
 
@@ -9,7 +9,7 @@ import json
 from alembic import op
 import sqlalchemy as sa
 
-revision = 'a1b2c3d4e5f6'
+revision = 'cc4e9f2b8d31'
 down_revision = '27b96c7e0ec2'
 branch_labels = None
 depends_on = None
@@ -53,5 +53,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Alte Permissions nicht rekonstruierbar
     pass
