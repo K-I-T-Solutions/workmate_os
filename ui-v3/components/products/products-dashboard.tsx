@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAuth } from "@/components/providers/auth-provider"
 
 type Tab = "products"
 const TABS: { id: Tab; label: string }[] = [{ id: "products", label: "Produkte" }]
@@ -150,6 +151,7 @@ function CreateDialog({
 }
 
 export function ProductsDashboard() {
+  const { hasPermission } = useAuth()
   const [tab, setTab] = useState<Tab>("products")
   const [products, setProducts] = useState<Product[]>([])
   const [search, setSearch] = useState("")
@@ -181,7 +183,9 @@ export function ProductsDashboard() {
     <div className="space-y-6 px-8 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Produkte &amp; Leistungen</h1>
-        <Button onClick={() => setDialogOpen(true)}>Neues Produkt</Button>
+        {hasPermission("backoffice.products.write") && (
+          <Button onClick={() => setDialogOpen(true)}>Neues Produkt</Button>
+        )}
       </div>
 
       <div className="flex gap-1 border-b">
@@ -241,14 +245,16 @@ export function ProductsDashboard() {
                       <td className="px-4 py-3 text-muted-foreground">{p.unit ?? "—"}</td>
                       <td className="px-4 py-3"><StatusBadge active={p.is_active} /></td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDelete(p.id)}
-                        >
-                          Löschen
-                        </Button>
+                        {hasPermission("backoffice.products.delete") && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(p.id)}
+                          >
+                            Löschen
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

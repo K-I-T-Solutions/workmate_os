@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PlusIcon, Trash2Icon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   draft: "Entwurf", open: "Offen", closed: "Geschlossen", archived: "Archiviert",
@@ -137,6 +138,8 @@ function NewJobForm({ onSave, onClose }: { onSave: () => void; onClose: () => vo
 }
 
 function ApplicationRow({ app, onStatusChange }: { app: Application; onStatusChange: () => void }) {
+  const { hasPermission } = useAuth()
+
   async function update(status: string) {
     await hrService.updateApplication(app.id, { status })
     onStatusChange()
@@ -155,7 +158,7 @@ function ApplicationRow({ app, onStatusChange }: { app: Application; onStatusCha
         )}
       </td>
       <td className="px-4 py-3">
-        <Select value={app.status} onValueChange={v => v && update(v)}>
+        <Select value={app.status} onValueChange={v => v && update(v)} disabled={!hasPermission("hr.manage")}>
           <SelectTrigger className="h-7 w-36 text-xs px-2">
             <span data-slot="select-value" className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${APP_STATUS_COLOR[app.status] ?? "bg-muted"}`}>
               {APP_STATUS_LABELS[app.status] ?? app.status}
@@ -175,6 +178,7 @@ function ApplicationRow({ app, onStatusChange }: { app: Application; onStatusCha
 }
 
 function JobCard({ job, onRefresh }: { job: JobPosting; onRefresh: () => void }) {
+  const { hasPermission } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [applications, setApplications] = useState<Application[]>([])
   const [loadingApps, setLoadingApps] = useState(false)
@@ -225,7 +229,7 @@ function JobCard({ job, onRefresh }: { job: JobPosting; onRefresh: () => void })
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Select value={job.status} onValueChange={v => v && handleStatusChange(v)}>
+          <Select value={job.status} onValueChange={v => v && handleStatusChange(v)} disabled={!hasPermission("hr.manage")}>
             <SelectTrigger className="h-7 w-36 text-xs px-2">
               <span data-slot="select-value" className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${JOB_STATUS_COLOR[job.status] ?? "bg-muted"}`}>
                 {JOB_STATUS_LABELS[job.status] ?? job.status}
@@ -239,9 +243,11 @@ function JobCard({ job, onRefresh }: { job: JobPosting; onRefresh: () => void })
               ))}
             </SelectContent>
           </Select>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(job.id)}>
-            <Trash2Icon className="h-3.5 w-3.5" />
-          </Button>
+          {hasPermission("hr.manage") && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(job.id)}>
+              <Trash2Icon className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -295,6 +301,7 @@ function JobCard({ job, onRefresh }: { job: JobPosting; onRefresh: () => void })
 }
 
 export function RecruitingTab() {
+  const { hasPermission } = useAuth()
   const [jobs, setJobs] = useState<JobPosting[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState("all")
@@ -324,10 +331,12 @@ export function RecruitingTab() {
             {Object.entries(JOB_STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button size="sm" onClick={() => setShowForm(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Stelle anlegen
-        </Button>
+        {hasPermission("hr.manage") && (
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Stelle anlegen
+          </Button>
+        )}
       </div>
 
       {loading ? (

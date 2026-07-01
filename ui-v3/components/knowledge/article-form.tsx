@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CheckCircle2Icon, CircleIcon, EyeIcon, PencilIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_OPTIONS: { value: ArticleStatus; label: string }[] = [
   { value: "draft", label: "Entwurf" },
@@ -30,6 +31,7 @@ export function ArticleForm({
   onSave: (article: KBArticleDetail) => void
   onCancel: () => void
 }) {
+  const { hasPermission } = useAuth()
   const [title, setTitle] = useState(initial?.title ?? "")
   const [content, setContent] = useState(initial?.content ?? "")
   const [excerpt, setExcerpt] = useState(initial?.excerpt ?? "")
@@ -145,9 +147,11 @@ export function ArticleForm({
       </div>
       <div className="flex justify-end gap-3 pt-2 border-t">
         <Button variant="outline" onClick={onCancel}>Abbrechen</Button>
-        <Button onClick={handleSave} disabled={saving || !title.trim() || !content.trim()}>
-          {saving ? "Speichern…" : initial ? "Speichern" : "Artikel erstellen"}
-        </Button>
+        {hasPermission("kb.write") && (
+          <Button onClick={handleSave} disabled={saving || !title.trim() || !content.trim()}>
+            {saving ? "Speichern…" : initial ? "Speichern" : "Artikel erstellen"}
+          </Button>
+        )}
       </div>
     </div>
   )

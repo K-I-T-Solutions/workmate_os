@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeftIcon, PencilIcon, Trash2Icon, DownloadIcon, PlusIcon, MailIcon, CheckCircleIcon, BellIcon, SendIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 import type { InvoiceReminder } from "@/lib/invoices/types"
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -323,6 +324,7 @@ function ReminderModal({
 
 export function InvoiceDetail({ id }: { id: string }) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
@@ -408,34 +410,42 @@ export function InvoiceDetail({ id }: { id: string }) {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowEmailModal(true)}
-            title="Per E-Mail senden"
-          >
-            <MailIcon className="mr-2 h-4 w-4" />
-            Senden
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => invoiceService.downloadPdf(id, `${invoice.invoice_number}.pdf`)}
-            title="PDF herunterladen"
-          >
-            <DownloadIcon className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => router.push(`/invoices/${id}/edit`)}>
-            <PencilIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => setShowDelete(true)}
-          >
-            <Trash2Icon className="h-4 w-4" />
-          </Button>
+          {hasPermission("backoffice.invoices.write") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEmailModal(true)}
+              title="Per E-Mail senden"
+            >
+              <MailIcon className="mr-2 h-4 w-4" />
+              Senden
+            </Button>
+          )}
+          {hasPermission("backoffice.invoices.write") && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => invoiceService.downloadPdf(id, `${invoice.invoice_number}.pdf`)}
+              title="PDF herunterladen"
+            >
+              <DownloadIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {hasPermission("backoffice.invoices.write") && (
+            <Button variant="outline" size="icon" onClick={() => router.push(`/invoices/${id}/edit`)}>
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {hasPermission("backoffice.invoices.delete") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDelete(true)}
+            >
+              <Trash2Icon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -544,10 +554,12 @@ export function InvoiceDetail({ id }: { id: string }) {
               </span>
             )}
           </h2>
-          <Button variant="outline" size="sm" onClick={() => setShowPaymentModal(true)}>
-            <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
-            Zahlung erfassen
-          </Button>
+          {hasPermission("backoffice.invoices.write") && (
+            <Button variant="outline" size="sm" onClick={() => setShowPaymentModal(true)}>
+              <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
+              Zahlung erfassen
+            </Button>
+          )}
         </div>
         {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">Noch keine Zahlungen erfasst.</p>
@@ -584,7 +596,7 @@ export function InvoiceDetail({ id }: { id: string }) {
             <BellIcon className="h-3.5 w-3.5" />
             Mahnungen
           </h2>
-          {reminders.length < 3 && (
+          {hasPermission("backoffice.invoices.write") && reminders.length < 3 && (
             <Button variant="outline" size="sm" onClick={() => setShowReminderModal(true)}>
               <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
               Mahnung erstellen

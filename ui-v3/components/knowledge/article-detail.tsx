@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { ArticleForm } from "./article-form"
 import { ArrowLeftIcon, PencilIcon, Trash2Icon, ThumbsUpIcon, ThumbsDownIcon, PinIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Entwurf", published: "Veröffentlicht", archived: "Archiviert",
@@ -36,6 +37,7 @@ export function ArticleDetail({
   onBack: () => void
   onDeleted: () => void
 }) {
+  const { hasPermission } = useAuth()
   const [article, setArticle] = useState(initial)
   const [editing, setEditing] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
@@ -108,12 +110,16 @@ export function ArticleDetail({
           </p>
         </div>
         <div className="flex gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => setEditing(true)}>
-            <PencilIcon className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => setShowDelete(true)}>
-            <Trash2Icon className="h-4 w-4" />
-          </Button>
+          {hasPermission("kb.write") && (
+            <Button variant="ghost" size="icon" onClick={() => setEditing(true)}>
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {hasPermission("kb.delete") && (
+            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => setShowDelete(true)}>
+              <Trash2Icon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 

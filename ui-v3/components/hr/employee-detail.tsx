@@ -22,6 +22,7 @@ import {
   BuildingIcon, CalendarIcon, BadgeIcon, KeyRoundIcon, ClockIcon, FolderOpenIcon,
 } from "lucide-react"
 import { DocumentsTab } from "@/components/documents/documents-dashboard"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_LABELS: Record<EmployeeStatus, string> = {
   active: "Aktiv", inactive: "Inaktiv", on_leave: "Abwesend", terminated: "Ausgeschieden",
@@ -510,6 +511,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function EmployeeDetail({ id }: { id: string }) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
@@ -607,7 +609,7 @@ export function EmployeeDetail({ id }: { id: string }) {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
-        {TABS.map(t => (
+        {TABS.filter(t => t.id !== "edit" || hasPermission("employees.write")).map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -641,7 +643,7 @@ export function EmployeeDetail({ id }: { id: string }) {
           <DocumentsTab ownerId={employee.id} />
         </div>
       )}
-      {tab === "edit" && (
+      {tab === "edit" && hasPermission("employees.write") && (
         <BearbeitenTab
           employee={employee}
           departments={departments}

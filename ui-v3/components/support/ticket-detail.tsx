@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { ArrowLeftIcon, Trash2Icon, SendIcon, LockIcon, UserIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_LABELS: Record<string, string> = {
   open: "Offen", in_progress: "In Bearbeitung", waiting: "Wartend",
@@ -38,6 +39,7 @@ function fmtDateTime(d: string) {
 
 export function TicketDetailView({ id }: { id: string }) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [showDelete, setShowDelete] = useState(false)
@@ -133,7 +135,7 @@ export function TicketDetailView({ id }: { id: string }) {
           <h1 className="mt-1 text-xl font-semibold">{ticket.title}</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Select value={ticket.status} onValueChange={v => v && handleStatusChange(v)} disabled={updatingStatus}>
+          <Select value={ticket.status} onValueChange={v => v && handleStatusChange(v)} disabled={updatingStatus || !hasPermission("support.write")}>
             <SelectTrigger className="w-40">
               <span data-slot="select-value" className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[ticket.status] ?? "bg-muted"}`}>
                 {STATUS_LABELS[ticket.status] ?? ticket.status}
@@ -143,9 +145,11 @@ export function TicketDetailView({ id }: { id: string }) {
               {Object.entries(STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => setShowDelete(true)}>
-            <Trash2Icon className="h-4 w-4" />
-          </Button>
+          {hasPermission("support.delete") && (
+            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => setShowDelete(true)}>
+              <Trash2Icon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -227,10 +231,12 @@ export function TicketDetailView({ id }: { id: string }) {
               <LockIcon className="h-3.5 w-3.5" />
               Intern
             </button>
-            <Button size="sm" onClick={handleSendComment} disabled={sending || !comment.trim()}>
-              <SendIcon className="mr-2 h-3.5 w-3.5" />
-              {sending ? "Senden…" : "Senden"}
-            </Button>
+            {hasPermission("support.write") && (
+              <Button size="sm" onClick={handleSendComment} disabled={sending || !comment.trim()}>
+                <SendIcon className="mr-2 h-3.5 w-3.5" />
+                {sending ? "Senden…" : "Senden"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -267,6 +273,7 @@ export function TicketDetailView({ id }: { id: string }) {
 }
 
 function CommentBubble({ comment, onDelete }: { comment: TicketComment; onDelete: () => void }) {
+  const { hasPermission } = useAuth()
   return (
     <div className={`group relative rounded-lg border p-4 ${comment.is_internal ? "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30" : "bg-card"}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
@@ -280,12 +287,14 @@ function CommentBubble({ comment, onDelete }: { comment: TicketComment; onDelete
             {new Date(comment.created_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
           </span>
         </div>
-        <button
-          onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
-        >
-          <Trash2Icon className="h-3.5 w-3.5" />
-        </button>
+        {hasPermission("support.write") && (
+          <button
+            onClick={onDelete}
+            className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
+          >
+            <Trash2Icon className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
     </div>

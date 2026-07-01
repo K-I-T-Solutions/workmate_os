@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { EmployeeSelect } from "./employee-select"
+import { useAuth } from "@/components/providers/auth-provider"
 
 // ---------- lokale Helpers ----------
 
@@ -302,6 +303,7 @@ function AddBenefitDialog({
 // ---------- Haupt-Komponente ----------
 
 export function CompensationTab() {
+  const { hasPermission } = useAuth()
   const [employeeId, setEmployeeId] = useState("")
   const [employeeName, setEmployeeName] = useState("")
   const [inputValue, setInputValue] = useState("")
@@ -382,7 +384,7 @@ export function CompensationTab() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold">Gehaltshistorie — {employeeName || employeeId}</h2>
-              <Button size="sm" variant="outline" onClick={() => setSalaryDialogOpen(true)}>+ Gehalt</Button>
+              {hasPermission("hr.manage") && <Button size="sm" variant="outline" onClick={() => setSalaryDialogOpen(true)}>+ Gehalt</Button>}
             </div>
             {salaryRecords.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">Keine Gehaltsdaten vorhanden.</p>
@@ -418,7 +420,7 @@ export function CompensationTab() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold">Boni</h2>
-              <Button size="sm" variant="outline" onClick={() => setBonusDialogOpen(true)}>+ Bonus</Button>
+              {hasPermission("hr.manage") && <Button size="sm" variant="outline" onClick={() => setBonusDialogOpen(true)}>+ Bonus</Button>}
             </div>
             {bonuses.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">Keine Boni erfasst.</p>
@@ -454,7 +456,7 @@ export function CompensationTab() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold">Benefits</h2>
-              <Button size="sm" variant="outline" onClick={() => setBenefitDialogOpen(true)}>+ Benefit</Button>
+              {hasPermission("hr.manage") && <Button size="sm" variant="outline" onClick={() => setBenefitDialogOpen(true)}>+ Benefit</Button>}
             </div>
             {benefits.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">Keine Benefits erfasst.</p>

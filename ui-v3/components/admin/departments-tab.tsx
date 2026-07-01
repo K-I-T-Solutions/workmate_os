@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PlusIcon, Trash2Icon, PencilIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 function DeptForm({ initial, onSave, onClose }: {
   initial?: Department
@@ -67,6 +68,7 @@ function DeptForm({ initial, onSave, onClose }: {
 }
 
 export function DepartmentsTab() {
+  const { hasPermission } = useAuth()
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -94,10 +96,12 @@ export function DepartmentsTab() {
   return (
     <div className="space-y-4 max-w-2xl">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => { setEditItem(null); setShowForm(true) }}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Abteilung anlegen
-        </Button>
+        {hasPermission("employees.manage") && (
+          <Button size="sm" onClick={() => { setEditItem(null); setShowForm(true) }}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Abteilung anlegen
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -117,14 +121,16 @@ export function DepartmentsTab() {
                   {dept.description && <p className="text-xs text-muted-foreground">{dept.description}</p>}
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(dept); setShowForm(true) }}>
-                  <PencilIcon className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(dept.id)}>
-                  <Trash2Icon className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              {hasPermission("employees.manage") && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(dept); setShowForm(true) }}>
+                    <PencilIcon className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(dept.id)}>
+                    <Trash2Icon className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>

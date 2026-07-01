@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { ArrowLeftIcon, PencilIcon, Trash2Icon, CalendarIcon, UserIcon, ClockIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_LABELS: Record<string, string> = {
   planning: "Planung",
@@ -43,6 +44,7 @@ function fmtMin(min: number) {
 
 export function ProjectDetail({ id }: { id: string }) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [project, setProject] = useState<Project | null>(null)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
@@ -118,17 +120,21 @@ export function ProjectDetail({ id }: { id: string }) {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={() => router.push(`/projects/${id}/edit`)}>
-            <PencilIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={() => setShowDelete(true)}
-          >
-            <Trash2Icon className="h-4 w-4" />
-          </Button>
+          {hasPermission("backoffice.projects.write") && (
+            <Button variant="outline" size="icon" onClick={() => router.push(`/projects/${id}/edit`)}>
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {hasPermission("backoffice.projects.delete") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDelete(true)}
+            >
+              <Trash2Icon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 

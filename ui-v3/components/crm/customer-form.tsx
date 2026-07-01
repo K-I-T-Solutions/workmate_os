@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Save } from "lucide-react"
 import { crmService } from "@/lib/crm/service"
 import type { Customer, CustomerStatus, CustomerType, PipelineStage } from "@/lib/crm/types"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const TYPE_LABELS: Record<string, string> = {
   business: "Unternehmen",
@@ -48,6 +49,7 @@ const inputCls =
 
 export function CustomerForm({ initial, customerId }: Props) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const isEdit = !!customerId
 
   const [form, setForm] = useState({
@@ -235,14 +237,16 @@ export function CustomerForm({ initial, customerId }: Props) {
         >
           Abbrechen
         </button>
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
-        >
-          <Save className="h-4 w-4" />
-          {saving ? "Speichern…" : isEdit ? "Änderungen speichern" : "Kunde anlegen"}
-        </button>
+        {hasPermission("backoffice.crm.write") && (
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? "Speichern…" : isEdit ? "Änderungen speichern" : "Kunde anlegen"}
+          </button>
+        )}
       </div>
     </form>
   )

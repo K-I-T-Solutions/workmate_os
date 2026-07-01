@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle2Icon, CircleIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -46,6 +47,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 }
 
 export function SettingsTab() {
+  const { hasPermission } = useAuth()
   const [settings, setSettings] = useState<SystemSettings | null>(null)
   const [form, setForm] = useState<SystemSettingsUpdate>({})
   const [loading, setLoading] = useState(true)
@@ -186,9 +188,11 @@ export function SettingsTab() {
 
       <div className="flex items-center justify-end gap-3">
         {saved && <span className="text-sm text-green-600">Gespeichert.</span>}
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Speichern…" : "Einstellungen speichern"}
-        </Button>
+        {hasPermission("admin.write") && (
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Speichern…" : "Einstellungen speichern"}
+          </Button>
+        )}
       </div>
     </div>
   )

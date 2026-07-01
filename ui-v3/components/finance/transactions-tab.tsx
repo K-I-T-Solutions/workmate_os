@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PlusIcon, Trash2Icon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const TX_TYPES: { value: TransactionType; label: string }[] = [
   { value: "income", label: "Einnahme" },
@@ -142,6 +143,7 @@ function NewTransactionForm({ accounts, onSave, onClose }: {
 }
 
 export function TransactionsTab({ accounts }: { accounts: BankAccount[] }) {
+  const { hasPermission } = useAuth()
   const [transactions, setTransactions] = useState<BankTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -195,10 +197,12 @@ export function TransactionsTab({ accounts }: { accounts: BankAccount[] }) {
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={() => setShowForm(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Buchung anlegen
-        </Button>
+        {hasPermission("backoffice.finance.write") && (
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Buchung anlegen
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -258,13 +262,15 @@ export function TransactionsTab({ accounts }: { accounts: BankAccount[] }) {
                     {fmt(Math.abs(parseFloat(tx.amount || "0")))}
                   </td>
                   <td className="px-4 py-3">
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
-                      onClick={() => setDeleteId(tx.id)}
-                    >
-                      <Trash2Icon className="h-3.5 w-3.5" />
-                    </Button>
+                    {hasPermission("backoffice.finance.delete") && (
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                        onClick={() => setDeleteId(tx.id)}
+                      >
+                        <Trash2Icon className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

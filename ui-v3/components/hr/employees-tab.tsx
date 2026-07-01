@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { PlusIcon, Trash2Icon } from "lucide-react"
 import { apiClient } from "@/lib/api/client"
+import { useAuth } from "@/components/providers/auth-provider"
 
 async function deleteEmployee(id: string) {
   await apiClient.delete(`/api/employees/${id}`)
@@ -118,6 +119,7 @@ function NewEmployeeForm({ onSave, onClose }: { onSave: () => void; onClose: () 
 
 export function EmployeesTab({ stats }: { stats: EmployeeStatistics | null }) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -188,10 +190,12 @@ export function EmployeesTab({ stats }: { stats: EmployeeStatistics | null }) {
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={() => setShowForm(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Mitarbeiter anlegen
-        </Button>
+        {hasPermission("employees.write") && (
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Mitarbeiter anlegen
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -250,14 +254,16 @@ export function EmployeesTab({ stats }: { stats: EmployeeStatistics | null }) {
                     ) : "–"}
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <Button
-                      size="icon" variant="ghost"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      title="Mitarbeiter löschen"
-                      onClick={() => setDeleteTarget(emp)}
-                    >
-                      <Trash2Icon className="h-3.5 w-3.5" />
-                    </Button>
+                    {hasPermission("employees.delete") && (
+                      <Button
+                        size="icon" variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Mitarbeiter löschen"
+                        onClick={() => setDeleteTarget(emp)}
+                      >
+                        <Trash2Icon className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -23,6 +23,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { ArrowLeftIcon, PlusIcon, Trash2Icon, BookOpenIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const DOC_TYPES: { value: DocumentType; label: string }[] = [
   { value: "invoice", label: "Rechnung" },
@@ -163,6 +164,7 @@ function ProductPickerDialog({
 
 export function InvoiceForm({ initial, invoiceId }: Props) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const isEdit = !!invoiceId
   const [customers, setCustomers] = useState<Customer[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -439,9 +441,11 @@ export function InvoiceForm({ initial, invoiceId }: Props) {
       {/* Aktionen */}
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => router.back()}>Abbrechen</Button>
-        <Button onClick={handleSave} disabled={saving || !customerId || lines.length === 0}>
-          {saving ? "Speichern…" : isEdit ? "Änderungen speichern" : "Rechnung erstellen"}
-        </Button>
+        {hasPermission("backoffice.invoices.write") && (
+          <Button onClick={handleSave} disabled={saving || !customerId || lines.length === 0}>
+            {saving ? "Speichern…" : isEdit ? "Änderungen speichern" : "Rechnung erstellen"}
+          </Button>
+        )}
       </div>
 
       <ProductPickerDialog

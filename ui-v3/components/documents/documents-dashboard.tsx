@@ -16,6 +16,7 @@ import {
   FileTextIcon, FileImageIcon, LockIcon, FolderIcon, EyeIcon,
 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const CATEGORIES = [
   "Vertrag", "Krankmeldung", "Zeugnis", "Rechnung", "Lohnabrechnung",
@@ -226,6 +227,7 @@ interface DocTableProps {
 }
 
 function DocTable({ documents, employeeMap, downloading, onDownload, onDeleteRequest, hideOwner }: DocTableProps) {
+  const { hasPermission } = useAuth()
   if (documents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
@@ -296,13 +298,15 @@ function DocTable({ documents, employeeMap, downloading, onDownload, onDeleteReq
                   >
                     <DownloadIcon className="h-4 w-4" />
                   </button>
-                  <button
-                    onClick={() => onDeleteRequest(doc)}
-                    className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    title="Löschen"
-                  >
-                    <Trash2Icon className="h-4 w-4" />
-                  </button>
+                  {hasPermission("documents.delete") && (
+                    <button
+                      onClick={() => onDeleteRequest(doc)}
+                      className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      title="Löschen"
+                    >
+                      <Trash2Icon className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
@@ -377,6 +381,7 @@ interface EmbeddedDocsProps {
 }
 
 export function DocumentsTab({ ownerId, customerId }: EmbeddedDocsProps) {
+  const { hasPermission } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [showUpload, setShowUpload] = useState(false)
   const [deleteDoc, setDeleteDoc] = useState<DocumentRecord | null>(null)
@@ -426,10 +431,12 @@ export function DocumentsTab({ ownerId, customerId }: EmbeddedDocsProps) {
           </SelectContent>
         </Select>
         <span className="ml-auto text-xs text-muted-foreground">{total} Dokument{total !== 1 ? "e" : ""}</span>
-        <Button size="sm" onClick={() => setShowUpload(true)}>
-          <UploadIcon className="mr-1.5 h-3.5 w-3.5" />
-          Hochladen
-        </Button>
+        {hasPermission("documents.write") && (
+          <Button size="sm" onClick={() => setShowUpload(true)}>
+            <UploadIcon className="mr-1.5 h-3.5 w-3.5" />
+            Hochladen
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -480,6 +487,7 @@ export function DocumentsTab({ ownerId, customerId }: EmbeddedDocsProps) {
 // ---------------------------------------------------------------------------
 
 export function DocumentsDashboard() {
+  const { hasPermission } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [showUpload, setShowUpload] = useState(false)
   const [deleteDoc, setDeleteDoc] = useState<DocumentRecord | null>(null)
@@ -522,10 +530,12 @@ export function DocumentsDashboard() {
           <h1 className="text-2xl font-semibold">Dokumente</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">{total} Dokument{total !== 1 ? "e" : ""} · Nextcloud-Speicher</p>
         </div>
-        <Button onClick={() => setShowUpload(true)}>
-          <UploadIcon className="mr-2 h-4 w-4" />
-          Hochladen
-        </Button>
+        {hasPermission("documents.write") && (
+          <Button onClick={() => setShowUpload(true)}>
+            <UploadIcon className="mr-2 h-4 w-4" />
+            Hochladen
+          </Button>
+        )}
       </div>
 
       {/* Filter bar */}

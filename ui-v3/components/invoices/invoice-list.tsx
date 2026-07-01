@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { PlusIcon, Trash2Icon, FileTextIcon, DownloadIcon, SearchIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
   draft: "Entwurf",
@@ -67,6 +68,7 @@ function fmtDate(date: string | null | undefined) {
 
 export function InvoiceList() {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -139,10 +141,12 @@ export function InvoiceList() {
             <DownloadIcon className="mr-2 h-4 w-4" />
             {exporting ? "Exportiere…" : "DATEV-Export"}
           </Button>
-          <Button onClick={() => router.push("/invoices/new")}>
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Neu
-          </Button>
+          {hasPermission("backoffice.invoices.write") && (
+            <Button onClick={() => router.push("/invoices/new")}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Neu
+            </Button>
+          )}
         </div>
       </div>
 
@@ -247,16 +251,18 @@ export function InvoiceList() {
                   </TableCell>
                   <TableCell className="text-right font-medium">{fmt(inv.total)}</TableCell>
                   <TableCell>
-                    <button
-                      onClick={e => {
-                        e.stopPropagation()
-                        setDeleteId(inv.id)
-                        setDeleteNum(inv.invoice_number)
-                      }}
-                      className="p-1 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
-                    >
-                      <Trash2Icon className="h-4 w-4" />
-                    </button>
+                    {hasPermission("backoffice.invoices.delete") && (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          setDeleteId(inv.id)
+                          setDeleteNum(inv.invoice_number)
+                        }}
+                        className="p-1 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
+                      >
+                        <Trash2Icon className="h-4 w-4" />
+                      </button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
