@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { PlayIcon, SquareIcon, ClockIcon, Trash2Icon, CheckIcon, AlertTriangleIcon, AlertCircleIcon, PencilIcon, TimerIcon } from "lucide-react"
+import { ProjectSelect } from "@/components/projects/project-select"
 
 // ArbZG §4: Pausen ab 6h Arbeit 30min, ab 9h 45min
 // ArbZG §3: Max 8h/Tag, Ausnahme bis 10h wenn Ausgleich
@@ -326,15 +327,12 @@ export function TimeTracker() {
                     </SelectContent>
                   </Select>
                   {taskType !== PAUSE_TYPE && (
-                    <Select value={projectId} onValueChange={v => v && setProjectId(v)}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Kein Projekt" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Kein Projekt</SelectItem>
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <ProjectSelect
+                      projects={projects}
+                      value={projectId}
+                      onChange={setProjectId}
+                      className="w-48"
+                    />
                   )}
                   {taskType !== PAUSE_TYPE && (
                     <button
@@ -416,15 +414,12 @@ export function TimeTracker() {
                   </Select>
 
                   {manualTaskType !== PAUSE_TYPE && (
-                    <Select value={manualProjectId} onValueChange={v => v && setManualProjectId(v)}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Kein Projekt" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Kein Projekt</SelectItem>
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <ProjectSelect
+                      projects={projects}
+                      value={manualProjectId}
+                      onChange={setManualProjectId}
+                      className="w-48"
+                    />
                   )}
 
                   {manualTaskType !== PAUSE_TYPE && (
@@ -694,15 +689,12 @@ function EntryRow({ entry, projects, onDelete, onRefresh }: {
           </Select>
 
           {editTaskType !== PAUSE_TYPE && (
-            <Select value={editProjectId} onValueChange={v => v && setEditProjectId(v)}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Kein Projekt" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Kein Projekt</SelectItem>
-                {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <ProjectSelect
+              projects={projects}
+              value={editProjectId}
+              onChange={setEditProjectId}
+              className="w-48"
+            />
           )}
 
           {editTaskType !== PAUSE_TYPE && (

@@ -9,6 +9,7 @@ import type { BillableEntry } from "@/lib/time-tracking/types"
 import type { Project } from "@/lib/projects/types"
 import type { Customer } from "@/lib/crm/types"
 import { CustomerSelect } from "@/components/crm/customer-select"
+import { ProjectSelect } from "@/components/projects/project-select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -140,17 +141,14 @@ export function TimeBilling() {
     <div className="space-y-6 px-8 py-6">
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={filterProject || "__all__"} onValueChange={v => setFilterProject(!v || v === "__all__" ? "" : v)}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Alle Projekte" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Alle Projekte</SelectItem>
-            {projects.map(p => (
-              <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ProjectSelect
+          projects={projects}
+          value={filterProject || "none"}
+          onChange={v => setFilterProject(v === "none" ? "" : v)}
+          placeholder="Alle Projekte"
+          noneLabel="Alle Projekte"
+          className="w-52"
+        />
 
         {employeeNames.length > 1 && (
           <Select value={filterEmployee || "__all__"} onValueChange={v => setFilterEmployee(!v || v === "__all__" ? "" : v)}>
