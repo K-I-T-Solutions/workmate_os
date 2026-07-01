@@ -2,6 +2,7 @@ export interface TimeEntry {
   id: string
   employee_id: string
   project_id: string | null
+  customer_id: string | null
   start_time: string
   end_time: string | null
   duration_minutes: number | null
@@ -18,6 +19,7 @@ export interface TimeEntry {
 export interface TimeEntryCreate {
   employee_id: string
   project_id?: string | null
+  customer_id?: string | null
   start_time: string
   end_time?: string | null
   note?: string | null
@@ -30,6 +32,7 @@ export interface TimeEntryUpdate {
   start_time?: string | null
   end_time?: string | null
   project_id?: string | null
+  customer_id?: string | null
   note?: string | null
   task_type?: string | null
   billable?: boolean | null
