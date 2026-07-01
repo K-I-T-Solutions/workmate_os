@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ArticleDetail } from "./article-detail"
 import { ArticleForm } from "./article-form"
 import { PlusIcon, PinIcon, EyeIcon, ThumbsUpIcon, SearchIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_COLOR: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -59,6 +60,7 @@ function ArticleCard({ article, onClick }: { article: KBArticle; onClick: () => 
 }
 
 export function KnowledgeDashboard() {
+  const { hasPermission } = useAuth()
   const [categories, setCategories] = useState<KBCategory[]>([])
   const [articles, setArticles] = useState<KBArticle[]>([])
   const [loading, setLoading] = useState(true)
@@ -135,10 +137,12 @@ export function KnowledgeDashboard() {
     <div className="space-y-6 px-8 py-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Wissensdatenbank</h1>
-        <Button size="sm" onClick={() => setShowNewForm(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Artikel erstellen
-        </Button>
+        {hasPermission("kb.write") && (
+          <Button size="sm" onClick={() => setShowNewForm(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Artikel erstellen
+          </Button>
+        )}
       </div>
 
       {/* Search */}

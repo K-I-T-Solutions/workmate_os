@@ -18,6 +18,7 @@ import {
   FileIcon, FileTextIcon, FileImageIcon, LockIcon, UnlockIcon,
 } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const CATEGORIES = [
   "Vertrag", "Krankmeldung", "Zeugnis", "Rechnung", "Lohnabrechnung",
@@ -151,6 +152,7 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
 // ---------------------------------------------------------------------------
 export function DocumentDetail({ id }: { id: string }) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [doc, setDoc] = useState<DocumentRecord | null>(null)
   const [loading, setLoading] = useState(true)
   usePageTitle(doc ? (doc.title || doc.file_path.split("/").pop() || null) : null)
@@ -270,15 +272,19 @@ export function DocumentDetail({ id }: { id: string }) {
             </>
           ) : (
             <>
-              <Button size="sm" variant="outline" onClick={startEdit}>
-                <PencilIcon className="h-4 w-4 mr-1" /> Bearbeiten
-              </Button>
+              {hasPermission("documents.write") && (
+                <Button size="sm" variant="outline" onClick={startEdit}>
+                  <PencilIcon className="h-4 w-4 mr-1" /> Bearbeiten
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={handleDownload}>
                 <DownloadIcon className="h-4 w-4 mr-1" /> Download
               </Button>
-              <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>
-                <Trash2Icon className="h-4 w-4 mr-1" /> Löschen
-              </Button>
+              {hasPermission("documents.delete") && (
+                <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>
+                  <Trash2Icon className="h-4 w-4 mr-1" /> Löschen
+                </Button>
+              )}
             </>
           )}
         </div>

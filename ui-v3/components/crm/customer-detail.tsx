@@ -14,6 +14,7 @@ import type { Invoice } from "@/lib/invoices/types"
 import type { Project } from "@/lib/projects/types"
 import type { Ticket } from "@/lib/support/types"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-500/15 text-green-400",
@@ -316,6 +317,7 @@ function ActivityModal({ customerId, contacts, onClose, onSaved }: {
 // ─── CustomerDetail ──────────────────────────────────────────────────────────
 export function CustomerDetail({ id }: { id: string }) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [activities, setActivities] = useState<CrmActivity[]>([])
@@ -438,20 +440,24 @@ export function CustomerDetail({ id }: { id: string }) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push(`/crm/customers/${id}/edit`)}
-            className="flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Edit className="h-4 w-4" />
-            Bearbeiten
-          </button>
-          <button
-            onClick={() => setDeleteCustomer(true)}
-            className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/20"
-          >
-            <Trash2 className="h-4 w-4" />
-            Löschen
-          </button>
+          {hasPermission("backoffice.crm.write") && (
+            <button
+              onClick={() => router.push(`/crm/customers/${id}/edit`)}
+              className="flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Edit className="h-4 w-4" />
+              Bearbeiten
+            </button>
+          )}
+          {hasPermission("backoffice.crm.delete") && (
+            <button
+              onClick={() => setDeleteCustomer(true)}
+              className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/20"
+            >
+              <Trash2 className="h-4 w-4" />
+              Löschen
+            </button>
+          )}
         </div>
       </div>
 
@@ -509,12 +515,14 @@ export function CustomerDetail({ id }: { id: string }) {
               <h2 className="font-heading text-sm font-semibold text-foreground">
                 Ansprechpartner <span className="ml-1 text-muted-foreground font-normal">({contacts.length})</span>
               </h2>
-              <button
-                onClick={() => setContactModal({ open: true })}
-                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80"
-              >
-                <Plus className="h-3.5 w-3.5" /> Hinzufügen
-              </button>
+              {hasPermission("backoffice.crm.write") && (
+                <button
+                  onClick={() => setContactModal({ open: true })}
+                  className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Hinzufügen
+                </button>
+              )}
             </div>
             {contacts.length === 0 ? (
               <p className="px-5 py-4 text-sm text-muted-foreground">Keine Ansprechpartner hinterlegt.</p>
@@ -537,20 +545,24 @@ export function CustomerDetail({ id }: { id: string }) {
                       {ct.phone && <p>{ct.phone}</p>}
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setContactModal({ open: true, contact: ct })}
-                        className="rounded p-1 text-muted-foreground hover:text-foreground"
-                        title="Bearbeiten"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteContactId(ct.id)}
-                        className="rounded p-1 text-muted-foreground hover:text-destructive"
-                        title="Löschen"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {hasPermission("backoffice.crm.write") && (
+                        <button
+                          onClick={() => setContactModal({ open: true, contact: ct })}
+                          className="rounded p-1 text-muted-foreground hover:text-foreground"
+                          title="Bearbeiten"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {hasPermission("backoffice.crm.delete") && (
+                        <button
+                          onClick={() => setDeleteContactId(ct.id)}
+                          className="rounded p-1 text-muted-foreground hover:text-destructive"
+                          title="Löschen"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -563,13 +575,15 @@ export function CustomerDetail({ id }: { id: string }) {
         <div className="rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="font-heading text-sm font-semibold text-foreground">Aktivitäten</h2>
-            <button
-              onClick={() => setShowActivityModal(true)}
-              className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
-            >
-              <Plus className="h-3 w-3" />
-              Neu
-            </button>
+            {hasPermission("backoffice.crm.write") && (
+              <button
+                onClick={() => setShowActivityModal(true)}
+                className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Neu
+              </button>
+            )}
           </div>
           {activities.length === 0 ? (
             <p className="px-5 py-4 text-sm text-muted-foreground">Keine Aktivitäten vorhanden.</p>

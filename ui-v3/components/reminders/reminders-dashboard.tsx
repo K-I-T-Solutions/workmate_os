@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from "@/components/providers/auth-provider"
 
 type Tab = "open" | "done"
 
@@ -45,6 +46,7 @@ function ReminderCard({
   onDone?: (id: string) => void
   onDelete: (id: string) => void
 }) {
+  const { hasPermission } = useAuth()
   return (
     <div className="rounded-lg border bg-card p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -62,19 +64,21 @@ function ReminderCard({
         </p>
       )}
       <div className="flex items-center gap-2 pt-1">
-        {onDone && (
+        {onDone && hasPermission("reminders.write") && (
           <Button size="sm" variant="outline" onClick={() => onDone(reminder.id)}>
             Erledigt
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={() => onDelete(reminder.id)}
-        >
-          Löschen
-        </Button>
+        {hasPermission("reminders.delete") && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(reminder.id)}
+          >
+            Löschen
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -168,6 +172,7 @@ function CreateDialog({
 }
 
 export function RemindersDashboard() {
+  const { hasPermission } = useAuth()
   const [tab, setTab] = useState<Tab>("open")
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
@@ -209,7 +214,9 @@ export function RemindersDashboard() {
     <div className="space-y-6 px-8 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Erinnerungen</h1>
-        <Button onClick={() => setDialogOpen(true)}>Neue Erinnerung</Button>
+        {hasPermission("reminders.write") && (
+          <Button onClick={() => setDialogOpen(true)}>Neue Erinnerung</Button>
+        )}
       </div>
 
       <div className="flex gap-1 border-b">

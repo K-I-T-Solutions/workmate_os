@@ -11,6 +11,7 @@ import { CheckIcon, XIcon, BanIcon, Trash2Icon } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { apiClient } from "@/lib/api/client"
+import { useAuth } from "@/components/providers/auth-provider"
 
 async function deleteLeaveRequest(id: string) {
   await apiClient.delete(`/api/hr/leave/requests/${id}`)
@@ -34,6 +35,7 @@ function fmtDate(d: string) {
 }
 
 export function LeaveTab({ stats }: { stats: LeaveStatistics | null }) {
+  const { hasPermission } = useAuth()
   const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
@@ -185,7 +187,7 @@ export function LeaveTab({ stats }: { stats: LeaveStatistics | null }) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      {req.status === "pending" && (
+                      {req.status === "pending" && hasPermission("hr.approve") && (
                         <>
                           <Button size="icon" variant="ghost"
                             className="h-7 w-7 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"

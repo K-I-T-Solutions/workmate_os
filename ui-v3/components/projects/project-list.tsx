@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input"
 import { PlusIcon, Trash2Icon, FolderOpenIcon, CalendarIcon, LayoutGridIcon, GanttChartIcon, SearchIcon } from "lucide-react"
 import { ProjectTimeline } from "./project-timeline"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_LABELS: Record<string, string> = {
   planning: "Planung",
@@ -34,6 +35,7 @@ function fmtDate(d: string | null | undefined) {
 
 export function ProjectList() {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("all")
@@ -96,10 +98,12 @@ export function ProjectList() {
               <GanttChartIcon className="h-4 w-4" />
             </button>
           </div>
-          <Button onClick={() => router.push("/projects/new")}>
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Neu
-          </Button>
+          {hasPermission("backoffice.projects.write") && (
+            <Button onClick={() => router.push("/projects/new")}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Neu
+            </Button>
+          )}
         </div>
       </div>
 
@@ -170,16 +174,18 @@ export function ProjectList() {
               className="group relative cursor-pointer rounded-xl border bg-card p-5 transition-shadow hover:shadow-md"
             >
               {/* Delete button */}
-              <button
-                onClick={e => {
-                  e.stopPropagation()
-                  setDeleteId(project.id)
-                  setDeleteTitle(project.title)
-                }}
-                className="absolute right-3 top-3 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
-              >
-                <Trash2Icon className="h-3.5 w-3.5" />
-              </button>
+              {hasPermission("backoffice.projects.delete") && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    setDeleteId(project.id)
+                    setDeleteTitle(project.title)
+                  }}
+                  className="absolute right-3 top-3 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
+                >
+                  <Trash2Icon className="h-3.5 w-3.5" />
+                </button>
+              )}
 
               {/* Status badge */}
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[project.status] ?? "bg-muted text-muted-foreground"}`}>

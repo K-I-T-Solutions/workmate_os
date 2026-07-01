@@ -6,6 +6,7 @@ import { Plus, Upload, GitMerge, Search, Trash2, ChevronLeft, ChevronRight } fro
 import { crmService } from "@/lib/crm/service"
 import type { Customer, CustomerStatus } from "@/lib/crm/types"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_LABELS: Record<CustomerStatus, string> = {
   active: "Aktiv",
@@ -25,6 +26,7 @@ const PAGE_SIZE = 20
 
 export function CustomersList() {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -80,13 +82,15 @@ export function CustomersList() {
             <Upload className="h-4 w-4" />
             Importieren
           </button>
-          <button
-            onClick={() => router.push("/crm/customers/new")}
-            className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Neuer Kunde
-          </button>
+          {hasPermission("backoffice.crm.write") && (
+            <button
+              onClick={() => router.push("/crm/customers/new")}
+              className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              Neuer Kunde
+            </button>
+          )}
         </div>
       </div>
 
@@ -165,12 +169,14 @@ export function CustomersList() {
                   {new Date(c.created_at).toLocaleDateString("de-DE")}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteId(c.id) }}
-                    className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 [tr:hover_&]:opacity-100"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {hasPermission("backoffice.crm.delete") && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteId(c.id) }}
+                      className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 [tr:hover_&]:opacity-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

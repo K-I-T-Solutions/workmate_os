@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PlusIcon, Trash2Icon, PencilIcon, CheckCircle2Icon, CircleIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: "travel", label: "Reise" },
@@ -121,6 +122,7 @@ function ExpenseForm({ initial, onSave, onClose }: {
 }
 
 export function ExpensesTab({ onKpiRefresh }: { onKpiRefresh: () => void }) {
+  const { hasPermission } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -178,10 +180,12 @@ export function ExpensesTab({ onKpiRefresh }: { onKpiRefresh: () => void }) {
               Gesamt: <span className="font-semibold text-foreground">{fmt(total)}</span>
             </span>
           )}
-          <Button size="sm" onClick={() => { setEditExpense(null); setShowForm(true) }}>
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Ausgabe anlegen
-          </Button>
+          {hasPermission("backoffice.finance.write") && (
+            <Button size="sm" onClick={() => { setEditExpense(null); setShowForm(true) }}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Ausgabe anlegen
+            </Button>
+          )}
         </div>
       </div>
 
@@ -227,18 +231,22 @@ export function ExpensesTab({ onKpiRefresh }: { onKpiRefresh: () => void }) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7"
-                        onClick={() => { setEditExpense(exp); setShowForm(true) }}
-                      >
-                        <PencilIcon className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteId(exp.id)}
-                      >
-                        <Trash2Icon className="h-3.5 w-3.5" />
-                      </Button>
+                      {hasPermission("backoffice.finance.write") && (
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => { setEditExpense(exp); setShowForm(true) }}
+                        >
+                          <PencilIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {hasPermission("backoffice.finance.delete") && (
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteId(exp.id)}
+                        >
+                          <Trash2Icon className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PlusIcon, Trash2Icon, PencilIcon, KeyIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 function RoleForm({ initial, onSave, onClose }: {
   initial?: Role
@@ -79,6 +80,7 @@ function RoleForm({ initial, onSave, onClose }: {
 }
 
 export function RolesTab() {
+  const { hasPermission } = useAuth()
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -107,10 +109,12 @@ export function RolesTab() {
   return (
     <div className="space-y-4 max-w-2xl">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => { setEditItem(null); setShowForm(true) }}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Rolle anlegen
-        </Button>
+        {hasPermission("employees.manage") && (
+          <Button size="sm" onClick={() => { setEditItem(null); setShowForm(true) }}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Rolle anlegen
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -141,14 +145,16 @@ export function RolesTab() {
                       Berechtigungen
                     </Button>
                   )}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(role); setShowForm(true) }}>
-                      <PencilIcon className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(role.id)}>
-                      <Trash2Icon className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {hasPermission("employees.manage") && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(role); setShowForm(true) }}>
+                        <PencilIcon className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(role.id)}>
+                        <Trash2Icon className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               {expandedId === role.id && role.permissions_json && (

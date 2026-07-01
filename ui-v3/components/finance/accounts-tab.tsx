@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PlusIcon, Trash2Icon, PencilIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: "checking", label: "Girokonto" },
@@ -116,6 +117,7 @@ function AccountForm({ initial, onSave, onClose }: {
 }
 
 export function AccountsTab({ accounts, onRefresh }: { accounts: BankAccount[]; onRefresh: () => void }) {
+  const { hasPermission } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [editAccount, setEditAccount] = useState<BankAccount | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -130,10 +132,12 @@ export function AccountsTab({ accounts, onRefresh }: { accounts: BankAccount[]; 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" onClick={() => { setEditAccount(null); setShowForm(true) }}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Konto hinzufügen
-        </Button>
+        {hasPermission("backoffice.finance.write") && (
+          <Button size="sm" onClick={() => { setEditAccount(null); setShowForm(true) }}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Konto hinzufügen
+          </Button>
+        )}
       </div>
 
       {accounts.length === 0 ? (
@@ -160,13 +164,17 @@ export function AccountsTab({ accounts, onRefresh }: { accounts: BankAccount[]; 
                   {fmt(parseFloat(acc.balance || "0"))}
                 </p>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditAccount(acc); setShowForm(true) }}>
-                    <PencilIcon className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"
-                    onClick={() => setDeleteId(acc.id)}>
-                    <Trash2Icon className="h-3.5 w-3.5" />
-                  </Button>
+                  {hasPermission("backoffice.finance.write") && (
+                    <Button variant="ghost" size="icon" onClick={() => { setEditAccount(acc); setShowForm(true) }}>
+                      <PencilIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {hasPermission("backoffice.finance.delete") && (
+                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteId(acc.id)}>
+                      <Trash2Icon className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

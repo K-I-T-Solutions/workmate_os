@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { UserPlusIcon } from "lucide-react"
 import { EmployeeSelect } from "./employee-select"
+import { useAuth } from "@/components/providers/auth-provider"
 
 // ---------- lokale Helpers ----------
 
@@ -285,6 +286,7 @@ function CreateCertificationDialog({
 // ---------- Haupt-Komponente ----------
 
 export function TrainingTab() {
+  const { hasPermission } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -316,8 +318,12 @@ export function TrainingTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => setCertDialogOpen(true)}>Zertifikat +</Button>
-        <Button onClick={() => setDialogOpen(true)}>Neue Schulung</Button>
+        {hasPermission("hr.manage") && (
+          <Button variant="outline" onClick={() => setCertDialogOpen(true)}>Zertifikat +</Button>
+        )}
+        {hasPermission("hr.manage") && (
+          <Button onClick={() => setDialogOpen(true)}>Neue Schulung</Button>
+        )}
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">Lädt...</p>}
@@ -352,14 +358,16 @@ export function TrainingTab() {
                       : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title="Mitarbeiter einschreiben"
-                      onClick={() => setEnrollCourseId(c.id)}
-                    >
-                      <UserPlusIcon className="h-4 w-4" />
-                    </Button>
+                    {hasPermission("hr.manage") && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Mitarbeiter einschreiben"
+                        onClick={() => setEnrollCourseId(c.id)}
+                      >
+                        <UserPlusIcon className="h-4 w-4" />
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

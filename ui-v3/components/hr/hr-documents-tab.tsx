@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { EmployeeSelect } from "./employee-select"
 import { FileIcon, DownloadIcon, Trash2Icon } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const DOC_CATEGORY_LABELS: Record<string, string> = {
   Arbeitsvertrag: "Arbeitsvertrag",
@@ -128,6 +129,7 @@ function UploadDialog({
 }
 
 export function HrDocumentsTab() {
+  const { hasPermission } = useAuth()
   const [employeeId, setEmployeeId] = useState("")
   const [employeeName, setEmployeeName] = useState("")
   const [inputValue, setInputValue] = useState("")
@@ -191,7 +193,7 @@ export function HrDocumentsTab() {
             {loading ? "Lädt…" : "Anzeigen"}
           </Button>
         </form>
-        {inputValue.trim() && (
+        {inputValue.trim() && hasPermission("hr.manage") && (
           <Button variant="outline" onClick={() => setUploadOpen(true)}>
             + Dokument
           </Button>
@@ -249,14 +251,16 @@ export function HrDocumentsTab() {
                           >
                             <DownloadIcon className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            size="icon" variant="ghost"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            title="Löschen"
-                            onClick={() => setDeleteTarget(d)}
-                          >
-                            <Trash2Icon className="h-3.5 w-3.5" />
-                          </Button>
+                          {hasPermission("hr.manage") && (
+                            <Button
+                              size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              title="Löschen"
+                              onClick={() => setDeleteTarget(d)}
+                            >
+                              <Trash2Icon className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

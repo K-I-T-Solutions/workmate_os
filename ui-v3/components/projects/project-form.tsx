@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeftIcon } from "lucide-react"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const STATUS_OPTIONS = [
   { value: "planning", label: "Planung" },
@@ -29,6 +30,7 @@ interface Props {
 
 export function ProjectForm({ initial, projectId }: Props) {
   const router = useRouter()
+  const { hasPermission } = useAuth()
   const isEdit = !!projectId
   const [customers, setCustomers] = useState<Customer[]>([])
 
@@ -147,9 +149,11 @@ export function ProjectForm({ initial, projectId }: Props) {
 
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => router.back()}>Abbrechen</Button>
-          <Button onClick={handleSave} disabled={saving || !title.trim()}>
-            {saving ? "Speichern…" : isEdit ? "Änderungen speichern" : "Projekt erstellen"}
-          </Button>
+          {hasPermission("backoffice.projects.write") && (
+            <Button onClick={handleSave} disabled={saving || !title.trim()}>
+              {saving ? "Speichern…" : isEdit ? "Änderungen speichern" : "Projekt erstellen"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
