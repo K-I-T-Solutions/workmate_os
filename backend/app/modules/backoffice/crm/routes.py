@@ -26,16 +26,18 @@ router = APIRouter(
 # === Customer Endpoints ===
 
 @router.get("/customers", response_model=list[schemas.CustomerResponse])
+@require_permissions(["backoffice.crm.read"])
 def list_customers(
     skip: int = Query(0, ge=0, description="Anzahl zu überspringende Einträge"),
     limit: int = Query(50, ge=1, le=1000, description="Maximum Anzahl Einträge"),
     status: Optional[str] = Query(None, description="Filter nach Status"),
     search: Optional[str] = Query(None, description="Suche in Name und Email"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Liste alle Kunden.
-    
+
     Optional mit Filtern:
     - status: active, inactive, lead, blocked
     - search: Suche in Name und Email
@@ -50,9 +52,11 @@ def list_customers(
 
 
 @router.get("/customers/{customer_id}", response_model=schemas.CustomerResponseWithContacts)
+@require_permissions(["backoffice.crm.read"])
 def get_customer(
     customer_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Hole einen einzelnen Kunden mit allen Kontakten.
@@ -67,9 +71,11 @@ def get_customer(
 
 
 @router.post("/customers", response_model=schemas.CustomerResponse, status_code=status.HTTP_201_CREATED)
+@require_permissions(["backoffice.crm.write"])
 def create_customer(
     data: schemas.CustomerCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Erstelle einen neuen Kunden.
@@ -78,10 +84,12 @@ def create_customer(
 
 
 @router.put("/customers/{customer_id}", response_model=schemas.CustomerResponse)
+@require_permissions(["backoffice.crm.write"])
 def update_customer(
     customer_id: UUID,
     data: schemas.CustomerUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Aktualisiere Kundendetails.
@@ -96,13 +104,15 @@ def update_customer(
 
 
 @router.delete("/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permissions(["backoffice.crm.delete"])
 def delete_customer(
     customer_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Lösche einen Kunden.
-    
+
     ACHTUNG: Löscht auch alle zugehörigen Kontakte, Projekte und Rechnungen!
     """
     success = crud.delete_customer(db, customer_id)
@@ -117,15 +127,17 @@ def delete_customer(
 # === Contact Endpoints ===
 
 @router.get("/contacts", response_model=list[schemas.ContactResponse])
+@require_permissions(["backoffice.crm.read"])
 def list_contacts(
     customer_id: Optional[UUID] = Query(None, description="Filter nach Customer ID"),
     skip: int = Query(0, ge=0, description="Anzahl zu überspringende Einträge"),
     limit: int = Query(100, ge=1, le=200, description="Maximum Anzahl Einträge"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Liste alle Kontakte.
-    
+
     Optional gefiltert nach customer_id.
     """
     return crud.get_contacts(
@@ -137,9 +149,11 @@ def list_contacts(
 
 
 @router.get("/contacts/{contact_id}", response_model=schemas.ContactResponse)
+@require_permissions(["backoffice.crm.read"])
 def get_contact(
     contact_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Hole einen einzelnen Kontakt.
@@ -154,9 +168,11 @@ def get_contact(
 
 
 @router.post("/contacts", response_model=schemas.ContactResponse, status_code=status.HTTP_201_CREATED)
+@require_permissions(["backoffice.crm.write"])
 def create_contact(
     data: schemas.ContactCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Erstelle einen neuen Kontakt.
@@ -171,10 +187,12 @@ def create_contact(
 
 
 @router.put("/contacts/{contact_id}", response_model=schemas.ContactResponse)
+@require_permissions(["backoffice.crm.write"])
 def update_contact(
     contact_id: UUID,
     data: schemas.ContactUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Aktualisiere Kontaktdetails.
@@ -195,9 +213,11 @@ def update_contact(
 
 
 @router.delete("/contacts/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permissions(["backoffice.crm.delete"])
 def delete_contact(
     contact_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Lösche einen Kontakt.
@@ -214,9 +234,11 @@ def delete_contact(
 # === Special Contact Endpoints ===
 
 @router.get("/customers/{customer_id}/contacts/primary", response_model=schemas.ContactResponse)
+@require_permissions(["backoffice.crm.read"])
 def get_primary_contact(
     customer_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     """
     Hole den primären Kontakt eines Kunden.
@@ -228,7 +250,7 @@ def get_primary_contact(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Customer with id {customer_id} not found"
         )
-    
+
     contact = crud.get_primary_contact(db, customer_id)
     if contact is None:
         raise HTTPException(
@@ -239,10 +261,12 @@ def get_primary_contact(
 
 
 @router.put("/customers/{customer_id}/contacts/{contact_id}/set-primary", response_model=schemas.ContactResponse)
+@require_permissions(["backoffice.crm.write"])
 def set_primary_contact(
     customer_id: UUID,
     contact_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     contact = crud.set_primary_contact(db, contact_id, customer_id)
     if contact is None:
@@ -256,13 +280,13 @@ def set_primary_contact(
 # === Activities ===
 
 @router.post("/activities", response_model=schemas.ActivityResponse)
-@require_permissions(["backoffice.crm.write", "backoffice.*"])
+@require_permissions(["backoffice.crm.write"])
 def create_activity(data: schemas.ActivityCreate, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     return crud.create_activity(db, data)
 
 
 @router.get("/activities/latest")
-@require_permissions(["backoffice.crm.view", "backoffice.*"])
+@require_permissions(["backoffice.crm.view"])
 def latest(limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     manual = crud.latest_activities(db, limit)
     result = [
@@ -306,7 +330,7 @@ def latest(limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db), u
 
 
 @router.get("/customers/{customer_id}/activities")
-@require_permissions(["backoffice.crm.view", "backoffice.*"])
+@require_permissions(["backoffice.crm.view"])
 def by_customer(
     customer_id: UUID,
     contact_id: Optional[UUID] = Query(None),
@@ -364,13 +388,13 @@ def by_customer(
 
 
 @router.get("/stats", response_model=schemas.CrmStatsResponse)
-@require_permissions(["backoffice.crm.view", "backoffice.*"])
+@require_permissions(["backoffice.crm.view"])
 def stats(db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     return crud.get_stats(db)
 
 
 @router.get("/customers/{customer_id}/timeline")
-@require_permissions(["backoffice.crm.view", "backoffice.*"])
+@require_permissions(["backoffice.crm.view"])
 def customer_timeline(
     customer_id: UUID,
     limit: int = Query(50, ge=1, le=200),
@@ -430,7 +454,7 @@ def customer_timeline(
 
 
 @router.get("/pipeline")
-@require_permissions(["backoffice.crm.view", "backoffice.*"])
+@require_permissions(["backoffice.crm.view"])
 def get_pipeline(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
@@ -442,7 +466,7 @@ def get_pipeline(
 
 
 @router.patch("/customers/{customer_id}/pipeline-stage", response_model=schemas.CustomerResponse)
-@require_permissions(["backoffice.crm.update", "backoffice.*"])
+@require_permissions(["backoffice.crm.write"])
 def update_customer_pipeline_stage(
     customer_id: UUID,
     payload: schemas.PipelineStageUpdate,

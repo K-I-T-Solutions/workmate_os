@@ -43,9 +43,11 @@ router = APIRouter(
     response_model=ExpenseRead,
     status_code=status.HTTP_201_CREATED,
 )
+@require_permissions(["backoffice.finance.write"])
 def create_expense_endpoint(
     payload: ExpenseCreate,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseRead:
     expense = create_expense(db, payload)
     return expense
@@ -55,6 +57,7 @@ def create_expense_endpoint(
     "/expenses",
     response_model=ExpenseListResponse,
 )
+@require_permissions(["backoffice.finance.read"])
 def list_expenses_endpoint(
     db: Session = Depends(get_db),
     category: Optional[ExpenseCategory] = Query(default=None),
@@ -64,6 +67,7 @@ def list_expenses_endpoint(
     to_date: Optional[date] = Query(default=None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseListResponse:
     items, total = list_expenses(
         db,
@@ -84,9 +88,11 @@ def list_expenses_endpoint(
     "/expenses/{expense_id}",
     response_model=ExpenseRead,
 )
+@require_permissions(["backoffice.finance.read"])
 def get_expense_endpoint(
     expense_id: uuid.UUID,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseRead:
     expense = get_expense(db, expense_id)
     if not expense:
@@ -101,10 +107,12 @@ def get_expense_endpoint(
     "/expenses/{expense_id}",
     response_model=ExpenseRead,
 )
+@require_permissions(["backoffice.finance.write"])
 def update_expense_endpoint(
     expense_id: uuid.UUID,
     payload: ExpenseUpdate,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseRead:
     expense = get_expense(db, expense_id)
     if not expense:
@@ -120,9 +128,11 @@ def update_expense_endpoint(
     "/expenses/{expense_id}",
     status_code=204,
 )
+@require_permissions(["backoffice.finance.delete"])
 def delete_expense_endpoint(
     expense_id: uuid.UUID,
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     expense = get_expense(db,expense_id)
     if not expense:
@@ -138,12 +148,14 @@ def delete_expense_endpoint(
     "/kpis/expenses",
     response_model=ExpenseKpiResponse,
 )
+@require_permissions(["backoffice.finance.read"])
 def get_expense_kpis_endpoint(
     db: Session = Depends(get_db),
     category: Optional[ExpenseCategory] = Query(default=None),
     project_id: Optional[uuid.UUID] = Query(default=None),
     from_date: Optional[date] = Query(default=None),
     to_date: Optional[date] = Query(default=None),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseKpiResponse:
     """
     Einfache Finance-KPIs für v0.1:
@@ -164,7 +176,7 @@ def get_expense_kpis_endpoint(
 # ---------------------------
 
 @router.get("/bank-accounts", response_model=list[BankAccountResponse])
-@require_permissions(["backoffice.finance.view", "backoffice.*"])
+@require_permissions(["backoffice.finance.view"])
 def list_bank_accounts(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
@@ -173,7 +185,7 @@ def list_bank_accounts(
 
 
 @router.get("/bank-accounts/{account_id}", response_model=BankAccountResponse)
-@require_permissions(["backoffice.finance.view", "backoffice.*"])
+@require_permissions(["backoffice.finance.view"])
 def get_bank_account(
     account_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -190,7 +202,7 @@ def get_bank_account(
 # ---------------------------
 
 @router.get("/bank-transactions", response_model=list[BankTransactionResponse])
-@require_permissions(["backoffice.finance.view", "backoffice.*"])
+@require_permissions(["backoffice.finance.view"])
 def list_bank_transactions(
     account_id: Optional[uuid.UUID] = Query(None),
     reconciliation_status: Optional[str] = Query(None),

@@ -13,6 +13,8 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.auth.auth import get_current_user
+from app.core.auth.roles import require_permissions
 from app.core.storage.factory import get_storage
 from app.modules.documents import crud, schemas
 
@@ -50,6 +52,7 @@ def _resolve_download(file_path_str: str) -> bytes:
 # ============================================================================
 
 @router.get("", response_model=schemas.DocumentListResponse)
+@require_permissions(["documents.read"])
 def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -58,7 +61,8 @@ def list_documents(
     linked_module: Optional[str] = Query(None),
     owner_id: Optional[UUID] = Query(None),
     is_confidential: Optional[bool] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     documents, total = crud.get_documents(
         db,
@@ -82,9 +86,11 @@ def list_documents(
 
 
 @router.get("/{document_id}", response_model=schemas.DocumentResponse)
+@require_permissions(["documents.read"])
 def get_document(
     document_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.get_document(db, document_id)
     if document is None:
@@ -94,6 +100,7 @@ def get_document(
 
 
 @router.post("", response_model=schemas.DocumentResponse, status_code=201)
+@require_permissions(["documents.write"])
 async def upload_document(
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
@@ -101,7 +108,8 @@ async def upload_document(
     linked_module: Optional[str] = Form(None),
     is_confidential: bool = Form(False),
     owner_id: UUID = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
@@ -147,9 +155,11 @@ async def upload_document(
 
 
 @router.get("/{document_id}/download")
+@require_permissions(["documents.read"])
 async def download_document(
     document_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.get_document(db, document_id)
     if document is None:
@@ -189,10 +199,12 @@ async def download_document(
 
 
 @router.put("/{document_id}", response_model=schemas.DocumentResponse)
+@require_permissions(["documents.write"])
 def update_document(
     document_id: UUID,
     document_update: schemas.DocumentUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.update_document(db, document_id, document_update)
     if document is None:
@@ -202,9 +214,11 @@ def update_document(
 
 
 @router.delete("/{document_id}", status_code=204)
+@require_permissions(["documents.delete"])
 def delete_document(
     document_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     document = crud.delete_document(db, document_id)
     if document is None:

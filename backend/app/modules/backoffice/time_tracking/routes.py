@@ -50,7 +50,7 @@ def get_weekly_summary(
 # ─── Billable / Invoice Endpoints ────────────────────────────
 
 @router.get("/billable-uninvoiced", response_model=schemas.BillableUninvoicedResponse)
-@require_permissions(["backoffice.time_tracking"])
+@require_permissions(["backoffice.time_tracking.view", "backoffice.*"])
 def get_billable_uninvoiced(
     customer_id: Optional[UUID] = Query(None, description="Filter nach Kunde (über Projekt)"),
     project_id: Optional[UUID] = Query(None, description="Filter nach Projekt"),
@@ -67,7 +67,7 @@ def get_billable_uninvoiced(
 
 
 @router.post("/create-invoice", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
-@require_permissions(["backoffice.time_tracking"])
+@require_permissions(["backoffice.time_tracking.write", "backoffice.*"])
 def create_invoice_from_entries(
     data: schemas.CreateInvoiceFromEntries,
     db: Session = Depends(get_db),
