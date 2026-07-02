@@ -54,59 +54,67 @@ def seed_database():
             roles_data = [
                 {
                     "name": "Admin",
-                    "description": "Full system access",
+                    "description": "Vollzugriff – Systemadministration",
                     "permissions_json": ["*"],
                 },
                 {
-                    "name": "CEO",
-                    "description": "Chief Executive Officer - Full business access",
+                    "name": "Geschäftsführung",
+                    "description": "COO/CEO – Operative Gesamtverantwortung",
                     "permissions_json": [
-                        "employees.read",
-                        "employees.write",
-                        "hr.*",
-                        "backoffice.*",
-                        "documents.read",
-                        "documents.write",
-                        "reminders.read",
-                        "reminders.write",
-                        "reminders.delete",
-                        "support.view",
-                        "kb.view",
-                        "dashboards.read",
-                        "admin.read",
+                        "employees.*", "hr.*", "backoffice.*",
+                        "documents.*", "reminders.*", "support.*",
+                        "kb.*", "dashboards.*", "admin.read",
                     ],
                 },
                 {
-                    "name": "Manager",
-                    "description": "Department Manager",
+                    "name": "CTO",
+                    "description": "Technische Leitung – Infrastruktur, WorkmateOS, DevOps",
                     "permissions_json": [
-                        "employees.read",
+                        "employees.read", "hr.view",
+                        "backoffice.projects.*", "backoffice.time_tracking.*",
+                        "backoffice.crm.read", "backoffice.products.read",
+                        "backoffice.invoices.read", "backoffice.finance.read",
+                        "documents.*", "support.*", "kb.*", "reminders.*", "dashboards.read",
+                    ],
+                },
+                {
+                    "name": "CFO",
+                    "description": "Finanzleitung – Rechnungen, Finanzen, Controlling",
+                    "permissions_json": [
+                        "employees.read", "hr.view",
+                        "backoffice.finance.*", "backoffice.invoices.*",
+                        "backoffice.crm.read", "backoffice.projects.read",
+                        "backoffice.time_tracking.view", "backoffice.products.read",
+                        "documents.read", "reminders.*", "dashboards.read",
+                    ],
+                },
+                {
+                    "name": "Head of Events",
+                    "description": "Eventvertrieb, Kundenbeziehungen, Projektleitung Events",
+                    "permissions_json": [
                         "hr.view",
-                        "hr.approve",
-                        "backoffice.time_tracking.view",
-                        "backoffice.projects.read",
-                        "backoffice.crm.read",
-                        "support.view",
-                        "documents.read",
-                        "reminders.read",
-                        "reminders.write",
-                        "reminders.delete",
-                        "kb.view",
-                        "dashboards.read",
+                        "backoffice.crm.*", "backoffice.projects.*",
+                        "backoffice.time_tracking.write",
+                        "backoffice.invoices.read", "backoffice.products.read",
+                        "documents.read", "reminders.*", "support.view", "dashboards.read",
                     ],
                 },
                 {
-                    "name": "Employee",
-                    "description": "Standard employee access",
+                    "name": "Mitarbeiter",
+                    "description": "Standard-Mitarbeiterzugang – Zeiterfassung, HR-Ansicht, Dokumente",
                     "permissions_json": [
-                        "hr.view_own",
-                        "hr.request",
+                        "hr.view",
                         "backoffice.time_tracking.write",
-                        "documents.read",
-                        "reminders.read",
-                        "reminders.write",
-                        "reminders.delete",
-                        "dashboards.read",
+                        "documents.read", "reminders.*", "dashboards.read",
+                    ],
+                },
+                {
+                    "name": "Marketing",
+                    "description": "Marketing & Kommunikation – CRM lesend, Content",
+                    "permissions_json": [
+                        "hr.view",
+                        "backoffice.crm.read",
+                        "documents.read", "reminders.read", "dashboards.read",
                     ],
                 },
             ]
@@ -199,7 +207,7 @@ def seed_database():
                     address_city="Koblenz",
                     address_country="Germany",
                     department_id=departments["MGMT"].id,
-                    role_id=roles["CEO"].id,
+                    role_id=roles["Admin"].id,
                     employment_type="fulltime",
                     hire_date=date(2020, 1, 1),
                     status="active",
@@ -348,7 +356,7 @@ def seed_database():
             print("\n" + "=" * 60)
             print("🎉 WORKMATE OS - READY TO USE!")
             print("=" * 60)
-            print(f"\n👤 Admin Account:\n   Email: {admin_email}\n   Code:  KIT-0001\n   Role:  CEO")
+            print(f"\n👤 Admin Account:\n   Email: {admin_email}\n   Code:  KIT-0001\n   Role:  Admin")
             print("\n🧩 Demo CRM:\n   Customer: K.I.T. Solutions Demo Kunde\n   Contact: Max Muster")
             print("\n📝 Next steps:\n   1. Configure Keycloak integration\n   2. Create API endpoints\n   3. Build frontend components")
             print("=" * 60 + "\n")
