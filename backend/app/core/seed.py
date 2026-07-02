@@ -144,24 +144,34 @@ def seed_database():
 
             departments_data = [
                 {
-                    "name": "Management",
-                    "code": "MGMT",
-                    "description": "Executive Management & Strategy",
+                    "name": "Geschäftsführung",
+                    "code": "GF",
+                    "description": "CEO & COO – Strategie, Operations, Gesamtverantwortung",
                 },
                 {
-                    "name": "IT & Development",
-                    "code": "IT",
-                    "description": "Software Development & IT Services",
+                    "name": "Technology & Software",
+                    "code": "TECH",
+                    "description": "Infrastruktur, DevOps, WorkmateOS, Custom Software",
                 },
                 {
-                    "name": "Finance",
+                    "name": "Finance & Administration",
                     "code": "FIN",
-                    "description": "Accounting & Financial Management",
+                    "description": "Buchhaltung, Rechnungswesen, Controlling, Verträge",
                 },
                 {
-                    "name": "Operations",
-                    "code": "OPS",
-                    "description": "Business Operations & Support",
+                    "name": "Events & Live Technology",
+                    "code": "EVT",
+                    "description": "Eventvertrieb, Kundenbeziehungen, Streaming, Hybrid-Setups",
+                },
+                {
+                    "name": "Facility & Produktion",
+                    "code": "FAC",
+                    "description": "Aufbau, Materialverwaltung, Transport, Standort-Instandhaltung",
+                },
+                {
+                    "name": "Marketing & Kommunikation",
+                    "code": "MKT",
+                    "description": "Social Media, Content, Website-Pflege, lokale Sichtbarkeit",
                 },
             ]
 
@@ -206,7 +216,7 @@ def seed_database():
                     address_zip="56073",
                     address_city="Koblenz",
                     address_country="Germany",
-                    department_id=departments["MGMT"].id,
+                    department_id=departments["GF"].id,
                     role_id=roles["Admin"].id,
                     employment_type="fulltime",
                     hire_date=date(2020, 1, 1),
