@@ -11,6 +11,7 @@ from typing import Optional
 from app.core.settings.database import get_db
 from app.core.auth.service import AuthService
 from app.core.auth.keycloak import KeycloakAuth
+from app.core.auth.auth import get_current_user
 from app.modules.employees.models import Employee
 from app.core.errors import ErrorCode, get_error_detail
 from sqlalchemy import select
@@ -87,59 +88,6 @@ class ChangePasswordRequest(BaseModel):
     """Change password request schema"""
     current_password: str
     new_password: str
-
-
-# ============================================================================
-# DEPENDENCY: Get Current User from Token
-# ============================================================================
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
-) -> Employee:
-    """
-    Dependency to get current authenticated user from JWT token
-    """
-    if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error_detail(ErrorCode.AUTH_NOT_AUTHENTICATED),
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    token = credentials.credentials
-    payload = AuthService.decode_token(token)
-
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN),
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error_detail(ErrorCode.AUTH_INVALID_PAYLOAD),
-        )
-
-    # Get user from database
-    employee = db.scalar(select(Employee).where(Employee.id == user_id))
-
-    if not employee:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error_detail(ErrorCode.AUTH_USER_NOT_FOUND),
-        )
-
-    if employee.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error_detail(ErrorCode.AUTH_USER_INACTIVE),
-        )
-
-    return employee
 
 
 # ============================================================================
