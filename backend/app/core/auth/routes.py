@@ -8,12 +8,15 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
+import jwt as pyjwt
 from sqlalchemy.orm import joinedload
 from app.core.settings.database import get_db
 from app.core.auth.service import AuthService
+from app.core.auth.auth import get_jwks
 from app.core.auth.keycloak import KeycloakAuth
 from app.modules.employees.models import Employee
 from app.core.errors import ErrorCode, get_error_detail
+from app.core.settings.config import settings
 from sqlalchemy import select
 import logging
 
@@ -102,7 +105,30 @@ async def get_employee_from_token(
     if not credentials:
         raise HTTPException(status_code=401, detail=get_error_detail(ErrorCode.AUTH_NOT_AUTHENTICATED))
 
-    payload = AuthService.decode_token(credentials.credentials)
+    token = credentials.credentials
+    payload = None
+
+    try:
+        header = pyjwt.get_unverified_header(token)
+        alg = header.get("alg")
+
+        if alg == "RS256":
+            from jwt.algorithms import RSAAlgorithm
+            keys = get_jwks()
+            key_data = keys.get(header.get("kid"))
+            if not key_data:
+                keys = get_jwks(force_refresh=True)
+                key_data = keys.get(header.get("kid"))
+            if not key_data:
+                raise HTTPException(status_code=401, detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN))
+            public_key = RSAAlgorithm.from_jwk(key_data)
+            payload = pyjwt.decode(token, key=public_key, algorithms=["RS256"],
+                                   options={"verify_aud": False}, issuer=settings.KEYCLOAK_ISSUER)
+        elif alg == "HS256":
+            payload = AuthService.decode_token(token)
+    except Exception:
+        pass
+
     if not payload:
         raise HTTPException(status_code=401, detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN))
 
