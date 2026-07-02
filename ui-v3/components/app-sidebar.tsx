@@ -53,7 +53,7 @@ const navGroups: NavGroup[] = [
     label: "Team",
     items: [
       { label: "Zeiterfassung", icon: Clock, href: "/time", matchKey: "/time", permission: ["backoffice.time_tracking.view", "backoffice.time_tracking.write"] },
-      { label: "Personal", icon: UserCog, href: "/hr", matchKey: "/hr", permission: ["hr.view", "hr.view_own", "hr.request"] },
+      { label: "Personal", icon: UserCog, href: "/hr", matchKey: "/hr", permission: "hr.view" },
     ],
   },
   {
