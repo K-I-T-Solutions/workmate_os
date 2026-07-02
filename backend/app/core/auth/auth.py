@@ -237,9 +237,9 @@ async def get_current_user(
         db_role_name = user.role.name
         permissions = user.role.permissions_json if hasattr(user.role, 'permissions_json') else []
     else:
-        # Fallback: Keine Rolle in DB → Employee mit Basis-Permissions
-        db_role_name = "Employee"
-        permissions = ["hr.view_own", "hr.request", "documents.view_own"]
+        # Fallback: Keine Rolle in DB → Mitarbeiter mit Basis-Permissions
+        db_role_name = "Mitarbeiter"
+        permissions = ["hr.view", "backoffice.time_tracking.write", "documents.read", "dashboards.read"]
 
     # Department name für Anzeige
     dept_name = ""
