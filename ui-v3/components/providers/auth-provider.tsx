@@ -5,6 +5,21 @@ import { useRouter } from "next/navigation"
 import { getAccessToken, getIdToken, getRefreshToken, clearTokens, saveTokens, decodeToken, isTokenExpired, type JwtPayload } from "@/lib/auth/session"
 import { buildLogoutUrl, refreshTokens } from "@/lib/auth/pkce"
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.workmate.kit-it-koblenz.de"
+
+async function fetchPermissions(token: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data.permissions) ? data.permissions : []
+  } catch {
+    return []
+  }
+}
+
 interface AuthUser {
   sub: string
   name: string
@@ -54,7 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const payload = decodeToken(token)
-      if (payload) setUser(buildUser(payload))
+      if (payload) {
+        const permissions = await fetchPermissions(token)
+        setUser(buildUser(payload, permissions))
+      }
       setLoading(false)
     }
     init()
@@ -85,7 +103,7 @@ export function useAuth() {
   return useContext(Context)
 }
 
-function buildUser(p: JwtPayload): AuthUser {
+function buildUser(p: JwtPayload, permissions: string[] = []): AuthUser {
   const name = p.name ?? p.preferred_username ?? "Nutzer"
   const parts = name.split(" ")
   const initials = parts.length >= 2
@@ -97,6 +115,6 @@ function buildUser(p: JwtPayload): AuthUser {
     email: p.email ?? "",
     username: p.preferred_username ?? "",
     initials,
-    permissions: p.permissions ?? [],
+    permissions,
   }
 }
