@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
+from sqlalchemy.orm import joinedload
 from app.core.settings.database import get_db
 from app.core.auth.service import AuthService
 from app.core.auth.keycloak import KeycloakAuth
-from app.core.auth.auth import get_current_user
 from app.modules.employees.models import Employee
 from app.core.errors import ErrorCode, get_error_detail
 from sqlalchemy import select
@@ -88,6 +88,47 @@ class ChangePasswordRequest(BaseModel):
     """Change password request schema"""
     current_password: str
     new_password: str
+
+
+# ============================================================================
+# DEPENDENCY: Get Employee object from Keycloak JWT
+# ============================================================================
+
+async def get_employee_from_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> Employee:
+    """Gibt das Employee-Objekt anhand der Keycloak-Sub oder E-Mail zurück."""
+    if not credentials:
+        raise HTTPException(status_code=401, detail=get_error_detail(ErrorCode.AUTH_NOT_AUTHENTICATED))
+
+    payload = AuthService.decode_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail=get_error_detail(ErrorCode.AUTH_INVALID_TOKEN))
+
+    keycloak_sub = payload.get("sub")
+    email = payload.get("email")
+
+    employee = None
+    if keycloak_sub:
+        employee = db.scalar(
+            select(Employee)
+            .options(joinedload(Employee.role), joinedload(Employee.department))
+            .where(Employee.uuid_keycloak == keycloak_sub)
+        )
+    if not employee and email:
+        employee = db.scalar(
+            select(Employee)
+            .options(joinedload(Employee.role), joinedload(Employee.department))
+            .where(Employee.email == email)
+        )
+
+    if not employee:
+        raise HTTPException(status_code=401, detail=get_error_detail(ErrorCode.AUTH_USER_NOT_FOUND))
+    if employee.status != "active":
+        raise HTTPException(status_code=401, detail=get_error_detail(ErrorCode.AUTH_USER_INACTIVE))
+
+    return employee
 
 
 # ============================================================================
@@ -224,7 +265,7 @@ async def oidc_login(
 
 @auth_router.get("/me", response_model=UserResponse)
 async def get_me(
-    current_user: Employee = Depends(get_current_user),
+    current_user: Employee = Depends(get_employee_from_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -270,7 +311,7 @@ async def get_me(
 
 @auth_router.post("/logout")
 async def logout(
-    current_user: Employee = Depends(get_current_user)
+    current_user: Employee = Depends(get_employee_from_token)
 ):
     """
     Logout current user
@@ -286,7 +327,7 @@ async def logout(
 @auth_router.post("/set-password")
 async def set_password(
     request: SetPasswordRequest,
-    current_user: Employee = Depends(get_current_user),
+    current_user: Employee = Depends(get_employee_from_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -310,7 +351,7 @@ async def set_password(
 @auth_router.post("/change-password")
 async def change_password(
     request: ChangePasswordRequest,
-    current_user: Employee = Depends(get_current_user),
+    current_user: Employee = Depends(get_employee_from_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -352,7 +393,7 @@ async def change_password(
 
 @auth_router.get("/check")
 async def check_auth(
-    current_user: Employee = Depends(get_current_user)
+    current_user: Employee = Depends(get_employee_from_token)
 ):
     """
     Quick check if token is valid
