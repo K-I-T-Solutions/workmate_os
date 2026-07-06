@@ -1,0 +1,30 @@
+{
+  "id": "frontend/index",
+  "title": "Index",
+  "description": "Dieses Dokument dient als Index für die gesamte Frontend-Dokumentation von WorkmateOS.",
+  "source": "@site/../docs/wiki/frontend/index.md",
+  "sourceDirName": "frontend",
+  "slug": "/frontend/",
+  "permalink": "/workmate_os/frontend/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/frontend/index.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "layout": "default",
+    "title": "Index",
+    "parent": "Frontend",
+    "grand_parent": "Wiki",
+    "nav_order": 2
+  },
+  "sidebar": "frontendSidebar",
+  "previous": {
+    "title": "Architektur",
+    "permalink": "/workmate_os/frontend/architecture"
+  },
+  "next": {
+    "title": "Quick Reference",
+    "permalink": "/workmate_os/frontend/quick_reference"
+  }
+}

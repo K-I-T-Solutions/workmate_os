@@ -1,0 +1,30 @@
+{
+  "id": "finance/de/architektur",
+  "title": "Architektur",
+  "description": "Modulstruktur",
+  "source": "@site/../docs/wiki/finance/de/architektur.md",
+  "sourceDirName": "finance/de",
+  "slug": "/finance/de/architektur",
+  "permalink": "/workmate_os/finance/de/architektur",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/finance/de/architektur.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "layout": "default",
+    "title": "Architektur",
+    "parent": "Finance DE",
+    "grand_parent": "Finance",
+    "nav_order": 2
+  },
+  "sidebar": "backofficeAndCoreSidebar",
+  "previous": {
+    "title": "Analyse",
+    "permalink": "/workmate_os/finance/de/analyse"
+  },
+  "next": {
+    "title": "Schnellreferenz",
+    "permalink": "/workmate_os/finance/de/schnellreferenz"
+  }
+}

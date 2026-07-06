@@ -1,0 +1,30 @@
+{
+  "id": "backend/AUTHENTICATION",
+  "title": "Authentication & RBAC",
+  "description": "Letzte Aktualisierung: Juli 2026",
+  "source": "@site/../docs/wiki/backend/AUTHENTICATION.md",
+  "sourceDirName": "backend",
+  "slug": "/backend/AUTHENTICATION",
+  "permalink": "/workmate_os/backend/AUTHENTICATION",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/backend/AUTHENTICATION.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "layout": "default",
+    "title": "Authentication & RBAC",
+    "parent": "Backend",
+    "grand_parent": "Wiki",
+    "nav_order": 1
+  },
+  "sidebar": "backendSidebar",
+  "previous": {
+    "title": "Admin Panel",
+    "permalink": "/workmate_os/backend/ADMIN_PANEL"
+  },
+  "next": {
+    "title": "Module Übersicht",
+    "permalink": "/workmate_os/backend/MODULE_UEBERSICHT"
+  }
+}

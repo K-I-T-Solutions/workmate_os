@@ -1,0 +1,26 @@
+{
+  "id": "finance/en/quick_reference",
+  "title": "Quick Reference",
+  "description": "Current Implementation Status",
+  "source": "@site/../docs/wiki/finance/en/quick_reference.md",
+  "sourceDirName": "finance/en",
+  "slug": "/finance/en/quick_reference",
+  "permalink": "/workmate_os/finance/en/quick_reference",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/finance/en/quick_reference.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "layout": "default",
+    "title": "Quick Reference",
+    "parent": "Finance EN",
+    "grand_parent": "Finance",
+    "nav_order": 3
+  },
+  "sidebar": "backofficeAndCoreSidebar",
+  "previous": {
+    "title": "Architecture",
+    "permalink": "/workmate_os/finance/en/architecture"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "core/workmate_os_core",
+  "title": "Untitled Diagram documentation",
+  "description": "Summary",
+  "source": "@site/../docs/wiki/core/workmate_os_core.md",
+  "sourceDirName": "core",
+  "slug": "/core/workmate_os_core",
+  "permalink": "/workmate_os/core/workmate_os_core",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/core/workmate_os_core.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "backofficeAndCoreSidebar",
+  "previous": {
+    "title": "🔄 Core Data Flows",
+    "permalink": "/workmate_os/core/flows"
+  },
+  "next": {
+    "title": "Finance",
+    "permalink": "/workmate_os/finance/"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "backend/README",
+  "title": "Backend",
+  "description": "WorkmateOS Backend-Dokumentation",
+  "source": "@site/../docs/wiki/backend/README.md",
+  "sourceDirName": "backend",
+  "slug": "/backend/",
+  "permalink": "/workmate_os/backend/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/backend/README.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "layout": "default",
+    "title": "Backend",
+    "parent": "Wiki",
+    "nav_order": 1,
+    "has_children": true
+  },
+  "sidebar": "backendSidebar",
+  "previous": {
+    "title": "Module Übersicht",
+    "permalink": "/workmate_os/backend/MODULE_UEBERSICHT"
+  }
+}

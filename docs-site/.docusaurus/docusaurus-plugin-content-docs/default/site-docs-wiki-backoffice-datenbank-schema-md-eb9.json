@@ -1,0 +1,30 @@
+{
+  "id": "backoffice/datenbank_schema",
+  "title": "Datenbank-Schema",
+  "description": "PostgreSQL-Datenbankstruktur für WorkmateOS Phase 2",
+  "source": "@site/../docs/wiki/backoffice/datenbank_schema.md",
+  "sourceDirName": "backoffice",
+  "slug": "/backoffice/datenbank_schema",
+  "permalink": "/workmate_os/backoffice/datenbank_schema",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/backoffice/datenbank_schema.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "layout": "default",
+    "title": "Datenbank-Schema",
+    "parent": "Backoffice",
+    "grand_parent": "Wiki",
+    "nav_order": 2
+  },
+  "sidebar": "backofficeAndCoreSidebar",
+  "previous": {
+    "title": "Backoffice",
+    "permalink": "/workmate_os/backoffice/"
+  },
+  "next": {
+    "title": "Modul-Übersicht",
+    "permalink": "/workmate_os/backoffice/modul_uebersicht"
+  }
+}

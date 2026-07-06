@@ -1,0 +1,26 @@
+{
+  "id": "frontend/README",
+  "title": "Frontend",
+  "description": "Stack: Next.js 14 · TypeScript · Tailwind CSS 4 · Base UI",
+  "source": "@site/../docs/wiki/frontend/README.md",
+  "sourceDirName": "frontend",
+  "slug": "/frontend/",
+  "permalink": "/workmate_os/frontend/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/frontend/README.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {
+    "layout": "default",
+    "title": "Frontend",
+    "parent": "Wiki",
+    "nav_order": 4,
+    "has_children": true
+  },
+  "sidebar": "frontendSidebar",
+  "next": {
+    "title": "Architektur",
+    "permalink": "/workmate_os/frontend/architecture"
+  }
+}

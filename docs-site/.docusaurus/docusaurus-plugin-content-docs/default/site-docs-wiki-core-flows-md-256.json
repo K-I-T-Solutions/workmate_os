@@ -1,0 +1,24 @@
+{
+  "id": "core/flows",
+  "title": "🔄 Core Data Flows",
+  "description": "Dieses Diagramm zeigt, wie die Core-Komponenten miteinander interagieren.",
+  "source": "@site/../docs/wiki/core/flows.md",
+  "sourceDirName": "core",
+  "slug": "/core/flows",
+  "permalink": "/workmate_os/core/flows",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/core/flows.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "backofficeAndCoreSidebar",
+  "previous": {
+    "title": "📦 Core Entities",
+    "permalink": "/workmate_os/core/entities"
+  },
+  "next": {
+    "title": "Untitled Diagram documentation",
+    "permalink": "/workmate_os/core/workmate_os_core"
+  }
+}

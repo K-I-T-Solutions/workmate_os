@@ -1,0 +1,24 @@
+{
+  "id": "core/core_erm",
+  "title": "🧩 Core Entity-Relationship Model",
+  "description": "Das folgende DBML beschreibt das komplette Core-Schema.",
+  "source": "@site/../docs/wiki/core/core_erm.md",
+  "sourceDirName": "core",
+  "slug": "/core/core_erm",
+  "permalink": "/workmate_os/core/core_erm",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/K-I-T-Solutions/workmate_os/edit/main/docs/wiki/../docs/wiki/core/core_erm.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "backofficeAndCoreSidebar",
+  "previous": {
+    "title": "🧩 Core API Endpoints (Entwurf)",
+    "permalink": "/workmate_os/core/api_endpoints"
+  },
+  "next": {
+    "title": "📦 Core Entities",
+    "permalink": "/workmate_os/core/entities"
+  }
+}
