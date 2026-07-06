@@ -7,8 +7,8 @@
 <h3 align="center">The internal toolkit.</h3>
 
 <p align="center">
-  <a href="https://github.com/K-I-T-Solutions/workmate_os/releases/tag/v3.0"><img src="https://img.shields.io/badge/Version-v3.0-orange?style=flat-square&logo=git" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/Framework-Next.js-000000?style=flat-square&logo=next.js" /></a>
+  <a href="https://github.com/K-I-T-Solutions/workmate_os/releases/tag/v4.0"><img src="https://img.shields.io/badge/Version-v4.0-orange?style=flat-square&logo=git" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/Framework-Next.js%2014-000000?style=flat-square&logo=next.js" /></a>
   <a href="#"><img src="https://img.shields.io/badge/API-FastAPI-009688?style=flat-square&logo=fastapi" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Auth-Keycloak-ff9100?style=flat-square&logo=keycloak" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Dockerized-Yes-0db7ed?style=flat-square&logo=docker" /></a>
@@ -52,7 +52,7 @@ WorkmateOS ist eine modulare Verwaltungsplattform für alle organisatorischen Au
 
 | Bereich | Technologie |
 |:--|:--|
-| Frontend | Next.js 15 · TypeScript · Tailwind CSS |
+| Frontend | Next.js 14 · TypeScript · Tailwind CSS 4 · Base UI |
 | Backend | FastAPI · SQLAlchemy · PostgreSQL · Alembic |
 | Auth | Keycloak 26 (OIDC, PKCE, RBAC) |
 | Infrastruktur | Docker Compose · Traefik (Prod) · Caddy (Dev) |

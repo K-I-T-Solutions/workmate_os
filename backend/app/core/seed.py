@@ -233,7 +233,7 @@ def seed_database():
                 db.refresh(admin_user)
 
                 # Set as department manager
-                departments["MGMT"].manager_id = admin_user.id
+                departments["GF"].manager_id = admin_user.id
                 db.commit()
 
                 print(f"  ✓ Created admin user: {admin_user.first_name} {admin_user.last_name}")
@@ -298,7 +298,7 @@ def seed_database():
                     "description": "Regelmäßige Wartung und Support für K.I.T. Solutions Demo Kunde.",
                     "status": "active",
                     "customer_id": demo_customer.id,
-                    "department_id": departments["IT"].id,
+                    "department_id": departments["TECH"].id,
                     "start_date": datetime(2025, 10, 1),
                     "end_date": datetime(2025, 12, 31),
                 },
@@ -307,7 +307,7 @@ def seed_database():
                     "description": "Projekt zur Analyse und Optimierung der Netzwerksicherheit.",
                     "status": "in_progress",
                     "customer_id": demo_customer.id,
-                    "department_id": departments["IT"].id,
+                    "department_id": departments["TECH"].id,
                     "start_date": datetime(2025, 10, 5),
                     "end_date": datetime(2025, 11, 30),
                 },
