@@ -1,17 +1,17 @@
 # WorkmateOS — CLAUDE.md
 
-Internes ERP/OS-System für K.I.T. Solutions. Vollstack-Anwendung mit FastAPI Backend und Vue 3 Frontend.
+Internes ERP/OS-System für K.I.T. Solutions. Vollstack-Anwendung mit FastAPI Backend und Next.js 14 Frontend.
 
 ---
 
 ## Projekt-Überblick
 
 - **Version:** 4.0.0
-- **Stack:** FastAPI 0.115+ · PostgreSQL 16 · SQLAlchemy 2.0 · Vue 3 · TypeScript · Tailwind CSS 4
-- **Auth:** Keycloak OIDC (JWT RS256)
+- **Stack:** FastAPI 0.115+ · PostgreSQL 16 · SQLAlchemy 2.0 · Next.js 14 · TypeScript · Tailwind CSS 4 · Base UI
+- **Auth:** Keycloak OIDC (JWT RS256, PKCE)
 - **Storage:** Nextcloud WebDAV (pluggable: local / S3)
 - **Package Manager Frontend:** pnpm
-- **Deployment:** Docker Compose (Dev) · Render.com / Fly.io (Prod)
+- **Deployment:** Docker Compose (Dev) · GitHub Actions → workmate-01 (Prod)
 
 ---
 
@@ -23,15 +23,17 @@ workmate_os/
 │   ├── app/
 │   │   ├── main.py       # App-Entrypoint, alle Router registriert
 │   │   ├── core/         # Auth, DB, Storage, Email, Audit, Config
-│   │   └── modules/      # 13 Hauptmodule (siehe unten)
+│   │   └── modules/      # Hauptmodule (siehe unten)
 │   ├── alembic/          # DB-Migrationen
 │   └── tests/            # pytest Tests
-├── ui/                   # Vue 3 Frontend
-│   └── src/
-│       ├── modules/      # Seiten pro Modul
-│       ├── services/     # API-Client (Axios), Navigation
-│       ├── composables/  # Vue Hooks
-│       └── types/        # TypeScript Definitionen
+├── ui-v3/                # Next.js 14 Frontend (aktiv)
+│   ├── app/              # Next.js App Router (Seiten)
+│   ├── components/       # UI-Komponenten
+│   │   ├── providers/    # Auth-Provider, Theme
+│   │   ├── ui/           # Base UI Komponenten (Combobox, Select etc.)
+│   │   └── [modul]/      # Modul-spezifische Komponenten
+│   ├── lib/              # API-Client, Auth-Session, Utilities
+│   └── types/            # TypeScript Definitionen
 ├── infra/                # docker-compose.yml, .env, .env.prod
 ├── docs/                 # Architektur, Roadmap, Daily Reports
 └── Makefile              # Dev-Commands
@@ -46,16 +48,15 @@ workmate_os/
 | `employees` | `modules/employees/` | Mitarbeiterverwaltung, Rollen, Abteilungen |
 | `admin` | `modules/admin/` | Audit-Log, System-Settings |
 | `dashboards` | `modules/dashboards/` | Dashboards, Notifications, User-Settings |
-| `documents` | `modules/documents/` | Datei-Upload (Storage-Backend) |
+| `documents` | `modules/documents/` | Datei-Upload (Nextcloud WebDAV) |
 | `reminders` | `modules/reminders/` | Erinnerungen |
 | `crm` | `modules/backoffice/crm/` | Kunden, Kontakte, Activity-Timeline |
 | `projects` | `modules/backoffice/projects/` | Projekte, Team-Zuordnung, Budget |
-| `time_tracking` | `modules/backoffice/time_tracking/` | Stundenerfassung, billable/non-billable |
-| `invoices` | `modules/backoffice/invoices/` | Rechnungen, PDF, ZUGFeRD/Factur-X |
+| `time_tracking` | `modules/backoffice/time_tracking/` | Stundenerfassung, billable/non-billable, customer_id |
+| `invoices` | `modules/backoffice/invoices/` | Rechnungen, PDF, E-Mail-Versand |
 | `finance` | `modules/backoffice/finance/` | Transaktionen, Bankintegration via n8n |
 | `products` | `modules/backoffice/products/` | Produkt-/Leistungskatalog |
-| `chat` | `modules/backoffice/chat/` | Internes Messaging |
-| `hr` | `modules/hr/` | Urlaub, Recruiting, Vergütung, Training |
+| `hr` | `modules/hr/` | Urlaub, Recruiting, Vergütung, Training, Onboarding |
 | `support` | `modules/support/` | Ticket-System |
 | `knowledge` | `modules/knowledge/` | Wiki / Knowledge Base |
 | `email_intake` | `modules/email_intake/` | E-Mail → Ticket (n8n/IMAP Webhook) |
@@ -67,10 +68,25 @@ Jedes Modul folgt dem gleichen Muster: `routes.py · models.py · schemas.py · 
 ## Core Services
 
 ### Auth (`app/core/auth/`)
-- `auth.py` — `get_current_user()`, JWT-Validierung, JWKS-Cache
-- `keycloak.py` — Admin API, User/Role-Sync
+- `auth.py` — `get_current_user()`, JWKS-Cache, RS256/HS256 Token-Validierung
+- `keycloak.py` — Auto-Provisioning neuer User beim Login, Rollen-Sync
 - `roles.py` — `require_permissions()` Decorator, Wildcard-Matching (`*`, `backoffice.*`)
-- `routes.py` — Login/Callback/Me/Logout Endpoints
+- `role_mapping.py` — Keycloak Realm-Rollen → WorkmateOS Rollen-Namen
+- `routes.py` — Login/Callback/Me/Logout Endpoints; `get_employee_from_token` Dependency
+
+### Rollen (K.I.T. Org-Konzept)
+
+| Rolle | Permissions |
+|-------|-------------|
+| Admin | `["*"]` |
+| Geschäftsführung | `employees.*, hr.*, backoffice.*, documents.*, admin.read` |
+| CTO | `backoffice.projects/time/crm.read, documents.*, kb.*` |
+| CFO | `backoffice.finance.*, invoices.*, crm.read` |
+| Head of Events | `backoffice.crm.*, projects.*, time_tracking.write` |
+| Mitarbeiter | `hr.view, backoffice.time_tracking.write, documents.read` |
+| Marketing | `backoffice.crm.read, documents.read` |
+
+Keycloak Realm-Rollen: `workmate-admin`, `workmate-geschaeftsfuehrung`, `workmate-cto`, `workmate-cfo`, `workmate-head-of-events`, `workmate-mitarbeiter`, `workmate-marketing`
 
 ### Database (`app/core/settings/database.py`)
 ```python
@@ -122,14 +138,14 @@ Konfiguration in `infra/.env` (Dev) und `infra/.env.prod` (Prod).
 | Variable | Beispiel | Beschreibung |
 |----------|---------|--------------|
 | `DATABASE_URL` | `postgresql+psycopg2://...` | PostgreSQL-Verbindung |
-| `KEYCLOAK_URL` | `https://login.intern...` | Keycloak Server |
+| `KEYCLOAK_URL` | `https://login.kit-it-koblenz.de` | Keycloak Server (extern) |
+| `KEYCLOAK_INTERNAL_URL` | `http://keycloak:8080` | Keycloak intern (Docker-Netz) |
 | `KEYCLOAK_REALM` | `kit` | Realm-Name |
 | `KEYCLOAK_CLIENT_ID` | `workmate-backend` | Client-ID |
 | `STORAGE_BACKEND` | `nextcloud` | `nextcloud` \| `local` \| `s3` |
 | `NEXTCLOUD_URL` | `https://cloud.../dav/...` | WebDAV-URL |
 | `SMTP_*` | — | E-Mail-Konfiguration |
-| `JWT_SECRET_KEY` | — | Fallback für lokale Tokens |
-| `PSD2_ENVIRONMENT` | `sandbox` | `sandbox` \| `production` |
+| `JWT_SECRET_KEY` | — | Fallback für lokale HS256-Tokens |
 
 ---
 
@@ -138,7 +154,7 @@ Konfiguration in `infra/.env` (Dev) und `infra/.env.prod` (Prod).
 - **ORM:** SQLAlchemy 2.0 (declarative, `Base`)
 - **IDs:** UUID v4 überall
 - **Migrations:** Alembic, Dateiformat `YYYY_MM_DD_HHMM-{rev}_{slug}`, Timezone: `Europe/Berlin`
-- **Neue Migration immer** nach Modeländerung via `make migrate-auto`
+- **Neue Migration immer** nach Modell-Änderung via `make migrate-auto`
 
 ---
 
@@ -168,31 +184,32 @@ Alle Modul-Routen unter `/api/...`. Prefix wird in `main.py` gesetzt.
 
 ---
 
-## Frontend
+## Frontend (ui-v3)
 
 ```bash
-cd ui
+cd ui-v3
 pnpm install
-pnpm dev          # Vite Dev-Server auf :5173
+pnpm dev          # Next.js Dev-Server auf :3000
 pnpm build        # TypeScript-Check + Build
 ```
 
-Umgebungsvariablen (Vite):
-- `VITE_API_BASE` — API-URL
-- `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID`
+Umgebungsvariablen (Next.js):
+- `NEXT_PUBLIC_API_BASE` — API-URL
+- `NEXT_PUBLIC_KEYCLOAK_URL`, `NEXT_PUBLIC_KEYCLOAK_REALM`, `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID`
 
-TypeScript-Typen werden via `openapi-typescript` aus dem OpenAPI-Spec generiert (`assets/openapi.yaml`).
+Auth-Flow: PKCE via `lib/auth/pkce.ts`, Token in localStorage, Permissions von `/api/auth/me`.
 
 ---
 
 ## Konventionen
 
-- **Backend:** Alles auf Deutsch (Kommentare, Variablennamen bei Bedarf), Docstrings optional
+- **Backend:** Kommentare auf Deutsch, Docstrings optional
 - **Schemas:** Pydantic v2 (`model_config = ConfigDict(from_attributes=True)`)
 - **Permissions:** `@require_permissions(["modul.action"])` Decorator auf Route-Ebene
 - **Neue Module:** Gleiches Muster wie bestehende (`routes / models / schemas / crud`) + Router in `main.py` registrieren
 - **Migrationen:** Immer nach Modell-Änderungen, niemals manuell SQL schreiben
 - **UUID:** `generate_uuid()` aus `app.core.settings.database` verwenden
+- **Git:** Feature-Branch → dev → PR auf main; niemals direkt auf main committen
 
 ---
 
@@ -204,6 +221,7 @@ TypeScript-Typen werden via `openapi-typescript` aus dem OpenAPI-Spec generiert 
 | API | `https://api.workmate.kit-it-koblenz.de` |
 | Docs | `https://api.workmate.kit-it-koblenz.de/docs` |
 | Health | `https://api.workmate.kit-it-koblenz.de/health` |
+| Keycloak | `https://login.kit-it-koblenz.de` |
 
 ---
 
@@ -212,14 +230,13 @@ TypeScript-Typen werden via `openapi-typescript` aus dem OpenAPI-Spec generiert 
 - Phase 1–4: ✅ Core, Backoffice, SSO/Admin, HR & Support
 - Phase 5: geplant — Banking API, Elster, Mobile App
 
-
 ## Agents
 
 Spezialisierte Sub-Agenten verfügbar:
 
 | Agent | Invoke für |
 |-------|-----------|
-| `frontend-builder` | Vue Components, Composables, Views, Design-System |
+| `frontend-builder` | Next.js Komponenten, Composables, Pages, Design-System |
 | `backend-builder` | FastAPI-Routen, SQLAlchemy-Modelle, Pydantic-Schemas, CRUD, Alembic-Migrationen, Permissions |
 | `api-sync` | OpenAPI-Schema exportieren, TypeScript-Typen generieren (`make openapi-sync`) |
 

@@ -11,7 +11,7 @@ nav_order: 2
 **Vollständige Dokumentation aller Backend-Module**
 
 **Status:** ✅ Vollständig
-**Letzte Aktualisierung:** 30. Dezember 2025
+**Letzte Aktualisierung:** Juli 2026
 **Autor:** K.I.T Solutions Team
 
 ---
@@ -20,7 +20,7 @@ nav_order: 2
 
 ### Core Module
 1. [Employees Module](#employees-module) - Mitarbeiter, Abteilungen, Rollen
-2. [Documents Module](#documents-module) - Dokumenten-Management
+2. [Documents Module](#documents-module) - Dokumenten-Management (Nextcloud)
 3. [Reminders Module](#reminders-module) - Erinnerungen & Benachrichtigungen
 4. [Dashboards Module](#dashboards-module) - Dashboard-Verwaltung
 5. [System Module](#system-module) - Infrastruktur-Services
@@ -28,10 +28,17 @@ nav_order: 2
 ### Backoffice Module
 6. [CRM Module](#crm-module) - Customer Relationship Management
 7. [Projects Module](#projects-module) - Projekt-Management
-8. [Invoices Module](#invoices-module) - Rechnungswesen
-9. [Finance Module](#finance-module) - Ausgaben-Verwaltung
+8. [Invoices Module](#invoices-module) - Rechnungswesen (PDF, E-Mail)
+9. [Finance Module](#finance-module) - Transaktionen, BankAccounts
 10. [Time Tracking Module](#time-tracking-module) - Zeiterfassung
-11. [Chat Module](#chat-module) - Messaging-System
+
+### Weitere Module
+11. [HR Module](#hr-module) - Urlaub, Vergütung, Training, Onboarding
+12. [Support Module](#support-module) - Ticket-System
+13. [Knowledge Base](#knowledge-module) - Internes Wiki
+14. [Email Intake](#email-intake-module) - IMAP → Tickets via n8n
+
+> **Entfernt (Juli 2026):** Chat-Modul — stattdessen wird Nextcloud Talk genutzt.
 
 ---
 
@@ -40,16 +47,20 @@ nav_order: 2
 | Modul | Typ | Models | API Prefix | Status |
 |-------|-----|--------|------------|--------|
 | Employees | Core | Department, Role, Employee | `/api/employees`, `/api/departments`, `/api/roles` | ✅ Produktiv |
-| Documents | Core | Document | `/api/documents` | ✅ Produktiv |
+| Documents | Core | Document | `/api/documents` | ✅ Produktiv (Nextcloud) |
 | Reminders | Core | Reminder | `/api/reminders` | ✅ Produktiv |
-| Dashboards | Core | Dashboard, OSPreferences, UserSettings | `/api/dashboards` | ✅ Produktiv |
-| System | Core | InfraService | - | ✅ Produktiv |
+| Dashboards | Core | Dashboard, UserSettings | `/api/dashboards` | ✅ Produktiv |
+| System | Core | — | `/`, `/system/info`, `/system/health` | ✅ Produktiv |
 | CRM | Backoffice | Customer, Contact, Activity | `/api/customers`, `/api/contacts` | ✅ Produktiv |
 | Projects | Backoffice | Project | `/api/projects` | ✅ Produktiv |
 | Invoices | Backoffice | Invoice, InvoiceLineItem, Payment | `/api/invoices` | ✅ Produktiv |
-| Finance | Backoffice | Expense | `/api/expenses` | ✅ Produktiv |
+| Finance | Backoffice | Transaction, BankAccount, BankTransaction | `/api/finance` | ✅ Produktiv |
 | Time Tracking | Backoffice | TimeEntry | `/api/time-entries` | ✅ Produktiv |
-| Chat | Backoffice | ChatMessage | `/api/messages` | ✅ Produktiv |
+| HR | Modul | LeaveRequest, Training, Compensation … | `/api/hr` | ✅ Produktiv |
+| Support | Modul | Ticket, Comment | `/api/support` | ✅ Produktiv |
+| Knowledge | Modul | Article | `/api/knowledge` | ✅ Produktiv |
+| Email Intake | Modul | InboundEmail | `/api/email-intake` | ✅ Produktiv |
+| Chat | Backoffice | — | — | ❌ Entfernt (Juli 2026) |
 
 ---
 
