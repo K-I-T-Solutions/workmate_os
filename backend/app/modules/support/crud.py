@@ -5,14 +5,18 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from .models import Ticket, TicketComment, TicketEvent, TicketStatus, TicketEventType
 from .schemas import TicketCreate, TicketUpdate, TicketCommentCreate
 
 
 def _next_ticket_number(db: Session) -> str:
-    count = db.query(func.count(Ticket.id)).scalar() or 0
-    return f"TKT-{count + 1:05d}"
+    # MAX statt COUNT: robust gegen soft-deletes und hard-deletes
+    max_num = db.query(func.max(Ticket.ticket_number)).scalar()
+    if max_num is None:
+        return "TKT-00001"
+    return f"TKT-{int(max_num[4:]) + 1:05d}"
 
 
 def _log_event(
@@ -81,22 +85,28 @@ def get_ticket(db: Session, ticket_id: UUID, include_deleted: bool = False) -> O
 
 
 def create_ticket(db: Session, data: TicketCreate, reporter_id: Optional[str] = None) -> Ticket:
-    ticket = Ticket(
-        **data.model_dump(),
-        ticket_number=_next_ticket_number(db),
-        reporter_id=reporter_id,
-    )
-    db.add(ticket)
-    db.flush()
-    _log_event(
-        db, ticket.id,
-        event_type=TicketEventType.CREATED,
-        actor_id=reporter_id,
-        new_value={"type": ticket.type, "title": ticket.title, "priority": ticket.priority},
-    )
-    db.commit()
-    db.refresh(ticket)
-    return ticket
+    # Retry bei race condition (zwei parallele Requests, selbe ticket_number)
+    for _ in range(5):
+        try:
+            ticket = Ticket(
+                **data.model_dump(),
+                ticket_number=_next_ticket_number(db),
+                reporter_id=reporter_id,
+            )
+            db.add(ticket)
+            db.flush()
+            _log_event(
+                db, ticket.id,
+                event_type=TicketEventType.CREATED,
+                actor_id=reporter_id,
+                new_value={"type": ticket.type, "title": ticket.title, "priority": ticket.priority},
+            )
+            db.commit()
+            db.refresh(ticket)
+            return ticket
+        except IntegrityError:
+            db.rollback()
+    raise RuntimeError("Ticket-Nummer konnte nicht vergeben werden (max. Versuche erschöpft)")
 
 
 def update_ticket(
