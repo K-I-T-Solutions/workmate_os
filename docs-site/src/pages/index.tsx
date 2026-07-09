@@ -22,7 +22,7 @@ export default function Home(): ReactNode {
           <Card
             title="Frontend"
             description="Next.js 14, Auth-Provider, Permissions"
-            to="/frontend/README"
+            to="/frontend/"
           />
           <Card
             title="Module"
@@ -32,7 +32,7 @@ export default function Home(): ReactNode {
           <Card
             title="Backoffice"
             description="CRM, Projekte, Zeiterfassung, Invoices"
-            to="/backoffice/README"
+            to="/backoffice/"
           />
         </div>
         <hr style={{ margin: "3rem 0" }} />

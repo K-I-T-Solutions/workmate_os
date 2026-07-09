@@ -79,6 +79,11 @@ const config: Config = {
           label: "Backoffice & Core",
         },
         {
+          to: "/finance/",
+          position: "left",
+          label: "Finance",
+        },
+        {
           href: "https://api.workmate.kit-it-koblenz.de/docs",
           label: "API (Swagger)",
           position: "right",
@@ -97,8 +102,9 @@ const config: Config = {
           title: "Dokumentation",
           items: [
             { label: "Backend", to: "/backend/AUTHENTICATION" },
-            { label: "Frontend", to: "/frontend/README" },
+            { label: "Frontend", to: "/frontend/" },
             { label: "Module", to: "/backend/MODULE_UEBERSICHT" },
+            { label: "Backoffice", to: "/backoffice/" },
           ],
         },
         {
