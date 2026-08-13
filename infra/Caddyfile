@@ -3,9 +3,21 @@
 }
 
 workmate.kit-it-koblenz.de {
-    reverse_proxy workmate_frontend:3000
+    # Backend-Pfade same-origin ausliefern — spart CORS und hält das
+    # wm_auth-Cookie SameSite-sauber. Kein handle_path: das Backend
+    # erwartet den /api-Prefix selbst.
+    @backend path /api/* /system/* /uploads/* /docs /redoc /openapi.json
+    handle @backend {
+        reverse_proxy workmate_backend:8000
+    }
+
+    handle {
+        reverse_proxy workmate_frontend:3000
+    }
 }
 
+# Bleibt bestehen: n8n (/api/v1/email/ingest) und der Stripe-Webhook
+# sind extern auf diese Subdomain konfiguriert.
 api.workmate.kit-it-koblenz.de {
     reverse_proxy workmate_backend:8000
 }

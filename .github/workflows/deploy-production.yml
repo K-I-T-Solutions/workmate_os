@@ -145,6 +145,12 @@ jobs:
             echo "Frontend health check failed: $HTTP_FRONT"
             exit 1
           fi
+          # Same-origin-Routing: /system/* muss auf der Hauptdomain am Backend landen
+          HTTP_SAME_ORIGIN=$(curl -s -o /dev/null -w "%{http_code}" https://workmate.kit-it-koblenz.de/system/health)
+          if [ "$HTTP_SAME_ORIGIN" != "200" ]; then
+            echo "Same-origin API routing failed: $HTTP_SAME_ORIGIN"
+            exit 1
+          fi
           echo "All services healthy!"
 
       - name: Deployment summary
