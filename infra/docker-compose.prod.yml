@@ -48,6 +48,9 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile.prod
+      args:
+        # Same-origin: Caddy routet /api/* auf der Hauptdomain ans Backend.
+        NEXT_PUBLIC_API_BASE: https://workmate.kit-it-koblenz.de
     container_name: workmate_frontend
     restart: unless-stopped
     networks:
