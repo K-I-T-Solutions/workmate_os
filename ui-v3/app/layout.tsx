@@ -43,6 +43,7 @@ export default function RootLayout({
     <html
       lang="de"
       className={`dark ${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable}`}
+      suppressHydrationWarning
     >
       <head>
         {/* Anti-FOUC: apply saved theme before first paint */}

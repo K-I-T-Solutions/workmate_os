@@ -13,6 +13,22 @@ from . import models, schemas
 
 # === Customer CRUD ===
 
+def _generate_customer_number(db: Session) -> str:
+    last = (
+        db.query(models.Customer.customer_number)
+        .filter(models.Customer.customer_number.isnot(None))
+        .order_by(models.Customer.customer_number.desc())
+        .first()
+    )
+    if last and last[0]:
+        try:
+            num = int(last[0].split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            num = 1
+    else:
+        num = 1
+    return f"KIT-CUS-{num:06d}"
+
 def get_customers(
     db: Session,
     skip: int = 0,
@@ -75,7 +91,9 @@ def create_customer(db: Session, data: schemas.CustomerCreate) -> models.Custome
     Returns:
         Erstellter Customer
     """
-    new_customer = models.Customer(**data.model_dump())
+    customer_data = data.model_dump()
+    customer_data["customer_number"] = _generate_customer_number(db)
+    new_customer = models.Customer(**customer_data)
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
