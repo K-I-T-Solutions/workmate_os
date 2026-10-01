@@ -85,17 +85,24 @@ class Customer(Base, UUIDMixin, TimestampMixin):
         Index("ix_customers_tax_id", "tax_id"),
         Index("ix_customers_status", "status"),
         Index("ix_customers_type", "type"),
+        Index("ix_customers_customer_number", "customer_number"),
         CheckConstraint(
             "status IN ('active', 'inactive', 'lead', 'blocked')",
             name="check_customer_status_valid"
         ),
         CheckConstraint(
-            "type IN ('business', 'individual', 'government')",
+            "type IN ('creator', 'individual', 'business', 'government')",
             name="check_customer_type_valid"
         ),
     )
 
     # Basic Info
+    customer_number: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+        comment="Eindeutige Kundennummer (KIT-CUS-000001)"
+    )
     name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
