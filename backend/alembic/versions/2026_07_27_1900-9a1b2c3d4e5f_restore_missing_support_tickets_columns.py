@@ -23,14 +23,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('support_tickets', sa.Column('type', sa.String(50), nullable=False, server_default='support'))
-    op.add_column('support_tickets', sa.Column('channel', sa.String(50), nullable=False, server_default='manual'))
-    op.add_column('support_tickets', sa.Column('sla_deadline', sa.DateTime(), nullable=True))
-    op.add_column('support_tickets', sa.Column('sla_breached', sa.Boolean(), nullable=False, server_default='false'))
-    op.add_column('support_tickets', sa.Column('deleted_at', sa.DateTime(), nullable=True))
+    conn = op.get_bind()
+    conn.execute(sa.text("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS type VARCHAR(50) NOT NULL DEFAULT 'support'"))
+    conn.execute(sa.text("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS channel VARCHAR(50) NOT NULL DEFAULT 'manual'"))
+    conn.execute(sa.text("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS sla_deadline TIMESTAMP"))
+    conn.execute(sa.text("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS sla_breached BOOLEAN NOT NULL DEFAULT false"))
+    conn.execute(sa.text("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP"))
 
-    op.create_index('ix_tickets_type', 'support_tickets', ['type'])
-    op.create_index('ix_tickets_deleted_at', 'support_tickets', ['deleted_at'])
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_tickets_type ON support_tickets (type)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_tickets_deleted_at ON support_tickets (deleted_at)"))
 
 
 def downgrade() -> None:
