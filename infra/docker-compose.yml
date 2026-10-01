@@ -15,7 +15,7 @@ services:
       PYTHONUNBUFFERED: 1
       PYTHONPATH: /app
       ENVIRONMENT: development
-      WATCHFILES_FORCE_POLLING: true # ← Für besseren Hot-Reload
+      WATCHFILES_FORCE_POLLING: false
     volumes:
       # Persistente Uploads → mapped in Container
       - ../docs/uploads:/root/workmate_os_uploads
@@ -41,7 +41,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/system/health"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
 
