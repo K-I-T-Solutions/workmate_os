@@ -25,6 +25,16 @@ Offene Themen und Aufgaben die noch besprochen oder umgesetzt werden müssen.
 
 ---
 
+## 🧾 v5.0 – Nacharbeiten
+
+- [ ] n8n-Workflow `n8n/contracts_billing_workflow.json` importieren, API-Key (`contracts:billing,assets:read`) anlegen, Empfänger-Adresse setzen, aktivieren
+- [ ] `PORTAL_BASE_URL` in `infra/.env.prod` setzen (Default: `https://workmate.kit-it-koblenz.de`)
+- [ ] Inklusiv-Stunden aus Wartungsverträgen bei der Ticket-Abrechnung automatisch verrechnen (derzeit nur Info am Vertrag)
+- [ ] Anteilige Abrechnung (Pro-rata) bei Vertragsende mitten im Zeitraum
+- [ ] Kundenportal erweitern: Rechnungen, Verträge, Geräte (read-only)
+- [ ] E-Mail an Support bei neuem Portal-Ticket / an Kunde bei Antwort im Ticket
+- [ ] Rollen: `backoffice.contracts.*` / `backoffice.assets.*` für CTO/CFO in Keycloak-Rollenkonzept ergänzen (aktuell nur Admin & GF via `backoffice.*`)
+
 ## 👥 Organisation
 
 - [ ] Zielbild-Rollen (CTO, CFO, Head of Events, Marketing) mit realen Personen besetzen sobald Team wächst

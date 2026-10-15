@@ -3,11 +3,16 @@
 import { useEffect, useState, useCallback } from "react"
 import { usePageTitle } from "@/lib/page-title-context"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Edit, Phone, Mail, Globe, MapPin, Plus, Star, Trash2, X, Save, FileText, FolderKanban, MessageSquare, FolderOpen } from "lucide-react"
+import { ArrowLeft, Edit, Phone, Mail, Globe, MapPin, Plus, Star, Trash2, X, Save, FileText, FolderKanban, MessageSquare, FolderOpen, ScrollText, HardDrive, KeyRound } from "lucide-react"
 import { crmService } from "@/lib/crm/service"
 import { invoiceService } from "@/lib/invoices/service"
 import { projectService } from "@/lib/projects/service"
 import { supportService } from "@/lib/support/service"
+import { contractsService } from "@/lib/contracts/service"
+import { assetsService } from "@/lib/assets/service"
+import type { Contract } from "@/lib/contracts/types"
+import type { CustomerAsset, SoftwareLicense } from "@/lib/assets/types"
+import { CONTRACT_STATUS_COLOR, CONTRACT_STATUS_LABELS, INTERVAL_LABELS, fmtDate, fmtEur } from "@/lib/contracts/labels"
 import { DocumentsTab } from "@/components/documents/documents-dashboard"
 import type { Customer, Contact, CrmActivity, ActivityType } from "@/lib/crm/types"
 import type { Invoice } from "@/lib/invoices/types"
@@ -332,11 +337,14 @@ export function CustomerDetail({ id }: { id: string }) {
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null)
   const [deleteCustomer, setDeleteCustomer] = useState(false)
   // Linked data tabs
-  type LinkTab = "invoices" | "projects" | "tickets" | "documents"
+  type LinkTab = "invoices" | "projects" | "tickets" | "contracts" | "assets" | "documents"
   const [linkTab, setLinkTab] = useState<LinkTab>("invoices")
   const [linkedInvoices, setLinkedInvoices] = useState<Invoice[] | null>(null)
   const [linkedProjects, setLinkedProjects] = useState<Project[] | null>(null)
   const [linkedTickets, setLinkedTickets] = useState<Ticket[] | null>(null)
+  const [linkedContracts, setLinkedContracts] = useState<Contract[] | null>(null)
+  const [linkedAssets, setLinkedAssets] = useState<{ assets: CustomerAsset[]; licenses: SoftwareLicense[] } | null>(null)
+  const [portalMsg, setPortalMsg] = useState<string | null>(null)
   const [loadingLink, setLoadingLink] = useState(false)
 
   const loadLinkTab = useCallback(async (tab: LinkTab) => {
@@ -351,11 +359,37 @@ export function CustomerDetail({ id }: { id: string }) {
       } else if (tab === "tickets" && linkedTickets === null) {
         const res = await supportService.list({ customer_id: id, limit: 50 })
         setLinkedTickets(res.items ?? [])
+      } else if (tab === "contracts" && linkedContracts === null) {
+        const res = await contractsService.list({ customer_id: id, limit: 100 })
+        setLinkedContracts(res.items)
+      } else if (tab === "assets" && linkedAssets === null) {
+        const [a, l] = await Promise.all([
+          assetsService.list({ customer_id: id, limit: 200 }),
+          assetsService.listLicenses({ customer_id: id, limit: 200 }),
+        ])
+        setLinkedAssets({ assets: a.items, licenses: l.items })
       }
     } finally {
       setLoadingLink(false)
     }
-  }, [id, linkedInvoices, linkedProjects, linkedTickets])
+  }, [id, linkedInvoices, linkedProjects, linkedTickets, linkedContracts, linkedAssets])
+
+  async function handlePortalInvite(ct: Contact) {
+    setPortalMsg(null)
+    try {
+      const res = await crmService.inviteContactToPortal(ct.id)
+      setContacts(cs => cs.map(c => c.id === ct.id ? { ...c, portal_enabled: true } : c))
+      setPortalMsg(res.sent ? `Anmeldelink an ${res.email} gesendet.` : `Zugang aktiviert, aber E-Mail an ${res.email} konnte nicht gesendet werden.`)
+    } catch (e: any) {
+      setPortalMsg(e?.response?.data?.detail ?? "Einladung fehlgeschlagen.")
+    }
+  }
+
+  async function handlePortalRevoke(ct: Contact) {
+    await crmService.updateContact(ct.id, { portal_enabled: false })
+    setContacts(cs => cs.map(c => c.id === ct.id ? { ...c, portal_enabled: false } : c))
+    setPortalMsg(`Portal-Zugang für ${ct.firstname} ${ct.lastname} entzogen.`)
+  }
 
   useEffect(() => { loadLinkTab(linkTab) }, [linkTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -527,6 +561,8 @@ export function CustomerDetail({ id }: { id: string }) {
             {contacts.length === 0 ? (
               <p className="px-5 py-4 text-sm text-muted-foreground">Keine Ansprechpartner hinterlegt.</p>
             ) : (
+              <>
+              {portalMsg && <p className="border-b border-border/50 px-5 py-2 text-xs text-muted-foreground">{portalMsg}</p>}
               <ul className="divide-y divide-border/50">
                 {contacts.map((ct) => (
                   <li key={ct.id} className="group flex items-center gap-3 px-5 py-3">
@@ -537,6 +573,11 @@ export function CustomerDetail({ id }: { id: string }) {
                       <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
                         {ct.firstname} {ct.lastname}
                         {ct.is_primary && <Star className="h-3 w-3 text-amber-400 fill-amber-400" />}
+                        {ct.portal_enabled && (
+                          <span className="rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-medium text-blue-400" title={ct.portal_last_login_at ? `Letzter Login: ${new Date(ct.portal_last_login_at).toLocaleString("de-DE")}` : "Noch nicht angemeldet"}>
+                            Portal
+                          </span>
+                        )}
                       </p>
                       {ct.position && <p className="text-xs text-muted-foreground">{ct.position}</p>}
                     </div>
@@ -545,6 +586,15 @@ export function CustomerDetail({ id }: { id: string }) {
                       {ct.phone && <p>{ct.phone}</p>}
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {hasPermission("backoffice.crm.write") && ct.email && (
+                        <button
+                          onClick={() => ct.portal_enabled ? handlePortalRevoke(ct) : handlePortalInvite(ct)}
+                          className={`rounded p-1 hover:text-foreground ${ct.portal_enabled ? "text-blue-400" : "text-muted-foreground"}`}
+                          title={ct.portal_enabled ? "Portal-Zugang entziehen" : "Zum Kundenportal einladen"}
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       {hasPermission("backoffice.crm.write") && (
                         <button
                           onClick={() => setContactModal({ open: true, contact: ct })}
@@ -567,6 +617,7 @@ export function CustomerDetail({ id }: { id: string }) {
                   </li>
                 ))}
               </ul>
+              </>
             )}
           </div>
         </div>
@@ -615,6 +666,8 @@ export function CustomerDetail({ id }: { id: string }) {
             { id: "invoices" as const, label: "Rechnungen", icon: <FileText className="h-3.5 w-3.5" /> },
             { id: "projects" as const, label: "Projekte", icon: <FolderKanban className="h-3.5 w-3.5" /> },
             { id: "tickets" as const, label: "Support-Tickets", icon: <MessageSquare className="h-3.5 w-3.5" /> },
+            ...(hasPermission("backoffice.contracts.read") ? [{ id: "contracts" as const, label: "Verträge", icon: <ScrollText className="h-3.5 w-3.5" /> }] : []),
+            ...(hasPermission("backoffice.assets.read") ? [{ id: "assets" as const, label: "Geräte & Lizenzen", icon: <HardDrive className="h-3.5 w-3.5" /> }] : []),
             { id: "documents" as const, label: "Dokumente", icon: <FolderOpen className="h-3.5 w-3.5" /> },
           ]).map(t => (
             <button
@@ -728,6 +781,48 @@ export function CustomerDetail({ id }: { id: string }) {
                     </button>
                   )
                 })}
+              </div>
+            )
+          ) : linkTab === "contracts" ? (
+            !linkedContracts || linkedContracts.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-muted-foreground">Keine Verträge vorhanden.</p>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {linkedContracts.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => router.push(`/contracts/${c.id}`)}
+                    className="flex w-full items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors text-left"
+                  >
+                    <span className="font-mono text-xs text-muted-foreground w-28 shrink-0">{c.contract_number}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium shrink-0 ${CONTRACT_STATUS_COLOR[c.status]}`}>
+                      {CONTRACT_STATUS_LABELS[c.status]}
+                    </span>
+                    <span className="flex-1 text-sm truncate">{c.title}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{fmtEur(c.net_amount_per_period)} {INTERVAL_LABELS[c.billing_interval]}</span>
+                  </button>
+                ))}
+              </div>
+            )
+          ) : linkTab === "assets" ? (
+            !linkedAssets || (linkedAssets.assets.length === 0 && linkedAssets.licenses.length === 0) ? (
+              <p className="px-5 py-6 text-sm text-muted-foreground">Keine Geräte oder Lizenzen erfasst.</p>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {linkedAssets.assets.map(a => (
+                  <div key={a.id} className="flex items-center gap-3 px-5 py-3">
+                    <span className="font-mono text-xs text-muted-foreground w-24 shrink-0">{a.asset_tag}</span>
+                    <span className="flex-1 text-sm truncate">{a.name}{a.serial_number ? ` · ${a.serial_number}` : ""}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">Garantie: {fmtDate(a.warranty_until)}</span>
+                  </div>
+                ))}
+                {linkedAssets.licenses.map(l => (
+                  <div key={l.id} className="flex items-center gap-3 px-5 py-3">
+                    <span className="text-xs text-muted-foreground w-24 shrink-0">Lizenz</span>
+                    <span className="flex-1 text-sm truncate">{l.product_name} ({l.seats} Plätze)</span>
+                    <span className="text-xs text-muted-foreground shrink-0">bis {fmtDate(l.valid_until)}</span>
+                  </div>
+                ))}
               </div>
             )
           ) : (

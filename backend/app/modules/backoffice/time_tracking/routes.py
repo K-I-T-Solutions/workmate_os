@@ -55,6 +55,7 @@ def get_billable_uninvoiced(
     customer_id: Optional[UUID] = Query(None, description="Filter nach Kunde (über Projekt)"),
     project_id: Optional[UUID] = Query(None, description="Filter nach Projekt"),
     employee_id: Optional[UUID] = Query(None, description="Filter nach Mitarbeiter"),
+    ticket_id: Optional[UUID] = Query(None, description="Filter nach Support-Ticket"),
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
@@ -63,6 +64,7 @@ def get_billable_uninvoiced(
         customer_id=customer_id,
         project_id=project_id,
         employee_id=employee_id,
+        ticket_id=ticket_id,
     )
 
 
@@ -92,6 +94,7 @@ def list_entries(
     is_approved: Optional[bool] = Query(None),
     is_invoiced: Optional[bool] = Query(None),
     search: Optional[str] = Query(None),
+    ticket_id: Optional[UUID] = Query(None),
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
@@ -102,7 +105,7 @@ def list_entries(
         start_date=start_date, end_date=end_date,
         task_type=task_type, billable=billable,
         is_approved=is_approved, is_invoiced=is_invoiced,
-        search=search,
+        search=search, ticket_id=ticket_id,
     )
 
 

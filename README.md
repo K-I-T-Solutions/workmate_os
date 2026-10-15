@@ -7,7 +7,7 @@
 <h3 align="center">The internal toolkit.</h3>
 
 <p align="center">
-  <a href="https://github.com/K-I-T-Solutions/workmate_os/releases/tag/v4.0"><img src="https://img.shields.io/badge/Version-v4.0-orange?style=flat-square&logo=git" /></a>
+  <a href="https://github.com/K-I-T-Solutions/workmate_os/releases/tag/v5.0.0"><img src="https://img.shields.io/badge/Version-v5.0.0-orange?style=flat-square&logo=git" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Framework-Next.js%2014-000000?style=flat-square&logo=next.js" /></a>
   <a href="#"><img src="https://img.shields.io/badge/API-FastAPI-009688?style=flat-square&logo=fastapi" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Auth-Keycloak-ff9100?style=flat-square&logo=keycloak" /></a>

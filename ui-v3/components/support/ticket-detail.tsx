@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { ArrowLeftIcon, Trash2Icon, SendIcon, LockIcon, UserIcon } from "lucide-react"
 import { useAuth } from "@/components/providers/auth-provider"
+import { TicketTimePanel } from "@/components/support/ticket-time-panel"
 
 const STATUS_LABELS: Record<string, string> = {
   open: "Offen", in_progress: "In Bearbeitung", waiting: "Wartend",
@@ -200,6 +201,9 @@ export function TicketDetailView({ id }: { id: string }) {
         </div>
       )}
 
+      {/* Zeiten (v5.0) */}
+      <TicketTimePanel ticketId={ticket.id} employees={employees} />
+
       {/* Comments */}
       <div>
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">
@@ -278,6 +282,11 @@ function CommentBubble({ comment, onDelete }: { comment: TicketComment; onDelete
     <div className={`group relative rounded-lg border p-4 ${comment.is_internal ? "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30" : "bg-card"}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
+          {comment.author_id?.startsWith("portal:") && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              Kunde (Portal)
+            </span>
+          )}
           {comment.is_internal && (
             <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900 dark:text-amber-300">
               <LockIcon className="h-3 w-3" /> Intern

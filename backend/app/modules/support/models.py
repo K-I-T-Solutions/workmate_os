@@ -36,6 +36,7 @@ class TicketChannel:
     SYSTEM = "system"
     MANUAL = "manual"
     LINKEDIN = "linkedin"
+    PORTAL = "portal"
 
 
 class TicketEventType:

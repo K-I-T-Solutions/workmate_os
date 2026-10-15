@@ -36,6 +36,8 @@ export interface Contact {
   department: string | null
   is_primary: boolean
   notes: string | null
+  portal_enabled?: boolean
+  portal_last_login_at?: string | null
   created_at: string
   updated_at: string
 }

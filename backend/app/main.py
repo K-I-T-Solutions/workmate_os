@@ -37,6 +37,9 @@ from app.modules.hr import router as hr_router
 from app.modules.support.routes import router as support_router
 from app.modules.knowledge.routes import router as kb_router
 from app.modules.email_intake.routes import router as email_intake_router
+from app.modules.backoffice.contracts.routes import router as contracts_router
+from app.modules.backoffice.assets.routes import router as assets_router
+from app.modules.portal.routes import router as portal_router
 
 
 # ====== Basis Verzeichnis =====
@@ -133,6 +136,9 @@ app.include_router(hr_router, prefix="/api", tags=["HR"])
 app.include_router(support_router, tags=["Support"])
 app.include_router(kb_router, tags=["Knowledge Base"])
 app.include_router(email_intake_router, tags=["Email Intake"])
+app.include_router(contracts_router, prefix="/api", tags=["Backoffice Contracts"])
+app.include_router(assets_router, prefix="/api", tags=["Backoffice Assets"])
+app.include_router(portal_router, tags=["Kundenportal"])
 
 # === Core Endpoints ===
 

@@ -3,6 +3,8 @@ export interface TimeEntry {
   employee_id: string
   project_id: string | null
   customer_id: string | null
+  ticket_id: string | null
+  invoice_id: string | null
   start_time: string
   end_time: string | null
   duration_minutes: number | null
@@ -20,6 +22,7 @@ export interface TimeEntryCreate {
   employee_id: string
   project_id?: string | null
   customer_id?: string | null
+  ticket_id?: string | null
   start_time: string
   end_time?: string | null
   note?: string | null
@@ -70,6 +73,10 @@ export interface BillableEntry {
   employee_name: string
   project_id: string | null
   project_name: string | null
+  customer_id: string | null
+  ticket_id: string | null
+  ticket_number: string | null
+  ticket_title: string | null
   task_type: string | null
   note: string | null
   duration_hours: number
@@ -81,4 +88,10 @@ export interface BillableUninvoicedResponse {
   entries: BillableEntry[]
   total_hours: number
   total_amount: number
+}
+
+export interface TicketTimeSummary {
+  items: TimeEntry[]
+  total_hours: number
+  unbilled_hours: number
 }

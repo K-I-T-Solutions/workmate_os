@@ -202,6 +202,11 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
         ForeignKey("projects.id", ondelete="SET NULL"),
         comment="Optional zugehöriges Projekt"
     )
+    contract_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("contracts.id", ondelete="SET NULL"),
+        index=True,
+        comment="Quelle bei wiederkehrender Abrechnung (v5.0)"
+    )
 
     # Relationships
     customer: Mapped[Customer] = relationship(

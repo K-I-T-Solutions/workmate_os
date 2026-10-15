@@ -35,6 +35,12 @@ export const crmService = {
   async deleteContact(id: string) {
     return apiClient.delete(`/api/backoffice/crm/contacts/${id}`)
   },
+  /** Portal-Zugang aktivieren und Anmeldelink senden (v5.0) */
+  async inviteContactToPortal(contactId: string): Promise<{ contact_id: string; email: string; sent: boolean }> {
+    const { data } = await apiClient.post(`/api/portal/admin/contacts/${contactId}/invite`)
+    return data
+  },
+
   async setPrimaryContact(customerId: string, contactId: string) {
     return apiClient.put(`/api/backoffice/crm/customers/${customerId}/contacts/${contactId}/set-primary`)
   },
