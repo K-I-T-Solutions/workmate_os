@@ -23,6 +23,17 @@
       ]
     },
     {
+      "parameters": {},
+      "id": "manual",
+      "name": "Manuell starten",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        480
+      ]
+    },
+    {
       "parameters": {
         "method": "POST",
         "url": "=https://api.workmate.kit-it-koblenz.de/api/backoffice/contracts/jobs/billing",
@@ -43,10 +54,12 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "workmate-contracts-key",
+          "id": "wmContracts5Key01",
           "name": "WorkmateOS API-Key (contracts:billing, assets:read)"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3
     },
     {
       "parameters": {
@@ -75,14 +88,14 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "workmate-contracts-key",
+          "id": "wmContracts5Key01",
           "name": "WorkmateOS API-Key (contracts:billing, assets:read)"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const billing = $('Fällige Verträge abrechnen').first().json;\nconst expiring = $('Ablaufende Garantien/Lizenzen').first().json.items || [];\nconst fmt = d => new Date(d).toLocaleDateString('de-DE');\nconst lines = [];\nif (billing.invoices_created.length) {\n  lines.push(`${billing.invoices_created.length} Rechnungsentwürfe erstellt – bitte prüfen und versenden:`);\n  for (const i of billing.invoices_created) lines.push(`  • ${i.invoice_number} (${i.contract_number}, ${fmt(i.period_start)}–${fmt(i.period_end)}): ${i.total} €`);\n}\nif (billing.contracts_renewed.length) lines.push(`Automatisch verlängert: ${billing.contracts_renewed.join(', ')}`);\nif (billing.contracts_expired.length) lines.push(`Ausgelaufen: ${billing.contracts_expired.join(', ')}`);\nif (billing.errors.length) { lines.push('FEHLER:'); for (const e of billing.errors) lines.push(`  • ${e.contract_number}: ${e.error}`); }\nif (billing.notice_deadlines.length) { lines.push('Kündigungsfristen in den nächsten 30 Tagen:'); for (const n of billing.notice_deadlines) lines.push(`  • ${n.contract_number} ${n.title} (${n.customer_name}) – Frist ${fmt(n.notice_deadline)}${n.auto_renew ? ', verlängert sich sonst automatisch' : ''}`); }\nif (expiring.length) { lines.push('Läuft in 30 Tagen ab:'); for (const x of expiring) lines.push(`  • ${x.kind === 'warranty' ? 'Garantie' : 'Lizenz'}: ${x.name} (${x.customer_name}) am ${fmt(x.expires_on)}`); }\nreturn [{ json: { has_news: lines.length > 0, text: lines.join('\\n') } }];"
+        "jsCode": "const billing = $('Fällige Verträge abrechnen').first().json;\nconst expiring = $('Ablaufende Garantien/Lizenzen').first().json.items || [];\nconst fmt = d => new Date(d).toLocaleDateString('de-DE');\nconst lines = [];\nconst eur = v => Number(v).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });\nif (billing.invoices_created.length) {\n  lines.push(`**🧾 ${billing.invoices_created.length} Rechnungsentwürfe erstellt** – bitte prüfen und versenden:`);\n  for (const i of billing.invoices_created) lines.push(`  • ${i.invoice_number} (${i.contract_number}, ${fmt(i.period_start)}–${fmt(i.period_end)}): ${eur(i.total)}`);\n}\nif (billing.contracts_renewed.length) lines.push(`Automatisch verlängert: ${billing.contracts_renewed.join(', ')}`);\nif (billing.contracts_expired.length) lines.push(`Ausgelaufen: ${billing.contracts_expired.join(', ')}`);\nif (billing.errors.length) { lines.push('**⚠️ Fehler:**'); for (const e of billing.errors) lines.push(`  • ${e.contract_number}: ${e.error}`); }\nif (billing.notice_deadlines.length) { lines.push('**📅 Kündigungsfristen in den nächsten 30 Tagen:**'); for (const n of billing.notice_deadlines) lines.push(`  • ${n.contract_number} ${n.title} (${n.customer_name}) – Frist ${fmt(n.notice_deadline)}${n.auto_renew ? ', verlängert sich sonst automatisch' : ''}`); }\nif (expiring.length) { lines.push('**⏳ Läuft in 30 Tagen ab:**'); for (const x of expiring) lines.push(`  • ${x.kind === 'warranty' ? 'Garantie' : 'Lizenz'}: ${x.name} (${x.customer_name}) am ${fmt(x.expires_on)}`); }\nlet text = `## WorkmateOS – Verträge ${new Date().toLocaleDateString('de-DE')}\\n` + lines.join('\\n');\nif (text.length > 1900) text = text.slice(0, 1900) + '\\n… (gekürzt, Details in WorkmateOS)';\nreturn [{ json: { has_news: lines.length > 0, text } }];"
       },
       "id": "summary",
       "name": "Zusammenfassung",
@@ -115,25 +128,22 @@
     },
     {
       "parameters": {
-        "fromEmail": "noreply@kit-it-koblenz.de",
-        "toEmail": "buchhaltung@kit-it-koblenz.de",
-        "subject": "=WorkmateOS: Vertragsabrechnung {{ new Date().toLocaleDateString('de-DE') }}",
-        "emailFormat": "text",
-        "text": "={{ $json.text }}",
+        "authentication": "webhook",
+        "content": "={{ $json.text }}",
         "options": {}
       },
-      "id": "mail",
-      "name": "Info-Mail",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "id": "discord",
+      "name": "Discord",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
       "position": [
         1340,
         280
       ],
       "credentials": {
-        "smtp": {
-          "id": "smtp-kit",
-          "name": "K.I.T. SMTP"
+        "discordWebhookApi": {
+          "id": "Mj9a0DOIMCPEVbuc",
+          "name": "Discord - N8N TEST Webhook "
         }
       }
     }
@@ -187,12 +197,23 @@
       "main": [
         [
           {
-            "node": "Info-Mail",
+            "node": "Discord",
             "type": "main",
             "index": 0
           }
         ],
         []
+      ]
+    },
+    "Manuell starten": {
+      "main": [
+        [
+          {
+            "node": "Fällige Verträge abrechnen",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -201,6 +222,7 @@
     "timezone": "Europe/Berlin"
   },
   "meta": {
-    "description": "Benötigt API-Key mit Scopes contracts:billing,assets:read: POST /api/v1/email/admin/keys?name=n8n-contracts&scopes=contracts:billing,assets:read. Header-Auth: Name 'Authorization', Wert 'Bearer <key>'. Empfänger-Adresse vor Aktivierung prüfen."
-  }
+    "description": "Täglich 06:00: fällige Verträge abrechnen (Rechnungsentwürfe) und ablaufende Garantien/Lizenzen melden → Discord. API-Key-Scopes: contracts:billing, assets:read."
+  },
+  "id": "wmContractsBilling1"
 }
