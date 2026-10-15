@@ -55,6 +55,16 @@ class TimeEntry(Base, UUIDMixin, TimestampMixin):
         index=True,
         comment="Direkter Kundenbezug — auch ohne Projekt (z.B. Support-Einsatz)"
     )
+    ticket_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("support_tickets.id", ondelete="SET NULL"),
+        index=True,
+        comment="Support-Ticket, auf das die Zeit gebucht wurde (v5.0)"
+    )
+    invoice_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("invoices.id", ondelete="SET NULL"),
+        index=True,
+        comment="Rechnung, über die der Eintrag abgerechnet wurde (v5.0)"
+    )
 
     # Time Tracking
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
@@ -90,6 +100,7 @@ class TimeEntry(Base, UUIDMixin, TimestampMixin):
     project: Mapped["Project"] = relationship("Project", back_populates="time_entries")
     employee: Mapped["Employee"] = relationship("Employee")
     customer: Mapped["Customer"] = relationship("Customer")
+    ticket = relationship("Ticket")
 
     @property
     def duration_hours(self) -> float | None:

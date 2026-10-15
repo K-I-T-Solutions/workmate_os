@@ -6,7 +6,7 @@ Internes ERP/OS-System für K.I.T. Solutions. Vollstack-Anwendung mit FastAPI Ba
 
 ## Projekt-Überblick
 
-- **Version:** 4.0.0
+- **Version:** 5.0.0
 - **Stack:** FastAPI 0.115+ · PostgreSQL 16 · SQLAlchemy 2.0 · Next.js 14 · TypeScript · Tailwind CSS 4 · Base UI
 - **Auth:** Keycloak OIDC (JWT RS256, PKCE)
 - **Storage:** Nextcloud WebDAV (pluggable: local / S3)
@@ -56,10 +56,13 @@ workmate_os/
 | `invoices` | `modules/backoffice/invoices/` | Rechnungen, PDF, E-Mail-Versand |
 | `finance` | `modules/backoffice/finance/` | Transaktionen, Bankintegration via n8n |
 | `products` | `modules/backoffice/products/` | Produkt-/Leistungskatalog |
+| `contracts` | `modules/backoffice/contracts/` | Verträge & Abos, wiederkehrende Abrechnung → Rechnungsentwürfe (v5.0) |
+| `assets` | `modules/backoffice/assets/` | Kunden-Hardware & Software-Lizenzen, Garantie-/Ablaufüberwachung (v5.0) |
 | `hr` | `modules/hr/` | Urlaub, Recruiting, Vergütung, Training, Onboarding |
 | `support` | `modules/support/` | Ticket-System |
 | `knowledge` | `modules/knowledge/` | Wiki / Knowledge Base |
 | `email_intake` | `modules/email_intake/` | E-Mail → Ticket (n8n/IMAP Webhook) |
+| `portal` | `modules/portal/` | Kundenportal: Magic-Link-Login, Tickets für Kunden (v5.0) |
 
 Jedes Modul folgt dem gleichen Muster: `routes.py · models.py · schemas.py · crud.py`
 
@@ -225,10 +228,16 @@ Auth-Flow: PKCE via `lib/auth/pkce.ts`, Token in localStorage, Permissions von `
 
 ---
 
-## Aktueller Stand (Phase 4 abgeschlossen)
+## Aktueller Stand (v5.0.0)
 
 - Phase 1–4: ✅ Core, Backoffice, SSO/Admin, HR & Support
-- Phase 5: geplant — Banking API, Elster, Mobile App
+- v5.0.0: Verträge & Abos, Kunden-Assets/Lizenzen, Ticket-Zeiten → Rechnung, Kundenportal (siehe `docs/releases/v5.0.0.md`)
+- Offen: Banking API, Elster, Mobile App
+
+### v5.0-Hinweise
+- Neue Modelle IMMER in `app/modules/__init__.py` registrieren – Alembic-Autogenerate findet `backoffice/*` sonst nicht (kein `__init__.py` in `backoffice/`)
+- Portal-Sessions sind mit einem vom `JWT_SECRET_KEY` **abgeleiteten** Schlüssel signiert (`portal/security.py`) – der interne HS256-Pfad prüft kein `aud`
+- Service-Endpoints für n8n: `require_api_key_scope("<scope>")` aus `email_intake/auth.py`
 
 ## Agents
 

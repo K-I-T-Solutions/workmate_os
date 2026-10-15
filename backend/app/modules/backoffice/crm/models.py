@@ -357,6 +357,16 @@ class Contact(Base, UUIDMixin, TimestampMixin):
         comment="Hauptansprechpartner für diesen Kunden"
     )
 
+    # Kundenportal (v5.0)
+    portal_enabled: Mapped[bool] = mapped_column(
+        default=False,
+        server_default="false",
+        comment="Darf sich per Magic-Link im Kundenportal anmelden"
+    )
+    portal_last_login_at: Mapped[datetime | None] = mapped_column(
+        comment="Letzte Portal-Anmeldung"
+    )
+
     # Relationship
     customer: Mapped[Customer] = relationship(
         "Customer",

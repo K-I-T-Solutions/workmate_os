@@ -32,8 +32,12 @@ def get_entries(
     is_approved: Optional[bool] = None,
     is_invoiced: Optional[bool] = None,
     search: Optional[str] = None,
+    ticket_id: Optional[UUID] = None,
 ):
     query = db.query(models.TimeEntry)
+
+    if ticket_id:
+        query = query.filter(models.TimeEntry.ticket_id == ticket_id)
 
     if employee_id:
         query = query.filter(models.TimeEntry.employee_id == employee_id)
@@ -61,8 +65,23 @@ def get_entry(db: Session, entry_id) -> Optional[models.TimeEntry]:
     return db.query(models.TimeEntry).filter(models.TimeEntry.id == entry_id).first()
 
 
+def _customer_from_ticket(db: Session, ticket_id: Optional[UUID]) -> Optional[UUID]:
+    """Kundenbezug aus dem Ticket übernehmen; 404 wenn das Ticket nicht existiert."""
+    if not ticket_id:
+        return None
+    from app.modules.support.models import Ticket
+
+    ticket = db.get(Ticket, ticket_id)
+    if not ticket or ticket.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+    return ticket.customer_id
+
+
 def create_entry(db: Session, data: schemas.TimeEntryCreate) -> models.TimeEntry:
     entry_data = data.model_dump()
+    if entry_data.get("ticket_id"):
+        ticket_customer = _customer_from_ticket(db, entry_data["ticket_id"])
+        entry_data["customer_id"] = entry_data.get("customer_id") or ticket_customer
     entry_data["duration_minutes"] = _calculate_duration(
         entry_data["start_time"], entry_data.get("end_time")
     )
@@ -77,7 +96,12 @@ def update_entry(db: Session, entry_id, data: schemas.TimeEntryUpdate) -> Option
     entry = get_entry(db, entry_id)
     if not entry:
         return None
-    for key, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    if changes.get("ticket_id"):
+        ticket_customer = _customer_from_ticket(db, changes["ticket_id"])
+        if not changes.get("customer_id") and not entry.customer_id:
+            changes["customer_id"] = ticket_customer
+    for key, value in changes.items():
         setattr(entry, key, value)
     entry.duration_minutes = _calculate_duration(entry.start_time, entry.end_time)
     db.commit()
@@ -162,6 +186,7 @@ def get_billable_uninvoiced(
     customer_id: Optional[UUID] = None,
     project_id: Optional[UUID] = None,
     employee_id: Optional[UUID] = None,
+    ticket_id: Optional[UUID] = None,
 ) -> schemas.BillableUninvoicedResponse:
     from app.modules.employees.models import Employee
     from app.modules.backoffice.projects.models import Project
@@ -187,6 +212,8 @@ def get_billable_uninvoiced(
         query = query.filter(models.TimeEntry.project_id == project_id)
     if employee_id:
         query = query.filter(models.TimeEntry.employee_id == employee_id)
+    if ticket_id:
+        query = query.filter(models.TimeEntry.ticket_id == ticket_id)
 
     entries = query.order_by(models.TimeEntry.start_time.desc()).all()
 
@@ -216,6 +243,9 @@ def get_billable_uninvoiced(
                 project_id=entry.project_id,
                 project_name=entry.project.title if entry.project else None,
                 customer_id=effective_customer_id,
+                ticket_id=entry.ticket_id,
+                ticket_number=entry.ticket.ticket_number if entry.ticket else None,
+                ticket_title=entry.ticket.title if entry.ticket else None,
                 task_type=entry.task_type,
                 note=entry.note,
                 duration_hours=round(duration_hours, 2),
@@ -231,6 +261,41 @@ def get_billable_uninvoiced(
     )
 
 
+def _effective_customer_id(entry: models.TimeEntry) -> Optional[UUID]:
+    return entry.customer_id or (entry.project.customer_id if entry.project else None)
+
+
+def _group_line_items(entries: list, group_by: str, hourly_rate: Decimal) -> list:
+    from app.modules.backoffice.invoices import schemas as invoice_schemas
+
+    groups: dict[str, list] = defaultdict(list)
+    for entry in sorted(entries, key=lambda e: e.start_time):
+        if group_by == "ticket":
+            key = (
+                f"[{entry.ticket.ticket_number}] {entry.ticket.title}"
+                if entry.ticket else "Sonstige Leistungen"
+            )
+        elif group_by == "task_type":
+            key = entry.task_type or "IT-Dienstleistung"
+        else:
+            key = "Erbrachte Leistungen"
+        groups[key].append(entry)
+
+    line_items = []
+    for pos, (description, group_entries) in enumerate(groups.items(), start=1):
+        hours = sum(e.duration_hours or 0.0 for e in group_entries)
+        line_items.append(
+            invoice_schemas.InvoiceLineItemCreate(
+                position=pos,
+                description=description[:1000],
+                quantity=Decimal(str(round(hours, 2))),
+                unit="Stunden",
+                unit_price=hourly_rate,
+            )
+        )
+    return line_items
+
+
 def create_invoice_from_entries(
     db: Session,
     data: schemas.CreateInvoiceFromEntries,
@@ -238,16 +303,18 @@ def create_invoice_from_entries(
     from app.modules.backoffice.invoices import crud as invoices_crud
     from app.modules.backoffice.invoices import schemas as invoice_schemas
 
-    # 1. Einträge laden und validieren
+    # 1. Einträge sperren, laden und validieren (FOR UPDATE verhindert Doppelabrechnung)
     entries = (
         db.query(models.TimeEntry)
         .filter(models.TimeEntry.id.in_(data.time_entry_ids))
+        .with_for_update()
         .all()
     )
 
     found_ids = {e.id for e in entries}
     missing = set(data.time_entry_ids) - found_ids
     if missing:
+        db.rollback()
         raise HTTPException(
             status_code=404,
             detail=f"Zeiteinträge nicht gefunden: {[str(i) for i in missing]}",
@@ -255,6 +322,7 @@ def create_invoice_from_entries(
 
     invalid = [e for e in entries if not e.billable or e.is_invoiced]
     if invalid:
+        db.rollback()
         raise HTTPException(
             status_code=422,
             detail=(
@@ -263,38 +331,24 @@ def create_invoice_from_entries(
             ),
         )
 
+    foreign = [e for e in entries if _effective_customer_id(e) not in (None, data.customer_id)]
+    if foreign:
+        db.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail=f"Einträge gehören zu einem anderen Kunden: {[str(e.id) for e in foreign]}",
+        )
+
     # 2. Line Items erstellen
-    if data.group_by_task_type:
-        groups: dict[str, list] = defaultdict(list)
-        for entry in entries:
-            key = entry.task_type or "IT-Dienstleistung"
-            groups[key].append(entry)
+    group_by = data.group_by or ("task_type" if data.group_by_task_type else "none")
+    line_items = _group_line_items(entries, group_by, data.hourly_rate)
 
-        line_items = []
-        for pos, (task_type, group_entries) in enumerate(groups.items(), start=1):
-            total_group_hours = sum(e.duration_hours or 0.0 for e in group_entries)
-            line_items.append(
-                invoice_schemas.InvoiceLineItemCreate(
-                    position=pos,
-                    description=task_type,
-                    quantity=Decimal(str(round(total_group_hours, 2))),
-                    unit="Stunden",
-                    unit_price=data.hourly_rate,
-                )
-            )
-    else:
-        total_hours = sum(e.duration_hours or 0.0 for e in entries)
-        line_items = [
-            invoice_schemas.InvoiceLineItemCreate(
-                position=1,
-                description="Erbrachte Leistungen",
-                quantity=Decimal(str(round(total_hours, 2))),
-                unit="Stunden",
-                unit_price=data.hourly_rate,
-            )
-        ]
+    # 3. Einträge VOR dem Commit in create_invoice markieren → eine Transaktion;
+    #    bei Fehler rollt create_invoice auch diese Markierung zurück
+    for entry in entries:
+        entry.is_invoiced = True
+    db.flush()
 
-    # 3. Rechnung erstellen (AUTO-Nummernvergabe)
     invoice_create = invoice_schemas.InvoiceCreate(
         invoice_number="AUTO",
         customer_id=data.customer_id,
@@ -305,9 +359,9 @@ def create_invoice_from_entries(
     )
     invoice = invoices_crud.create_invoice(db, invoice_create)
 
-    # 4. Einträge als abgerechnet markieren
+    # 4. Verknüpfung Eintrag → Rechnung
     for entry in entries:
-        entry.is_invoiced = True
+        entry.invoice_id = invoice.id
     db.commit()
 
     return invoice

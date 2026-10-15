@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # App Info
     APP_NAME: str = "Workmate OS Backend"
-    APP_VERSION: str = "4.0.0"
+    APP_VERSION: str = "5.0.0"
     ENVIRONMENT: str = "development"
 
     # Database
@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     NOREPLY_SMTP_PASSWORD: str = os.getenv("NOREPLY_SMTP_PASSWORD", "")
     NOREPLY_SMTP_FROM: str = os.getenv("NOREPLY_SMTP_FROM", "noreply@kit-it-koblenz.de")
     NOREPLY_SMTP_FROM_NAME: str = os.getenv("NOREPLY_SMTP_FROM_NAME", "K.I.T. Solutions")
+
+    # Kundenportal (v5.0) – Magic-Link-Login
+    PORTAL_BASE_URL: str = os.getenv("PORTAL_BASE_URL", "https://workmate.kit-it-koblenz.de")
+    PORTAL_LINK_TTL_MINUTES: int = int(os.getenv("PORTAL_LINK_TTL_MINUTES", "15"))
+    PORTAL_SESSION_HOURS: int = int(os.getenv("PORTAL_SESSION_HOURS", "8"))
 
     model_config = SettingsConfigDict(
         env_file=".env",  # In Docker: /app/.env

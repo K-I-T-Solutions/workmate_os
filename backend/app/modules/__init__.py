@@ -37,6 +37,11 @@ from app.modules.backoffice.time_tracking.models import TimeEntry
 from app.modules.backoffice.products.models import Product
 from app.modules.support.models import TicketEvent
 
+# v5.0: Verträge, Kunden-Assets, Kundenportal
+from app.modules.backoffice.contracts.models import Contract, ContractItem
+from app.modules.backoffice.assets.models import CustomerAsset, SoftwareLicense
+from app.modules.portal.models import PortalLoginToken
+
 # HR Sub-Module Models
 from app.modules.hr.training.models import TrainingCourse, TrainingParticipant, HRCertification
 from app.modules.hr.onboarding.models import (
@@ -80,4 +85,9 @@ __all__ = [
     "StripeConfig",
     "Product",
     "TicketEvent",
+    "Contract",
+    "ContractItem",
+    "CustomerAsset",
+    "SoftwareLicense",
+    "PortalLoginToken",
 ]

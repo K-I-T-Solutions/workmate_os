@@ -54,3 +54,31 @@ def require_api_key(
 
     logger.debug("API-Key '%s' authentifiziert", api_key.name)
     return api_key
+
+
+def require_api_key_scope(scope: str):
+    """
+    Dependency-Factory für Service-Endpoints mit eigenem Scope,
+    z. B. `Depends(require_api_key_scope("contracts:billing"))` für n8n-Jobs.
+    """
+    def _dependency(
+        creds: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+        db=Depends(get_db),
+    ) -> ApiKey:
+        if creds is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Kein API-Key angegeben. Header: Authorization: Bearer <key>",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        api_key = authenticate_api_key(db, creds.credentials, required_scope=scope)
+        if api_key is None:
+            logger.warning("Ungültiger API-Key oder Scope '%s' fehlt", scope)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Ungültiger API-Key oder Scope '{scope}' fehlt",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return api_key
+
+    return _dependency

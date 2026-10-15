@@ -278,6 +278,7 @@ class InvoiceResponse(InvoiceBase):
     created_at: datetime
     updated_at: datetime
     pdf_path: Optional[str] = None
+    contract_id: Optional[uuid.UUID] = None
 
     # Relations
     customer: CustomerBriefResponse

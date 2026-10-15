@@ -1,6 +1,6 @@
 # app/modules/backoffice/time_tracking/schemas.py
 from datetime import datetime, date
-from typing import Optional
+from typing import Literal, Optional
 from decimal import Decimal
 import uuid
 
@@ -19,6 +19,7 @@ class TimeEntryBase(BaseModel):
 
 class TimeEntryCreate(TimeEntryBase):
     customer_id: Optional[uuid.UUID] = None
+    ticket_id: Optional[uuid.UUID] = None
     task_type: Optional[str] = None
     billable: bool = True
     hourly_rate: Optional[Decimal] = None
@@ -29,6 +30,7 @@ class TimeEntryUpdate(BaseModel):
     end_time: Optional[datetime] = None
     project_id: Optional[uuid.UUID] = None
     customer_id: Optional[uuid.UUID] = None
+    ticket_id: Optional[uuid.UUID] = None
     note: Optional[str] = None
     task_type: Optional[str] = None
     billable: Optional[bool] = None
@@ -38,6 +40,8 @@ class TimeEntryUpdate(BaseModel):
 class TimeEntryResponse(TimeEntryBase):
     id: uuid.UUID
     customer_id: Optional[uuid.UUID] = None
+    ticket_id: Optional[uuid.UUID] = None
+    invoice_id: Optional[uuid.UUID] = None
     duration_minutes: Optional[int]
     task_type: Optional[str]
     billable: bool
@@ -97,6 +101,9 @@ class BillableEntry(BaseModel):
     project_id: Optional[uuid.UUID] = None
     project_name: Optional[str] = None
     customer_id: Optional[uuid.UUID] = None
+    ticket_id: Optional[uuid.UUID] = None
+    ticket_number: Optional[str] = None
+    ticket_title: Optional[str] = None
     task_type: Optional[str] = None
     note: Optional[str] = None
     duration_hours: float
@@ -116,4 +123,7 @@ class CreateInvoiceFromEntries(BaseModel):
     project_id: Optional[uuid.UUID] = None
     hourly_rate: Decimal
     group_by_task_type: bool = True
+    group_by: Optional[Literal["task_type", "ticket", "none"]] = Field(
+        None, description="Überschreibt group_by_task_type; 'ticket' = eine Position pro Ticket"
+    )
     notes: Optional[str] = None

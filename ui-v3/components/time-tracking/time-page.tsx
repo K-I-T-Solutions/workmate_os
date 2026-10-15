@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { TimeTracker } from "./time-tracker"
 import { TimeReports } from "./time-reports"
 import { TimeApprovals } from "./time-approvals"
@@ -18,6 +18,12 @@ const TABS: { id: Tab; label: string; icon?: React.ReactNode }[] = [
 
 export function TimePage() {
   const [tab, setTab] = useState<Tab>("tracker")
+
+  // Direktlink auf einen Tab, z.B. /time?tab=billing aus dem Ticket
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab")
+    if (requested && TABS.some(t => t.id === requested)) setTab(requested as Tab)
+  }, [])
 
   return (
     <div>

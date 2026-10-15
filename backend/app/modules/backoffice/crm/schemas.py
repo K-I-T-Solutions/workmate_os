@@ -77,6 +77,7 @@ class ContactBase(BaseModel):
     department: Optional[str] = Field(None, max_length=100, description="Abteilung")
     is_primary: bool = Field(default=False, description="Ist Hauptansprechpartner")
     notes: Optional[str] = Field(None, description="Notizen zum Kontakt")
+    portal_enabled: bool = Field(default=False, description="Zugang zum Kundenportal")
 
 
 class ContactCreate(ContactBase):
@@ -96,11 +97,13 @@ class ContactUpdate(BaseModel):
     department: Optional[str] = Field(None, max_length=100)
     is_primary: Optional[bool] = None
     notes: Optional[str] = None
+    portal_enabled: Optional[bool] = None
 
 
 class ContactResponse(ContactBase):
     """Schema für Contact Response."""
     id: UUID
+    portal_last_login_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     
@@ -119,6 +122,7 @@ class ContactResponseSimple(BaseModel):
     mobile: Optional[str] = None
     position: Optional[str] = None
     is_primary: bool
+    portal_enabled: bool = False
     
     model_config = ConfigDict(from_attributes=True)
 

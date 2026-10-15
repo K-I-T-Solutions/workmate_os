@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const PUBLIC_PATHS = ["/login", "/auth/callback"]
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/portal"]  // /portal: eigene Magic-Link-Session
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl

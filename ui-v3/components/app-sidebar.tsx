@@ -19,6 +19,8 @@ import {
   ChevronLeft,
   Package,
   Bell,
+  ScrollText,
+  HardDrive,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -45,6 +47,8 @@ const navGroups: NavGroup[] = [
       { label: "CRM", icon: Users, href: "/crm", matchKey: "/crm", permission: "backoffice.crm.read" },
       { label: "Projekte", icon: FolderKanban, href: "/projects", matchKey: "/projects", permission: "backoffice.projects.read" },
       { label: "Rechnungen", icon: FileText, href: "/invoices", matchKey: "/invoices", permission: "backoffice.invoices.read" },
+      { label: "Verträge", icon: ScrollText, href: "/contracts", matchKey: "/contracts", permission: "backoffice.contracts.read" },
+      { label: "Kunden-Assets", icon: HardDrive, href: "/assets", matchKey: "/assets", permission: "backoffice.assets.read" },
       { label: "Finanzen", icon: Wallet, href: "/finance", matchKey: "/finance", permission: "backoffice.finance.read" },
       { label: "Produkte", icon: Package, href: "/products", matchKey: "/products", permission: "backoffice.products.read" },
     ],

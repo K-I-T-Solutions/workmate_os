@@ -30,6 +30,14 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("de-DE")
 }
 
+type GroupBy = "none" | "task_type" | "ticket"
+
+const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
+  { value: "none", label: "Gesamtposition" },
+  { value: "task_type", label: "Pro Tätigkeit" },
+  { value: "ticket", label: "Pro Ticket" },
+]
+
 function mostCommonRate(entries: BillableEntry[]): number {
   const rates = entries
     .map(e => e.hourly_rate)
@@ -56,7 +64,7 @@ export function TimeBilling() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogCustomerId, setDialogCustomerId] = useState("")
   const [dialogRate, setDialogRate] = useState("79")
-  const [dialogGroupByTask, setDialogGroupByTask] = useState(false)
+  const [dialogGroupBy, setDialogGroupBy] = useState<GroupBy>("none")
   const [dialogNotes, setDialogNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [successMsg, setSuccessMsg] = useState<{ id: string; invoice_number: string } | null>(null)
@@ -64,9 +72,8 @@ export function TimeBilling() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params: { project_id?: string; employee_id?: string } = {}
+      const params: { project_id?: string } = {}
       if (filterProject) params.project_id = filterProject
-      if (filterEmployee) params.employee_id = filterEmployee
 
       const [res, projs, custs] = await Promise.all([
         timeTrackingService.getBillableUninvoiced(params),
@@ -80,17 +87,18 @@ export function TimeBilling() {
     } finally {
       setLoading(false)
     }
-  }, [filterProject, filterEmployee])
+  }, [filterProject])
 
   useEffect(() => { load() }, [load])
 
-  const allSelected = entries.length > 0 && selected.size === entries.length
+  const visible = filterEmployee ? entries.filter(e => e.employee_name === filterEmployee) : entries
+  const allSelected = visible.length > 0 && visible.every(e => selected.has(e.id))
 
   function toggleAll() {
     if (allSelected) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(entries.map(e => e.id)))
+      setSelected(new Set(visible.map(e => e.id)))
     }
   }
 
@@ -110,8 +118,10 @@ export function TimeBilling() {
   function openDialog() {
     const defaultRate = mostCommonRate(selectedEntries)
     setDialogRate(String(defaultRate))
-    setDialogCustomerId("")
-    setDialogGroupByTask(false)
+    // Kunde vorbelegen, wenn alle ausgewählten Einträge zum selben Kunden gehören
+    const customerIds = new Set(selectedEntries.map(e => e.customer_id).filter(Boolean))
+    setDialogCustomerId(customerIds.size === 1 ? [...customerIds][0] as string : "")
+    setDialogGroupBy(selectedEntries.some(e => e.ticket_id) ? "ticket" : "none")
     setDialogNotes("")
     setSuccessMsg(null)
     setDialogOpen(true)
@@ -125,7 +135,8 @@ export function TimeBilling() {
         time_entry_ids: Array.from(selected),
         customer_id: dialogCustomerId,
         hourly_rate: parseFloat(dialogRate) || 79,
-        group_by_task_type: dialogGroupByTask,
+        group_by_task_type: dialogGroupBy === "task_type",
+        group_by: dialogGroupBy,
         notes: dialogNotes || undefined,
       })
       setSuccessMsg(result)
@@ -190,7 +201,7 @@ export function TimeBilling() {
                   </th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Datum</th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Mitarbeiter</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Projekt</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Projekt / Ticket</th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Tätigkeit</th>
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground max-w-xs">Notiz</th>
                   <th className="px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">Stunden</th>
@@ -199,7 +210,7 @@ export function TimeBilling() {
                 </tr>
               </thead>
               <tbody className="divide-y bg-card">
-                {entries.map(e => (
+                {visible.map(e => (
                   <tr
                     key={e.id}
                     className={`transition-colors hover:bg-muted/30 cursor-pointer ${selected.has(e.id) ? "bg-primary/5" : ""}`}
@@ -215,7 +226,13 @@ export function TimeBilling() {
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{fmtDate(e.date)}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{e.employee_name}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{e.project_name ?? "–"}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                      {e.ticket_number ? (
+                        <span title={e.ticket_title ?? undefined}>
+                          <span className="font-mono text-xs">{e.ticket_number}</span> {e.ticket_title}
+                        </span>
+                      ) : (e.project_name ?? "–")}
+                    </td>
                     <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{e.task_type ?? "–"}</td>
                     <td className="px-3 py-2.5 max-w-xs truncate text-muted-foreground" title={e.note ?? undefined}>{e.note ?? "–"}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-medium">{e.duration_hours.toFixed(2)}</td>
@@ -308,24 +325,18 @@ export function TimeBilling() {
               <div className="grid gap-1.5">
                 <Label>Gruppierung</Label>
                 <div className="flex gap-1 rounded-lg border bg-muted p-1 w-fit">
-                  <button
-                    type="button"
-                    onClick={() => setDialogGroupByTask(false)}
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                      !dialogGroupByTask ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Gesamtposition
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDialogGroupByTask(true)}
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                      dialogGroupByTask ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Pro Tätigkeit
-                  </button>
+                  {GROUP_OPTIONS.map(o => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => setDialogGroupBy(o.value)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        dialogGroupBy === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 

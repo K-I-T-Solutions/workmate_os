@@ -97,6 +97,27 @@ def get_ticket_events(
     return crud.get_events(db, ticket_id)
 
 
+@router.get("/tickets/{ticket_id}/time-entries")
+@require_permissions(["support.view", "support.*", "*"])
+def get_ticket_time_entries(
+    ticket_id: UUID, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
+    """Auf das Ticket gebuchte Zeiten inkl. Summen (v5.0)."""
+    from app.modules.backoffice.time_tracking import crud as time_crud
+    from app.modules.backoffice.time_tracking.schemas import TimeEntryResponse
+
+    if not crud.get_ticket(db, ticket_id):
+        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+    entries = time_crud.get_entries(db, ticket_id=ticket_id, limit=1000)
+    minutes = sum(e.duration_minutes or 0 for e in entries)
+    unbilled = sum(e.duration_minutes or 0 for e in entries if e.billable and not e.is_invoiced)
+    return {
+        "items": [TimeEntryResponse.model_validate(e) for e in entries],
+        "total_hours": round(minutes / 60, 2),
+        "unbilled_hours": round(unbilled / 60, 2),
+    }
+
+
 @router.post("/tickets/{ticket_id}/comments", response_model=schemas.TicketCommentResponse, status_code=status.HTTP_201_CREATED)
 @require_permissions(["support.view", "support.*", "*"])
 def add_comment(

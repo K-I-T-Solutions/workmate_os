@@ -47,6 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function init() {
+      // Kundenportal hat eine eigene Session (Magic-Link) – keine Mitarbeiter-Auth
+      if (window.location.pathname.startsWith("/portal")) {
+        setLoading(false)
+        return
+      }
+
       let token = getAccessToken()
 
       if (!token) {
