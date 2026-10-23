@@ -113,11 +113,12 @@ Zentrale `AuditLog`-Tabelle. Auto-Logging für Permission-Denials und CRUD-Opera
 ## Development Commands
 
 ```bash
-make dev-up               # Services starten
-make dev-down             # Services stoppen
-make dev-rebuild          # Rebuild & Restart
+make dev-up               # WorkmateOS starten (backend, ui-v3)
+make dev-down             # WorkmateOS stoppen – geteilte infra läuft weiter
+make dev-rebuild          # WorkmateOS rebuilden & neu starten
 make backend-rebuild      # Nur Backend rebuilden
-make dev-logs             # Live Logs
+make dev-logs             # Live Logs (backend, ui-v3)
+make infra-up             # KOMPLETTEN infra-Stack starten (auch andere Projekte!)
 make shell                # Backend-Shell (bash im Container)
 make db-shell             # PostgreSQL CLI
 
@@ -131,6 +132,8 @@ make migrate-history                     # Migrations-History
 make seed                 # Demo-Daten laden
 make db-reset             # DB komplett zurücksetzen (DESTRUKTIV)
 ```
+
+> `infra/docker-compose.yml` enthält auch geteilte Dienste (Postgres, Keycloak, Caddy, n8n, cloudflared …). Nie `docker compose down` auf den ganzen Stack.
 
 ---
 
